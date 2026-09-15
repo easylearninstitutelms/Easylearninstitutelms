@@ -91,25 +91,6 @@ export default function LoginPage() {
     }
   }
 
-  async function handleSeed() {
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/seed", {
-        method: "POST",
-      });
-
-      const data = await res.json();
-
-      alert(
-        data.message ||
-          `Seeded! Credentials:\nSuper Admin: admin@easylearn.io / admin123\nInstitute Admin: karim@dhakamodel.edu.bd / admin123`
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-orange-50 p-4">
       {/* Logo */}
@@ -305,7 +286,9 @@ export default function LoginPage() {
                     className="form-input"
                     placeholder="City, Area"
                     value={instituteAddress}
-                    onChange={(e) => setInstituteAddress(e.target.value)}
+                    onChange={(e) =>
+                      setInstituteAddress(e.target.value)
+                    }
                   />
                 </div>
               </div>
@@ -321,25 +304,9 @@ export default function LoginPage() {
               </button>
             </form>
           )}
-
-          {/* Demo seed */}
-          <div className="mt-6 pt-4 border-t border-slate-100 text-center">
-            <p className="text-xs text-slate-400 mb-2">
-              Demo Access
-            </p>
-
-            <button
-              onClick={handleSeed}
-              disabled={loading}
-              className="btn btn-outline btn-sm text-xs"
-            >
-              {loading ? "Setting up..." : "Load Demo Data"}
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Footer */}
       <p className="text-xs text-slate-400 mt-6">
         © {new Date().getFullYear()} Easylearn Institute. All rights reserved.
       </p>
