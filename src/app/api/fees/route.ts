@@ -1,57 +1,327 @@
 import { db } from "@/db";
 import { fees, students } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/session";
+
+type FeeType =
+  | "OTHER"
+  | "ADMISSION"
+  | "COURSE"
+  | "MONTHLY"
+  | "EXAM";
+
+type FeeStatus =
+  | "PAID"
+  | "PARTIAL"
+  | "DUE"
+  | "WAIVED";
+
+const FEE_TYPES: readonly FeeType[] = [
+  "OTHER",
+  "ADMISSION",
+  "COURSE",
+  "MONTHLY",
+  "EXAM",
+];
+
+function isFeeType(value: string): value is FeeType {
+  return FEE_TYPES.includes(value as FeeType);
+}
+
+function errorResponse(message: string, status = 400) {
+  return Response.json({ error: message }, { status });
+}
+
+function isValidDateOnly(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+
+  const date = new Date(
+    Date.UTC(year, month - 1, day),
+  );
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+function toNumber(value: unknown): number {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    return Number(value.trim());
+  }
+
+  return NaN;
+}
 
 export async function GET(request: Request) {
   const session = await getSession();
-  if (!session || !session.instituteId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (!session?.instituteId) {
+    return Response.json(
+      { error: "Unauthorized" },
+      { status: 401 },
+    );
+  }
 
   const { searchParams } = new URL(request.url);
   const studentId = searchParams.get("studentId");
 
-  const conditions = [eq(fees.instituteId, session.instituteId)];
-  if (studentId) conditions.push(eq(fees.studentId, studentId));
+  const conditions = [
+    eq(fees.instituteId, session.instituteId),
+  ];
+
+  if (studentId) {
+    conditions.push(eq(fees.studentId, studentId));
+  }
 
   const rows = await db
     .select({
-      fee: fees,
+      id: fees.id,
+      instituteId: fees.instituteId,
+      studentId: fees.studentId,
+      feeType: fees.feeType,
+      amount: fees.amount,
+      discount: fees.discount,
+      dueAmount: fees.dueAmount,
+      dueDate: fees.dueDate,
+      status: fees.status,
+      createdAt: fees.createdAt,
+      updatedAt: fees.updatedAt,
       studentName: students.name,
       studentCode: students.studentId,
     })
     .from(fees)
-    .leftJoin(students, eq(fees.studentId, students.id))
+    .leftJoin(
+      students,
+      eq(fees.studentId, students.id),
+    )
     .where(and(...conditions))
     .orderBy(desc(fees.createdAt));
 
-  return Response.json({ fees: rows });
+  return Response.json({
+    fees: rows,
+  });
 }
 
 export async function POST(request: Request) {
   const session = await getSession();
-  if (!session || !session.instituteId) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await request.json();
-  const { studentId, feeType, amount, discount, dueDate } = body;
-
-  if (!studentId || !feeType || !amount) {
-    return Response.json({ error: "Student, fee type, and amount required" }, { status: 400 });
+  if (!session?.instituteId) {
+    return Response.json(
+      { error: "Unauthorized" },
+      { status: 401 },
+    );
   }
 
-  const discountAmt = parseFloat(discount || "0");
-  const totalAmt = parseFloat(amount);
-  const dueAmount = totalAmt - discountAmt;
+  let body: unknown;
 
-  const [fee] = await db.insert(fees).values({
-    instituteId: session.instituteId,
-    studentId,
-    feeType,
-    amount: String(totalAmt),
-    discount: String(discountAmt),
-    dueAmount: String(dueAmount),
-    dueDate: dueDate || null,
-    status: "DUE",
-  }).returning();
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse(
+      "Invalid JSON request body",
+    );
+  }
 
-  return Response.json({ fee });
+  if (
+    !body ||
+    typeof body !== "object" ||
+    Array.isArray(body)
+  ) {
+    return errorResponse("Invalid request body");
+  }
+
+  const data = body as Record<string, unknown>;
+
+  const studentId = data.studentId;
+  const feeType = data.feeType;
+  const amount = data.amount;
+  const discount = data.discount;
+  const dueDate = data.dueDate;
+
+  // ─────────────────────────────────────────────
+  // Student validation
+  // ─────────────────────────────────────────────
+
+  if (
+    typeof studentId !== "string" ||
+    studentId.trim() === ""
+  ) {
+    return errorResponse("Student is required");
+  }
+
+  const cleanStudentId = studentId.trim();
+
+  // ─────────────────────────────────────────────
+  // Fee type validation
+  // ─────────────────────────────────────────────
+
+  if (
+    typeof feeType !== "string" ||
+    feeType.trim() === ""
+  ) {
+    return errorResponse("Fee type is required");
+  }
+
+  const cleanFeeType = feeType
+    .trim()
+    .toUpperCase();
+
+  if (!isFeeType(cleanFeeType)) {
+    return errorResponse(
+      "Invalid fee type. Allowed values: OTHER, ADMISSION, COURSE, MONTHLY, EXAM",
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // Amount validation
+  // ─────────────────────────────────────────────
+
+  const totalAmount = toNumber(amount);
+
+  if (
+    !Number.isFinite(totalAmount) ||
+    totalAmount <= 0
+  ) {
+    return errorResponse(
+      "Amount must be greater than 0",
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // Discount validation
+  // ─────────────────────────────────────────────
+
+  let discountAmount = 0;
+
+  if (
+    discount !== undefined &&
+    discount !== null &&
+    discount !== ""
+  ) {
+    discountAmount = toNumber(discount);
+
+    if (
+      !Number.isFinite(discountAmount) ||
+      discountAmount < 0
+    ) {
+      return errorResponse(
+        "Discount must be 0 or greater",
+      );
+    }
+  }
+
+  if (discountAmount > totalAmount) {
+    return errorResponse(
+      "Discount cannot be greater than the fee amount",
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // Due date validation
+  // ─────────────────────────────────────────────
+
+  let cleanDueDate: string | null = null;
+
+  if (
+    dueDate !== undefined &&
+    dueDate !== null &&
+    dueDate !== ""
+  ) {
+    if (
+      typeof dueDate !== "string" ||
+      !isValidDateOnly(dueDate)
+    ) {
+      return errorResponse("Invalid due date");
+    }
+
+    cleanDueDate = dueDate;
+  }
+
+  // ─────────────────────────────────────────────
+  // Make sure student belongs to this institute
+  // ─────────────────────────────────────────────
+
+  const [student] = await db
+    .select({
+      id: students.id,
+    })
+    .from(students)
+    .where(
+      and(
+        eq(students.id, cleanStudentId),
+        eq(
+          students.instituteId,
+          session.instituteId,
+        ),
+      ),
+    )
+    .limit(1);
+
+  if (!student) {
+    return errorResponse(
+      "Student not found",
+      404,
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // Calculate due
+  // ─────────────────────────────────────────────
+
+  const dueAmount =
+    Math.round(
+      (totalAmount - discountAmount) * 100,
+    ) / 100;
+
+  const status: FeeStatus =
+    dueAmount <= 0
+      ? "PAID"
+      : "DUE";
+
+  // ─────────────────────────────────────────────
+  // Insert fee
+  // ─────────────────────────────────────────────
+
+  const [fee] = await db
+    .insert(fees)
+    .values({
+      instituteId: session.instituteId,
+      studentId: student.id,
+
+      feeType:
+        cleanFeeType as
+          | "OTHER"
+          | "ADMISSION"
+          | "COURSE"
+          | "MONTHLY"
+          | "EXAM",
+
+      amount: totalAmount.toFixed(2),
+      discount: discountAmount.toFixed(2),
+      dueAmount: dueAmount.toFixed(2),
+      dueDate: cleanDueDate,
+
+      status:
+        status as
+          | "PAID"
+          | "PARTIAL"
+          | "DUE"
+          | "WAIVED",
+    })
+    .returning();
+
+  return Response.json(
+    { fee },
+    { status: 201 },
+  );
 }

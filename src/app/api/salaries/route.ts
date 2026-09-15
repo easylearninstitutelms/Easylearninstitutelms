@@ -3,60 +3,284 @@ import { salaries, staff } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 
+const PAYMENT_METHODS = [
+  "CASH",
+  "BKASH",
+  "NAGAD",
+  "ROCKET",
+  "BANK",
+] as const;
+
+function errorResponse(message: string, status = 400) {
+  return Response.json(
+    { error: message },
+    { status }
+  );
+}
+
 export async function GET(request: Request) {
-  const session = await getSession();
-  if (!session || !session.instituteId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const session = await getSession();
 
-  const { searchParams } = new URL(request.url);
-  const month = searchParams.get("month");
+    if (!session || !session.instituteId) {
+      return errorResponse("Unauthorized", 401);
+    }
 
-  const conditions = [eq(salaries.instituteId, session.instituteId)];
-  if (month) conditions.push(eq(salaries.month, month));
+    const { searchParams } = new URL(request.url);
+    const month = searchParams.get("month");
 
-  const rows = await db
-    .select({
-      salary: salaries,
-      staffName: staff.name,
-      designation: staff.designation,
-    })
-    .from(salaries)
-    .leftJoin(staff, eq(salaries.staffId, staff.id))
-    .where(and(...conditions))
-    .orderBy(desc(salaries.createdAt));
+    const conditions = [
+      eq(salaries.instituteId, session.instituteId),
+    ];
 
-  return Response.json({ salaries: rows });
+    if (month) {
+      conditions.push(eq(salaries.month, month));
+    }
+
+    const rows = await db
+      .select({
+        salary: salaries,
+        staffName: staff.name,
+        designation: staff.designation,
+      })
+      .from(salaries)
+      .leftJoin(
+        staff,
+        eq(salaries.staffId, staff.id)
+      )
+      .where(and(...conditions))
+      .orderBy(desc(salaries.createdAt));
+
+    return Response.json({
+      salaries: rows,
+    });
+  } catch (error) {
+    console.error("GET /api/salaries error:", error);
+
+    return errorResponse(
+      "Failed to load salary records.",
+      500
+    );
+  }
 }
 
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session || !session.instituteId) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.role !== "INSTITUTE_ADMIN" && session.role !== "SUPER_ADMIN") return Response.json({ error: "Forbidden" }, { status: 403 });
+  try {
+    const session = await getSession();
 
-  const body = await request.json();
-  const { staffId, month, basic, bonus, deduction, paymentDate, method } = body;
+    if (!session || !session.instituteId) {
+      return errorResponse("Unauthorized", 401);
+    }
 
-  if (!staffId || !month || !basic) {
-    return Response.json({ error: "Staff, month and basic salary required" }, { status: 400 });
+    if (
+      session.role !== "INSTITUTE_ADMIN" &&
+      session.role !== "SUPER_ADMIN"
+    ) {
+      return errorResponse("Forbidden", 403);
+    }
+
+    const body = await request.json();
+
+    const {
+      staffId,
+      month,
+      basic,
+      bonus,
+      deduction,
+      paymentDate,
+      method,
+    } = body;
+
+    if (!staffId) {
+      return errorResponse(
+        "Staff member is required."
+      );
+    }
+
+    if (!month) {
+      return errorResponse(
+        "Salary month is required."
+      );
+    }
+
+    if (!/^\d{4}-\d{2}$/.test(String(month))) {
+      return errorResponse(
+        "Invalid salary month."
+      );
+    }
+
+    if (
+      !basic ||
+      String(basic).trim() === ""
+    ) {
+      return errorResponse(
+        "Basic salary is required."
+      );
+    }
+
+    const basicAmt = Number(basic);
+    const bonusAmt =
+      bonus === undefined ||
+      bonus === null ||
+      String(bonus).trim() === ""
+        ? 0
+        : Number(bonus);
+
+    const deductionAmt =
+      deduction === undefined ||
+      deduction === null ||
+      String(deduction).trim() === ""
+        ? 0
+        : Number(deduction);
+
+    if (!Number.isFinite(basicAmt)) {
+      return errorResponse(
+        "Basic salary must be a valid number."
+      );
+    }
+
+    if (!Number.isFinite(bonusAmt)) {
+      return errorResponse(
+        "Bonus must be a valid number."
+      );
+    }
+
+    if (!Number.isFinite(deductionAmt)) {
+      return errorResponse(
+        "Deduction must be a valid number."
+      );
+    }
+
+    if (basicAmt <= 0) {
+      return errorResponse(
+        "Basic salary must be greater than 0."
+      );
+    }
+
+    if (bonusAmt < 0) {
+      return errorResponse(
+        "Bonus cannot be negative."
+      );
+    }
+
+    if (deductionAmt < 0) {
+      return errorResponse(
+        "Deduction cannot be negative."
+      );
+    }
+
+    const payable = basicAmt + bonusAmt - deductionAmt;
+
+    if (payable <= 0) {
+      return errorResponse(
+        "Payable salary must be greater than 0."
+      );
+    }
+
+    if (
+      method &&
+      !PAYMENT_METHODS.includes(method)
+    ) {
+      return errorResponse(
+        "Invalid payment method."
+      );
+    }
+
+    if (paymentDate) {
+      const parsedDate = new Date(
+        `${paymentDate}T00:00:00`
+      );
+
+      if (
+        Number.isNaN(parsedDate.getTime())
+      ) {
+        return errorResponse(
+          "Invalid payment date."
+        );
+      }
+    }
+
+    const existingStaff = await db
+      .select({
+        id: staff.id,
+        name: staff.name,
+      })
+      .from(staff)
+      .where(
+        and(
+          eq(staff.id, staffId),
+          eq(
+            staff.instituteId,
+            session.instituteId
+          )
+        )
+      )
+      .limit(1);
+
+    if (existingStaff.length === 0) {
+      return errorResponse(
+        "Staff member not found.",
+        404
+      );
+    }
+
+    const existingSalary = await db
+      .select({
+        id: salaries.id,
+      })
+      .from(salaries)
+      .where(
+        and(
+          eq(
+            salaries.instituteId,
+            session.instituteId
+          ),
+          eq(salaries.staffId, staffId),
+          eq(salaries.month, month)
+        )
+      )
+      .limit(1);
+
+    if (existingSalary.length > 0) {
+      return errorResponse(
+        "Salary record already exists for this staff member and month."
+      );
+    }
+
+    const [salary] = await db
+      .insert(salaries)
+      .values({
+        instituteId: session.instituteId,
+        staffId,
+        month: String(month),
+        basic: basicAmt.toFixed(2),
+        bonus: bonusAmt.toFixed(2),
+        deduction: deductionAmt.toFixed(2),
+        payable: payable.toFixed(2),
+        paid: payable.toFixed(2),
+        due: "0.00",
+        paymentDate: paymentDate || null,
+        method: method || null,
+      })
+      .returning();
+
+    return Response.json(
+      {
+        salary,
+        message:
+          "Salary processed successfully.",
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error(
+      "POST /api/salaries error:",
+      error
+    );
+
+    return errorResponse(
+      "Failed to process salary.",
+      500
+    );
   }
-
-  const basicAmt = parseFloat(basic);
-  const bonusAmt = parseFloat(bonus || "0");
-  const deductionAmt = parseFloat(deduction || "0");
-  const payable = basicAmt + bonusAmt - deductionAmt;
-
-  const [salary] = await db.insert(salaries).values({
-    instituteId: session.instituteId,
-    staffId,
-    month,
-    basic: String(basicAmt),
-    bonus: String(bonusAmt),
-    deduction: String(deductionAmt),
-    payable: String(payable),
-    paid: String(payable),
-    due: "0",
-    paymentDate: paymentDate || null,
-    method: method || null,
-  }).returning();
-
-  return Response.json({ salary });
 }
