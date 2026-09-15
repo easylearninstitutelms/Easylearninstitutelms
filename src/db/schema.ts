@@ -16,7 +16,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
-// ─── Enums ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Enums â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const instituteStatusEnum = pgEnum("institute_status", [
   "TRIAL",
@@ -135,7 +135,7 @@ export const dayOfWeekEnum = pgEnum("day_of_week", [
   "FRIDAY",
 ]);
 
-// ─── Plans ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const plans = pgTable("plans", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -150,7 +150,7 @@ export const plans = pgTable("plans", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// ─── Institutes ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Institutes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const institutes = pgTable("institutes", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -165,7 +165,7 @@ export const institutes = pgTable("institutes", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// ─── Users ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const users = pgTable(
   "users",
@@ -189,7 +189,7 @@ export const users = pgTable(
   ]
 );
 
-// ─── Subscriptions ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Subscriptions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const subscriptions = pgTable(
   "subscriptions",
@@ -210,7 +210,7 @@ export const subscriptions = pgTable(
   (t) => [index("subscriptions_institute_idx").on(t.instituteId)]
 );
 
-// ─── Subscription Payments ────────────────────────────────────────────────────
+// â”€â”€â”€ Subscription Payments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const subscriptionPayments = pgTable(
   "subscription_payments",
@@ -237,7 +237,7 @@ export const subscriptionPayments = pgTable(
   (t) => [index("sub_payments_institute_idx").on(t.instituteId)]
 );
 
-// ─── Students ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Students â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const students = pgTable(
   "students",
@@ -266,7 +266,7 @@ export const students = pgTable(
   ]
 );
 
-// ─── Staff ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Staff â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const staff = pgTable(
   "staff",
@@ -290,7 +290,54 @@ export const staff = pgTable(
   (t) => [index("staff_institute_idx").on(t.instituteId)]
 );
 
-// ─── Courses ──────────────────────────────────────────────────────────────────
+// ─── Programmes ─────────────────────────────────────────────────────────────
+
+export const programmes = pgTable(
+  "programmes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    code: varchar("code", { length: 50 }),
+    description: text("description"),
+    duration: varchar("duration", { length: 100 }),
+    status: statusEnum("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique("programmes_institute_name_unique").on(t.instituteId, t.name),
+    index("programmes_institute_idx").on(t.instituteId),
+  ]
+);
+
+export const programmeSemesters = pgTable(
+  "programme_semesters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, { onDelete: "cascade" }),
+    programmeId: uuid("programme_id")
+      .notNull()
+      .references(() => programmes.id, { onDelete: "cascade" }),
+    semesterNo: integer("semester_no").notNull(),
+    name: varchar("name", { length: 100 }).notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique("programme_semesters_programme_no_unique").on(
+      t.programmeId,
+      t.semesterNo
+    ),
+    index("programme_semesters_institute_idx").on(t.instituteId),
+    index("programme_semesters_programme_idx").on(t.programmeId),
+  ]
+);
+
+// â”€â”€â”€ Courses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const courses = pgTable(
   "courses",
@@ -310,7 +357,7 @@ export const courses = pgTable(
   (t) => [index("courses_institute_idx").on(t.instituteId)]
 );
 
-// ─── Batches ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Batches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const batches = pgTable(
   "batches",
@@ -321,6 +368,8 @@ export const batches = pgTable(
       .references(() => institutes.id, { onDelete: "cascade" }),
     courseId: uuid("course_id").references(() => courses.id),
     teacherId: uuid("teacher_id").references(() => staff.id),
+    programmeId: uuid("programme_id").references(() => programmes.id),
+    semesterId: uuid("semester_id").references(() => programmeSemesters.id),
     name: varchar("name", { length: 255 }).notNull(),
     room: varchar("room", { length: 100 }),
     startDate: date("start_date"),
@@ -330,10 +379,13 @@ export const batches = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (t) => [index("batches_institute_idx").on(t.instituteId)]
+  (t) => [
+    index("batches_institute_idx").on(t.instituteId),
+    index("batches_programme_semester_idx").on(t.programmeId, t.semesterId),
+  ]
 );
 
-// ─── Enrollments ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Enrollments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const enrollments = pgTable(
   "enrollments",
@@ -358,7 +410,7 @@ export const enrollments = pgTable(
   ]
 );
 
-// ─── Attendance ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Attendance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const attendance = pgTable(
   "attendance",
@@ -390,7 +442,7 @@ export const attendance = pgTable(
   ]
 );
 
-// ─── Fees ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Fees â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const fees = pgTable(
   "fees",
@@ -417,7 +469,7 @@ export const fees = pgTable(
   ]
 );
 
-// ─── Payments ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Payments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const payments = pgTable(
   "payments",
@@ -450,7 +502,7 @@ export const payments = pgTable(
   ]
 );
 
-// ─── Expenses ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Expenses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const expenses = pgTable(
   "expenses",
@@ -470,7 +522,7 @@ export const expenses = pgTable(
   (t) => [index("expenses_institute_idx").on(t.instituteId)]
 );
 
-// ─── Salaries ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Salaries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const salaries = pgTable(
   "salaries",
@@ -499,7 +551,7 @@ export const salaries = pgTable(
   ]
 );
 
-// ─── Routines ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Routines â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const routines = pgTable(
   "routines",
@@ -525,7 +577,7 @@ export const routines = pgTable(
   ]
 );
 
-// ─── Homework ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Homework â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const homework = pgTable(
   "homework",
@@ -547,7 +599,7 @@ export const homework = pgTable(
   (t) => [index("homework_institute_idx").on(t.instituteId)]
 );
 
-// ─── Assignments ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Assignments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const assignments = pgTable(
   "assignments",
@@ -569,7 +621,7 @@ export const assignments = pgTable(
   (t) => [index("assignments_institute_idx").on(t.instituteId)]
 );
 
-// ─── Exams ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Exams â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const exams = pgTable(
   "exams",
@@ -581,14 +633,19 @@ export const exams = pgTable(
     batchId: uuid("batch_id")
       .notNull()
       .references(() => batches.id, { onDelete: "cascade" }),
+    programmeId: uuid("programme_id").references(() => programmes.id),
+    semesterId: uuid("semester_id").references(() => programmeSemesters.id),
     name: varchar("name", { length: 255 }).notNull(),
     examDate: date("exam_date"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("exams_institute_idx").on(t.instituteId)]
+  (t) => [
+    index("exams_institute_idx").on(t.instituteId),
+    index("exams_programme_semester_idx").on(t.programmeId, t.semesterId),
+  ]
 );
 
-// ─── Exam Subjects ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Exam Subjects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const examSubjects = pgTable(
   "exam_subjects",
@@ -606,7 +663,7 @@ export const examSubjects = pgTable(
   (t) => [index("exam_subjects_exam_idx").on(t.examId)]
 );
 
-// ─── Results ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Results â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const results = pgTable(
   "results",
@@ -633,7 +690,7 @@ export const results = pgTable(
   ]
 );
 
-// ─── Enquiries ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Enquiries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const enquiries = pgTable(
   "enquiries",
@@ -656,7 +713,7 @@ export const enquiries = pgTable(
   (t) => [index("enquiries_institute_idx").on(t.instituteId)]
 );
 
-// ─── Notifications ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const notifications = pgTable(
   "notifications",
@@ -678,7 +735,7 @@ export const notifications = pgTable(
   ]
 );
 
-// ─── Audit Logs ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Audit Logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const auditLogs = pgTable(
   "audit_logs",
@@ -698,13 +755,14 @@ export const auditLogs = pgTable(
   ]
 );
 
-// ─── Relations ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Relations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const institutesRelations = relations(institutes, ({ many }) => ({
   users: many(users),
   students: many(students),
   staff: many(staff),
   courses: many(courses),
+  programmes: many(programmes),
   batches: many(batches),
   subscriptions: many(subscriptions),
   fees: many(fees),
@@ -747,6 +805,32 @@ export const staffRelations = relations(staff, ({ one, many }) => ({
   routines: many(routines),
 }));
 
+export const programmesRelations = relations(programmes, ({ one, many }) => ({
+  institute: one(institutes, {
+    fields: [programmes.instituteId],
+    references: [institutes.id],
+  }),
+  semesters: many(programmeSemesters),
+  batches: many(batches),
+  exams: many(exams),
+}));
+
+export const programmeSemestersRelations = relations(
+  programmeSemesters,
+  ({ one, many }) => ({
+    institute: one(institutes, {
+      fields: [programmeSemesters.instituteId],
+      references: [institutes.id],
+    }),
+    programme: one(programmes, {
+      fields: [programmeSemesters.programmeId],
+      references: [programmes.id],
+    }),
+    batches: many(batches),
+    exams: many(exams),
+  })
+);
+
 export const coursesRelations = relations(courses, ({ one, many }) => ({
   institute: one(institutes, {
     fields: [courses.instituteId],
@@ -768,6 +852,14 @@ export const batchesRelations = relations(batches, ({ one, many }) => ({
     fields: [batches.teacherId],
     references: [staff.id],
   }),
+  programme: one(programmes, {
+    fields: [batches.programmeId],
+    references: [programmes.id],
+  }),
+  semester: one(programmeSemesters, {
+    fields: [batches.semesterId],
+    references: [programmeSemesters.id],
+  }),
   enrollments: many(enrollments),
   attendance: many(attendance),
   routines: many(routines),
@@ -784,6 +876,14 @@ export const examsRelations = relations(exams, ({ one, many }) => ({
   batch: one(batches, {
     fields: [exams.batchId],
     references: [batches.id],
+  }),
+  programme: one(programmes, {
+    fields: [exams.programmeId],
+    references: [programmes.id],
+  }),
+  semester: one(programmeSemesters, {
+    fields: [exams.semesterId],
+    references: [programmeSemesters.id],
   }),
   subjects: many(examSubjects),
   results: many(results),
