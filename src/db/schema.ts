@@ -37,9 +37,17 @@ export const userRoleEnum = pgEnum("user_role", [
   "STAFF",
 ]);
 
-export const genderEnum = pgEnum("gender", ["MALE", "FEMALE", "OTHER"]);
+export const genderEnum = pgEnum("gender", [
+  "MALE",
+  "FEMALE",
+  "OTHER",
+]);
 
-export const statusEnum = pgEnum("status", ["ACTIVE", "INACTIVE", "ARCHIVED"]);
+export const statusEnum = pgEnum("status", [
+  "ACTIVE",
+  "INACTIVE",
+  "ARCHIVED",
+]);
 
 export const attendanceStatusEnum = pgEnum("attendance_status", [
   "PRESENT",
@@ -214,9 +222,13 @@ export const subscriptionPayments = pgTable(
     subscriptionId: uuid("subscription_id").references(() => subscriptions.id),
     amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
     method: paymentMethodEnum("method").notNull(),
-    transactionReference: varchar("transaction_reference", { length: 255 }),
+    transactionReference: varchar("transaction_reference", {
+      length: 255,
+    }),
     proofUrl: text("proof_url"),
-    status: subscriptionPaymentStatusEnum("status").notNull().default("PENDING"),
+    status: subscriptionPaymentStatusEnum("status")
+      .notNull()
+      .default("PENDING"),
     reviewedBy: uuid("reviewed_by").references(() => users.id),
     reviewedAt: timestamp("reviewed_at"),
     rejectionReason: text("rejection_reason"),
@@ -368,7 +380,11 @@ export const attendance = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
-    unique("attendance_student_batch_date").on(t.studentId, t.batchId, t.date),
+    unique("attendance_student_batch_date").on(
+      t.studentId,
+      t.batchId,
+      t.date
+    ),
     index("attendance_institute_idx").on(t.instituteId),
     index("attendance_batch_date_idx").on(t.batchId, t.date),
   ]
@@ -416,14 +432,19 @@ export const payments = pgTable(
     feeId: uuid("fee_id").references(() => fees.id),
     amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
     method: paymentMethodEnum("method").notNull(),
-    transactionReference: varchar("transaction_reference", { length: 255 }),
+    transactionReference: varchar("transaction_reference", {
+      length: 255,
+    }),
     receiptNumber: varchar("receipt_number", { length: 100 }).notNull(),
     collectedBy: uuid("collected_by").references(() => users.id),
     paidAt: timestamp("paid_at").notNull().defaultNow(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
-    unique("payments_receipt_institute").on(t.instituteId, t.receiptNumber),
+    unique("payments_receipt_institute").on(
+      t.instituteId,
+      t.receiptNumber
+    ),
     index("payments_institute_idx").on(t.instituteId),
     index("payments_student_idx").on(t.studentId),
   ]
@@ -717,7 +738,10 @@ export const staffRelations = relations(staff, ({ one, many }) => ({
     fields: [staff.instituteId],
     references: [institutes.id],
   }),
-  user: one(users, { fields: [staff.userId], references: [users.id] }),
+  user: one(users, {
+    fields: [staff.userId],
+    references: [users.id],
+  }),
   batches: many(batches),
   salaries: many(salaries),
   routines: many(routines),
@@ -736,8 +760,14 @@ export const batchesRelations = relations(batches, ({ one, many }) => ({
     fields: [batches.instituteId],
     references: [institutes.id],
   }),
-  course: one(courses, { fields: [batches.courseId], references: [courses.id] }),
-  teacher: one(staff, { fields: [batches.teacherId], references: [staff.id] }),
+  course: one(courses, {
+    fields: [batches.courseId],
+    references: [courses.id],
+  }),
+  teacher: one(staff, {
+    fields: [batches.teacherId],
+    references: [staff.id],
+  }),
   enrollments: many(enrollments),
   attendance: many(attendance),
   routines: many(routines),
@@ -751,7 +781,10 @@ export const examsRelations = relations(exams, ({ one, many }) => ({
     fields: [exams.instituteId],
     references: [institutes.id],
   }),
-  batch: one(batches, { fields: [exams.batchId], references: [batches.id] }),
+  batch: one(batches, {
+    fields: [exams.batchId],
+    references: [batches.id],
+  }),
   subjects: many(examSubjects),
   results: many(results),
 }));
