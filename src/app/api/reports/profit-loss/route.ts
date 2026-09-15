@@ -1,6 +1,11 @@
 import { db } from "@/db";
-import { expenses } from "@/db/schema";
-import { and, desc, eq } from "drizzle-orm";
+import {
+  expenses,
+  fees,
+  payments,
+  salaries,
+} from "@/db/schema";
+import { and, eq, gte, lt } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 
 const EXPENSE_CATEGORIES = new Set([
@@ -14,276 +19,177 @@ const EXPENSE_CATEGORIES = new Set([
   "EQUIPMENT",
 ]);
 
-const PAYMENT_METHODS = new Set([
-  "CASH",
-  "BKASH",
-  "NAGAD",
-  "ROCKET",
-  "BANK",
-]);
-
-type ExpenseCategory =
-  | "OTHER"
-  | "RENT"
-  | "ELECTRICITY"
-  | "INTERNET"
-  | "SALARY"
-  | "MARKETING"
-  | "STATIONERY"
-  | "EQUIPMENT";
-
-type PaymentMethod =
-  | "CASH"
-  | "BKASH"
-  | "NAGAD"
-  | "ROCKET"
-  | "BANK";
-
-function errorResponse(
-  message: string,
-  status = 400,
-) {
-  return Response.json(
-    { error: message },
-    { status },
-  );
+function errorResponse(message: string, status = 400) {
+  return Response.json({ error: message }, { status });
 }
 
-function isValidDateOnly(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
+function isValidMonth(value: string) {
+  if (!/^\d{4}-\d{2}$/.test(value)) return false;
+
+  const [year, month] = value.split("-").map(Number);
+  return year >= 2000 && year <= 2100 && month >= 1 && month <= 12;
+}
+
+function nextMonth(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+
+  if (monthNumber === 12) {
+    return `${year + 1}-01`;
   }
 
-  const [year, month, day] = value
-    .split("-")
-    .map(Number);
-
-  const date = new Date(
-    Date.UTC(year, month - 1, day),
-  );
-
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-  );
+  return `${year}-${String(monthNumber + 1).padStart(2, "0")}`;
 }
 
-function parsePositiveAmount(value: unknown) {
-  const amount =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number(value.trim())
-        : NaN;
-
-  return Number.isFinite(amount) && amount > 0
-    ? amount
-    : null;
+function toNumber(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
 }
 
 export async function GET(request: Request) {
   const session = await getSession();
 
   if (!session?.instituteId) {
-    return Response.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { searchParams } = new URL(
-    request.url,
-  );
+  const { searchParams } = new URL(request.url);
+  const month = searchParams.get("month")?.trim() || "";
 
-  const category = searchParams.get("category");
+  if (!isValidMonth(month)) {
+    return errorResponse("Valid month is required in YYYY-MM format");
+  }
 
-  const conditions = [
-    eq(
-      expenses.instituteId,
-      session.instituteId,
-    ),
-  ];
+  const followingMonth = nextMonth(month);
+  const monthStart = `${month}-01`;
+  const nextMonthStart = `${followingMonth}-01`;
 
-  if (category) {
-    const cleanCategory =
-      category.trim().toUpperCase();
-
-    if (!EXPENSE_CATEGORIES.has(cleanCategory)) {
-      return errorResponse(
-        "Invalid expense category",
-      );
-    }
-
-    conditions.push(
-      eq(
-        expenses.category,
-        cleanCategory as ExpenseCategory,
+  // Fee records are billed when they are created.
+  const feeRows = await db
+    .select({
+      amount: fees.amount,
+      discount: fees.discount,
+      dueAmount: fees.dueAmount,
+    })
+    .from(fees)
+    .where(
+      and(
+        eq(fees.instituteId, session.instituteId),
+        gte(fees.createdAt, new Date(`${monthStart}T00:00:00.000Z`)),
+        lt(fees.createdAt, new Date(`${nextMonthStart}T00:00:00.000Z`)),
       ),
     );
-  }
 
-  const rows = await db
+  // Payments are counted by their actual paidAt timestamp.
+  const paymentRows = await db
+    .select({ amount: payments.amount })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.instituteId, session.instituteId),
+        gte(payments.paidAt, new Date(`${monthStart}T00:00:00.000Z`)),
+        lt(payments.paidAt, new Date(`${nextMonthStart}T00:00:00.000Z`)),
+      ),
+    );
+
+  // Expenses are counted by expenseDate. Salary-category expenses are
+  // excluded here because salary payments are tracked in the salaries table.
+  const expenseRows = await db
     .select({
-      id: expenses.id,
-      instituteId: expenses.instituteId,
       category: expenses.category,
       amount: expenses.amount,
-      method: expenses.method,
-      description: expenses.description,
-      expenseDate: expenses.expenseDate,
-      addedBy: expenses.addedBy,
-      createdAt: expenses.createdAt,
     })
     .from(expenses)
-    .where(and(...conditions))
-    .orderBy(
-      desc(expenses.expenseDate),
-      desc(expenses.createdAt),
+    .where(
+      and(
+        eq(expenses.instituteId, session.instituteId),
+        gte(expenses.expenseDate, monthStart),
+        lt(expenses.expenseDate, nextMonthStart),
+      ),
     );
+
+  const salaryRows = await db
+    .select({
+      paid: salaries.paid,
+    })
+    .from(salaries)
+    .where(
+      and(
+        eq(salaries.instituteId, session.instituteId),
+        eq(salaries.month, month),
+      ),
+    );
+
+  const grossBilled = feeRows.reduce(
+    (sum, row) => sum + toNumber(row.amount),
+    0,
+  );
+
+  const discount = feeRows.reduce(
+    (sum, row) => sum + toNumber(row.discount),
+    0,
+  );
+
+  const netBilled = Math.max(0, grossBilled - discount);
+
+  const dueAmount = feeRows.reduce(
+    (sum, row) => sum + toNumber(row.dueAmount),
+    0,
+  );
+
+  const income = paymentRows.reduce(
+    (sum, row) => sum + toNumber(row.amount),
+    0,
+  );
+
+  const salariesPaid = salaryRows.reduce(
+    (sum, row) => sum + toNumber(row.paid),
+    0,
+  );
+
+  const breakdownMap = new Map<string, number>();
+
+  for (const row of expenseRows) {
+    const category = String(row.category || "OTHER");
+
+    if (category === "SALARY") continue;
+
+    const amount = toNumber(row.amount);
+    breakdownMap.set(
+      category,
+      (breakdownMap.get(category) || 0) + amount,
+    );
+  }
+
+  const expenseBreakdown = Array.from(breakdownMap.entries())
+    .filter(([category]) => EXPENSE_CATEGORIES.has(category))
+    .map(([category, total]) => ({
+      category,
+      total: total.toFixed(2),
+    }))
+    .sort((a, b) => b.total.localeCompare(a.total, undefined, { numeric: true }));
+
+  const otherExpenses = expenseBreakdown.reduce(
+    (sum, row) => sum + toNumber(row.total),
+    0,
+  );
+
+  const totalExpenses = salariesPaid + otherExpenses;
+  const profitLoss = income - totalExpenses;
 
   return Response.json({
-    expenses: rows,
+    month,
+    income,
+    expenses: totalExpenses,
+    salaries: salariesPaid,
+    otherExpenses,
+    profitLoss,
+    expenseBreakdown,
+    feeSummary: {
+      grossBilled,
+      discount,
+      netBilled,
+      dueAmount,
+      feeCount: feeRows.length,
+    },
   });
-}
-
-export async function POST(request: Request) {
-  const session = await getSession();
-
-  if (!session?.instituteId) {
-    return Response.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
-  }
-
-  let body: unknown;
-
-  try {
-    body = await request.json();
-  } catch {
-    return errorResponse(
-      "Invalid JSON request body",
-    );
-  }
-
-  if (!body || typeof body !== "object") {
-    return errorResponse(
-      "Invalid request body",
-    );
-  }
-
-  const {
-    category,
-    amount,
-    method,
-    description,
-    expenseDate,
-  } = body as {
-    category?: unknown;
-    amount?: unknown;
-    method?: unknown;
-    description?: unknown;
-    expenseDate?: unknown;
-  };
-
-  if (
-    typeof category !== "string" ||
-    !category.trim()
-  ) {
-    return errorResponse(
-      "Expense category is required",
-    );
-  }
-
-  const cleanCategory =
-    category.trim().toUpperCase();
-
-  if (!EXPENSE_CATEGORIES.has(cleanCategory)) {
-    return errorResponse(
-      "Invalid expense category",
-    );
-  }
-
-  const typedCategory =
-    cleanCategory as ExpenseCategory;
-
-  const parsedAmount =
-    parsePositiveAmount(amount);
-
-  if (parsedAmount === null) {
-    return errorResponse(
-      "Amount must be greater than 0",
-    );
-  }
-
-  if (
-    typeof method !== "string" ||
-    !method.trim()
-  ) {
-    return errorResponse(
-      "Payment method is required",
-    );
-  }
-
-  const cleanMethod =
-    method.trim().toUpperCase();
-
-  if (!PAYMENT_METHODS.has(cleanMethod)) {
-    return errorResponse(
-      "Invalid payment method",
-    );
-  }
-
-  const typedMethod =
-    cleanMethod as PaymentMethod;
-
-  if (
-    typeof expenseDate !== "string" ||
-    !isValidDateOnly(expenseDate)
-  ) {
-    return errorResponse(
-      "Valid expense date is required",
-    );
-  }
-
-  let cleanDescription: string | null = null;
-
-  if (
-    description !== undefined &&
-    description !== null &&
-    description !== ""
-  ) {
-    if (typeof description !== "string") {
-      return errorResponse(
-        "Invalid description",
-      );
-    }
-
-    cleanDescription = description.trim();
-
-    if (cleanDescription.length > 1000) {
-      return errorResponse(
-        "Description is too long",
-      );
-    }
-  }
-
-  const [expense] = await db
-    .insert(expenses)
-    .values({
-      instituteId: session.instituteId,
-      category: typedCategory,
-      amount: String(parsedAmount),
-      method: typedMethod,
-      description: cleanDescription,
-      expenseDate,
-      addedBy: null,
-    })
-    .returning();
-
-  return Response.json(
-    { expense },
-    { status: 201 },
-  );
 }
