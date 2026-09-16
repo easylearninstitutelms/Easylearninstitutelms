@@ -1,4 +1,4 @@
-"use client";
+ "use client";
 
 import {
   useState,
@@ -135,6 +135,12 @@ export default function StudentsPage() {
   const [detailsLoading, setDetailsLoading] =
     useState(false);
 
+  const [idCardStudent, setIdCardStudent] =
+    useState<StudentDetails | null>(null);
+
+  const [idCardLoading, setIdCardLoading] =
+    useState(false);
+
   const [form, setForm] =
     useState<FormData>(EMPTY_FORM);
 
@@ -230,6 +236,48 @@ export default function StudentsPage() {
     } finally {
       setDetailsLoading(false);
     }
+  }
+
+  async function openStudentIdCard(id: string) {
+    setIdCardLoading(true);
+    setIdCardStudent(null);
+
+    try {
+      const res = await fetch(
+        `/api/students/${id}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(
+          data?.error ||
+            "Failed to load student ID card."
+        );
+        return;
+      }
+
+      setIdCardStudent(data);
+    } catch (err) {
+      console.error(err);
+      alert(
+        "Failed to load student ID card."
+      );
+    } finally {
+      setIdCardLoading(false);
+    }
+  }
+
+  function closeIdCard() {
+    setIdCardStudent(null);
+    setIdCardLoading(false);
+  }
+
+  function printIdCard() {
+    window.print();
   }
 
   function resetForm() {
@@ -556,6 +604,7 @@ export default function StudentsPage() {
   }
 
   return (
+    <>
     <div className="space-y-5">
       {/* Page Header */}
       <div className="page-header">
@@ -780,7 +829,7 @@ export default function StudentsPage() {
                       </td>
 
                       <td>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
                           <button
                             onClick={() =>
                               openStudentDetails(
@@ -811,6 +860,36 @@ export default function StudentsPage() {
                                 strokeWidth={
                                   2
                                 }
+                              />
+                            </svg>
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              openStudentIdCard(
+                                s.id
+                              )
+                            }
+                            className="btn btn-ghost btn-sm text-emerald-600 hover:text-emerald-700"
+                            title="Print Student ID Card"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 7h6M8 11h8M8 15h8M9 19h6"
                               />
                             </svg>
                           </button>
@@ -1359,6 +1438,353 @@ export default function StudentsPage() {
         </div>
       )}
 
+      {/* Student ID Card Modal */}
+      {(idCardLoading || idCardStudent) && (
+        <div
+          className="modal-overlay print-id-card-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              closeIdCard();
+            }
+          }}
+        >
+          <div className="modal-box max-w-6xl">
+            {idCardLoading ? (
+              <div className="flex justify-center py-16">
+                <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : idCardStudent ? (
+              <>
+                <div className="modal-header print:hidden">
+                  <div>
+                    <h2 className="modal-title">
+                      Student ID Card
+                    </h2>
+                    <p className="text-sm text-slate-400 mt-1">
+                      {idCardStudent.student.name} ·{" "}
+                      {idCardStudent.student.studentId}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={closeIdCard}
+                    className="btn btn-ghost btn-sm"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="modal-body">
+                  <div className="mb-4 flex flex-wrap items-center justify-end gap-2 print:hidden">
+                    <button
+                      type="button"
+                      onClick={printIdCard}
+                      className="btn btn-primary"
+                    >
+                      🖨 Print Student ID Card
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeIdCard}
+                      className="btn btn-outline"
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div className="id-card-print-area">
+                    <div className="id-card-print-grid">
+                      {(() => {
+                        const student =
+                          idCardStudent.student;
+
+                        const enrollment =
+                          idCardStudent.enrollments?.find(
+                            (item) =>
+                              item.enrollment.status ===
+                              "ACTIVE"
+                          ) ||
+                          idCardStudent.enrollments?.[0] ||
+                          null;
+
+                        const initials =
+                          student.name
+                            .split(/\s+/)
+                            .filter(Boolean)
+                            .map(
+                              (part) => part[0]
+                            )
+                            .join("")
+                            .slice(0, 2)
+                            .toUpperCase();
+
+                        return (
+                          <>
+                            {/* FRONT */}
+                            <section className="student-id-card">
+                              <div className="h-2 bg-[#0f766e]" />
+                              <div className="h-1 bg-[#f59e0b]" />
+
+                              <div className="p-5">
+                                <div className="flex items-center gap-3">
+                                  <img
+                                    src="/easylearn-logo.jpg"
+                                    alt="Easylearn Institute"
+                                    className="h-12 w-12 rounded-lg object-contain"
+                                  />
+                                  <div>
+                                    <p className="text-base font-extrabold tracking-wide text-[#0f766e]">
+                                      EASY LEARN INSTITUTE
+                                    </p>
+                                    <p className="text-[8px] font-bold tracking-[0.18em] text-slate-500">
+                                      STUDENT IDENTIFICATION CARD
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="mt-5 flex gap-4">
+                                  <div className="h-28 w-24 shrink-0 overflow-hidden rounded-xl border-2 border-[#0f766e] bg-[#f0fdfa]">
+                                    {student.photoUrl ? (
+                                      <img
+                                        src={
+                                          student.photoUrl
+                                        }
+                                        alt=""
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex h-full w-full items-center justify-center text-3xl font-extrabold text-[#0f766e]">
+                                        {initials}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#0f766e]">
+                                      Student Name
+                                    </p>
+                                    <p className="mt-1 text-lg font-extrabold text-slate-900">
+                                      {student.name}
+                                    </p>
+
+                                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+                                      <div>
+                                        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                          Student ID
+                                        </p>
+                                        <p className="mt-0.5 text-xs font-extrabold text-slate-800">
+                                          {student.studentId}
+                                        </p>
+                                      </div>
+
+                                      <div>
+                                        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                          Status
+                                        </p>
+                                        <p className="mt-0.5 text-xs font-extrabold text-[#0f766e]">
+                                          {student.status}
+                                        </p>
+                                      </div>
+
+                                      <div>
+                                        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                          Batch
+                                        </p>
+                                        <p className="mt-0.5 text-xs font-semibold text-slate-700">
+                                          {enrollment?.batch?.name ||
+                                            "—"}
+                                        </p>
+                                      </div>
+
+                                      <div>
+                                        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                          Course
+                                        </p>
+                                        <p className="mt-0.5 text-xs font-semibold text-slate-700">
+                                          {enrollment?.course?.name ||
+                                            "—"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-[#f0fdfa] p-3">
+                                  <div>
+                                    <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                      Phone
+                                    </p>
+                                    <p className="mt-1 text-xs font-semibold text-slate-800">
+                                      {student.phone || "—"}
+                                    </p>
+                                  </div>
+
+                                  <div>
+                                    <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                      Admission
+                                    </p>
+                                    <p className="mt-1 text-xs font-semibold text-slate-800">
+                                      {formatDate(
+                                        student.admissionDate
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 grid grid-cols-2 gap-4">
+                                  <div className="border-t border-slate-300 pt-1.5 text-center text-[7px] font-semibold text-slate-500">
+                                    Institute Authority
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                      Validity
+                                    </p>
+                                    <p className="mt-0.5 text-[8px] font-bold text-slate-700">
+                                      While Active
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-auto border-t border-slate-200 bg-slate-50 px-5 py-3 text-center">
+                                <p className="text-[7px] font-semibold text-slate-500">
+                                  Hazibag Dhla, Near Tazuddin Ahmed Medical Collage Hospital,
+                                  Joydebpur, Gazipur
+                                </p>
+                                <p className="mt-0.5 text-[7px] font-bold text-[#0f766e]">
+                                  www.easylearninstitute.com
+                                </p>
+                              </div>
+                            </section>
+
+                            {/* BACK */}
+                            <section className="student-id-card">
+                              <div className="h-2 bg-[#0f766e]" />
+                              <div className="h-1 bg-[#f59e0b]" />
+
+                              <div className="p-5">
+                                <div className="rounded-xl bg-[#f0fdfa] p-3">
+                                  <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#0f766e]">
+                                    Student / Emergency Contact
+                                  </p>
+
+                                  <div className="mt-3 space-y-2.5">
+                                    <div>
+                                      <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                        Guardian
+                                      </p>
+                                      <p className="mt-0.5 text-xs font-bold text-slate-800">
+                                        {student.guardianName ||
+                                          "—"}
+                                      </p>
+                                    </div>
+
+                                    <div>
+                                      <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                        Guardian Phone
+                                      </p>
+                                      <p className="mt-0.5 text-xs font-bold text-slate-800">
+                                        {student.guardianPhone ||
+                                          "—"}
+                                      </p>
+                                    </div>
+
+                                    <div>
+                                      <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                        Address
+                                      </p>
+                                      <p className="mt-0.5 text-xs leading-4 font-medium text-slate-700">
+                                        {student.address ||
+                                          "—"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 rounded-xl border border-slate-200 p-3">
+                                  <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#0f766e]">
+                                    Important
+                                  </p>
+                                  <ul className="mt-2 space-y-1.5 text-[9px] leading-4 text-slate-600">
+                                    <li>
+                                      • This card remains the property of Easylearn Institute.
+                                    </li>
+                                    <li>
+                                      • Carry this card during institute activities.
+                                    </li>
+                                    <li>
+                                      • Report a lost card to the institute office.
+                                    </li>
+                                  </ul>
+                                </div>
+
+                                <div className="mt-4 grid grid-cols-2 gap-2">
+                                  <div className="rounded-xl border border-slate-200 p-3">
+                                    <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                      Date of Birth
+                                    </p>
+                                    <p className="mt-0.5 text-xs font-semibold text-slate-800">
+                                      {formatDate(
+                                        student.dob
+                                      )}
+                                    </p>
+                                  </div>
+
+                                  <div className="rounded-xl border border-slate-200 p-3">
+                                    <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                                      Gender
+                                    </p>
+                                    <p className="mt-0.5 text-xs font-semibold text-slate-800">
+                                      {student.gender ||
+                                        "—"}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 rounded-xl border-2 border-dashed border-[#0f766e]/30 bg-[#f8fffd] p-3 text-center">
+                                  <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-[#0f766e]">
+                                    Verification
+                                  </p>
+                                  <p className="mt-1.5 text-lg font-black tracking-[0.16em] text-slate-900">
+                                    {student.studentId}
+                                  </p>
+                                  <p className="mt-1.5 text-[8px] text-slate-500">
+                                    Present this card to the institute office for verification.
+                                  </p>
+                                </div>
+
+                                <div className="mt-6 grid grid-cols-2 gap-8">
+                                  <div className="border-t border-slate-300 pt-1.5 text-center text-[7px] font-semibold text-slate-500">
+                                    Class Teacher
+                                  </div>
+                                  <div className="border-t border-slate-300 pt-1.5 text-center text-[7px] font-semibold text-slate-500">
+                                    Principal / Director
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="mt-auto border-t border-slate-200 bg-slate-50 px-5 py-3 text-center">
+                                <p className="text-[7px] font-semibold text-slate-500">
+                                  Hazibag Dhla, Near Tazuddin Ahmed Medical Collage Hospital,
+                                  Joydebpur, Gazipur
+                                </p>
+                                <p className="mt-0.5 text-[7px] font-bold text-[#0f766e]">
+                                  www.easylearninstitute.com
+                                </p>
+                              </div>
+                            </section>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+
       {/* Add / Edit Student Modal */}
       {showModal && (
         <div
@@ -1749,6 +2175,68 @@ export default function StudentsPage() {
         </div>
       )}
     </div>
+
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+
+          html,
+          body {
+            background: #fff !important;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          .print-id-card-overlay,
+          .print-id-card-overlay * {
+            visibility: visible !important;
+          }
+
+          .print-id-card-overlay {
+            position: static !important;
+            inset: auto !important;
+            background: #fff !important;
+            padding: 0 !important;
+          }
+
+          .print-id-card-overlay .modal-box {
+            width: auto !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            overflow: visible !important;
+          }
+
+          .id-card-print-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, 86mm) !important;
+            gap: 6mm !important;
+            align-items: start !important;
+            justify-content: center !important;
+          }
+
+          .student-id-card {
+            width: 86mm !important;
+            min-height: 54mm !important;
+            height: 54mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 5mm !important;
+            overflow: hidden !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+        }
+      `}</style>
+    </>
   );
 }
 
