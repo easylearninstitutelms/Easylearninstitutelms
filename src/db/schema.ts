@@ -398,7 +398,6 @@ export const enrollments = pgTable(
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
     batchId: uuid("batch_id")
-      .notNull()
       .references(() => batches.id, { onDelete: "cascade" }),
     enrollmentDate: date("enrollment_date").notNull(),
     status: statusEnum("status").notNull().default("ACTIVE"),

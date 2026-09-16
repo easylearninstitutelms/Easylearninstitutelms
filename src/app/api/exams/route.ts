@@ -9,851 +9,256 @@ import {
 import { and, desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 
+type ExamMode = "BATCH" | "PROGRAMME";
+
 type PreparedSubject = {
   subjectName: string;
   totalMarks: number;
 };
 
-function jsonError(
-  message: string,
-  status: number
-) {
-  return Response.json(
-    { error: message },
-    { status }
-  );
+function jsonError(message: string, status: number) {
+  return Response.json({ error: message }, { status });
 }
-
-// ─────────────────────────────────────────────
-// GET /api/exams
-// ─────────────────────────────────────────────
 
 export async function GET(request: Request) {
   try {
     const session = await getSession();
-
-    if (!session || !session.instituteId) {
-      return jsonError("Unauthorized", 401);
-    }
+    if (!session?.instituteId) return jsonError("Unauthorized", 401);
 
     const instituteId = session.instituteId;
+    const { searchParams } = new URL(request.url);
+    const batchId = searchParams.get("batchId")?.trim() || "";
+    const programmeId = searchParams.get("programmeId")?.trim() || "";
+    const semesterId = searchParams.get("semesterId")?.trim() || "";
 
-    const { searchParams } =
-      new URL(request.url);
-
-    const batchId =
-      searchParams.get("batchId")?.trim() || "";
-
-    const programmeId =
-      searchParams
-        .get("programmeId")
-        ?.trim() || "";
-
-    const semesterId =
-      searchParams
-        .get("semesterId")
-        ?.trim() || "";
-
-    const conditions = [
-      eq(
-        exams.instituteId,
-        instituteId
-      ),
-    ];
-
-    if (batchId) {
-      conditions.push(
-        eq(
-          exams.batchId,
-          batchId
-        )
-      );
-    }
-
-    if (programmeId) {
-      conditions.push(
-        eq(
-          exams.programmeId,
-          programmeId
-        )
-      );
-    }
-
-    if (semesterId) {
-      conditions.push(
-        eq(
-          exams.semesterId,
-          semesterId
-        )
-      );
-    }
+    const conditions = [eq(exams.instituteId, instituteId)];
+    if (batchId) conditions.push(eq(exams.batchId, batchId));
+    if (programmeId) conditions.push(eq(exams.programmeId, programmeId));
+    if (semesterId) conditions.push(eq(exams.semesterId, semesterId));
 
     const examRows = await db
       .select({
         exam: exams,
-
-        batchName:
-          batches.name,
-
-        programmeName:
-          programmes.name,
-
-        programmeCode:
-          programmes.code,
-
-        semesterName:
-          programmeSemesters.name,
-
-        semesterNo:
-          programmeSemesters.semesterNo,
+        batchName: batches.name,
+        programmeName: programmes.name,
+        programmeCode: programmes.code,
+        semesterName: programmeSemesters.name,
+        semesterNo: programmeSemesters.semesterNo,
       })
       .from(exams)
-      .leftJoin(
-        batches,
-        eq(
-          exams.batchId,
-          batches.id
-        )
-      )
-      .leftJoin(
-        programmes,
-        eq(
-          exams.programmeId,
-          programmes.id
-        )
-      )
+      .leftJoin(batches, eq(exams.batchId, batches.id))
+      .leftJoin(programmes, eq(exams.programmeId, programmes.id))
       .leftJoin(
         programmeSemesters,
-        eq(
-          exams.semesterId,
-          programmeSemesters.id
-        )
+        eq(exams.semesterId, programmeSemesters.id)
       )
       .where(and(...conditions))
-      .orderBy(
-        desc(exams.createdAt)
-      );
+      .orderBy(desc(exams.createdAt));
 
-    if (examRows.length === 0) {
-      return Response.json({
-        exams: [],
-      });
-    }
-
-    const examIds =
-      examRows.map(
-        (row) => row.exam.id
-      );
+    const examIds = examRows.map((row) => row.exam.id);
+    if (examIds.length === 0) return Response.json({ exams: [] });
 
     const subjectRows = await db
       .select({
-        id:
-          examSubjects.id,
-
-        instituteId:
-          examSubjects.instituteId,
-
-        examId:
-          examSubjects.examId,
-
-        subjectName:
-          examSubjects.subjectName,
-
-        totalMarks:
-          examSubjects.totalMarks,
+        id: examSubjects.id,
+        instituteId: examSubjects.instituteId,
+        examId: examSubjects.examId,
+        subjectName: examSubjects.subjectName,
+        totalMarks: examSubjects.totalMarks,
       })
       .from(examSubjects)
-      .where(
-        eq(
-          examSubjects.instituteId,
-          instituteId
-        )
-      );
+      .where(eq(examSubjects.instituteId, instituteId));
 
-    const subjectsByExam =
-      new Map<
-        string,
-        Array<{
-          id: string;
-          instituteId: string;
-          examId: string;
-          subjectName: string;
-          totalMarks: number;
-        }>
-      >();
+    const subjectsByExam = new Map<string, Array<{
+      id: string;
+      instituteId: string;
+      examId: string;
+      subjectName: string;
+      totalMarks: number;
+    }>>();
 
-    for (
-      const subject of subjectRows
-    ) {
-      if (
-        !examIds.includes(
-          subject.examId
-        )
-      ) {
-        continue;
-      }
-
-      const existing =
-        subjectsByExam.get(
-          subject.examId
-        ) ?? [];
-
-      existing.push({
-        id:
-          subject.id,
-
-        instituteId:
-          subject.instituteId,
-
-        examId:
-          subject.examId,
-
-        subjectName:
-          subject.subjectName,
-
-        totalMarks:
-          Number(
-            subject.totalMarks
-          ),
+    for (const subject of subjectRows) {
+      if (!examIds.includes(subject.examId)) continue;
+      const list = subjectsByExam.get(subject.examId) ?? [];
+      list.push({
+        id: subject.id,
+        instituteId: subject.instituteId,
+        examId: subject.examId,
+        subjectName: subject.subjectName,
+        totalMarks: Number(subject.totalMarks),
       });
-
-      subjectsByExam.set(
-        subject.examId,
-        existing
-      );
+      subjectsByExam.set(subject.examId, list);
     }
 
-    const responseExams =
-      examRows.map((row) => ({
-        exam:
-          row.exam,
-
-        batchName:
-          row.batchName ??
-          "Unknown Batch",
-
-        programmeName:
-          row.programmeName ??
-          "Unknown Programme",
-
-        programmeCode:
-          row.programmeCode ??
-          null,
-
-        semesterName:
-          row.semesterName ??
-          "Unknown Semester",
-
-        semesterNo:
-          row.semesterNo ??
-          null,
-
-        subjects:
-          subjectsByExam.get(
-            row.exam.id
-          ) ?? [],
-      }));
-
     return Response.json({
-      exams: responseExams,
+      exams: examRows.map((row) => {
+        const mode: ExamMode = row.exam.programmeId ? "PROGRAMME" : "BATCH";
+        return {
+          exam: row.exam,
+          mode,
+          batchName: row.batchName ?? null,
+          programmeName: row.programmeName ?? null,
+          programmeCode: row.programmeCode ?? null,
+          semesterName: row.semesterName ?? null,
+          semesterNo: row.semesterNo ?? null,
+          subjects: subjectsByExam.get(row.exam.id) ?? [],
+        };
+      }),
     });
   } catch (error) {
-    console.error(
-      "GET /api/exams error:",
-      error
-    );
-
-    return Response.json(
-      {
-        error:
-          "Failed to load exams.",
-      },
-      {
-        status: 500,
-      }
-    );
+    console.error("GET /api/exams error:", error);
+    return jsonError("Failed to load exams.", 500);
   }
 }
 
-// ─────────────────────────────────────────────
-// POST /api/exams
-//
-// Flow:
-// Programme
-//      ↓
-// Semester
-//      ↓
-// Batch
-//      ↓
-// Exam
-//      ↓
-// Subjects
-// ─────────────────────────────────────────────
-
-export async function POST(
-  request: Request
-) {
+export async function POST(request: Request) {
   try {
-    const session =
-      await getSession();
+    const session = await getSession();
+    if (!session?.instituteId) return jsonError("Unauthorized", 401);
 
-    if (
-      !session ||
-      !session.instituteId
-    ) {
-      return jsonError(
-        "Unauthorized",
-        401
-      );
+    const instituteId = session.instituteId;
+    const body = await request.json();
+    const mode: ExamMode = body?.mode === "PROGRAMME" ? "PROGRAMME" : "BATCH";
+
+    const batchId = typeof body?.batchId === "string" ? body.batchId.trim() : "";
+    const programmeId = typeof body?.programmeId === "string" ? body.programmeId.trim() : "";
+    const semesterId = typeof body?.semesterId === "string" ? body.semesterId.trim() : "";
+    const name = typeof body?.name === "string" ? body.name.trim() : "";
+    const examDate = typeof body?.examDate === "string" && body.examDate.trim() ? body.examDate.trim() : undefined;
+    const subjects = Array.isArray(body?.subjects) ? body.subjects : [];
+
+    if (!name) return jsonError("Exam name is required.", 400);
+    if (name.length > 255) return jsonError("Exam name must be 255 characters or less.", 400);
+    if (subjects.length === 0) return jsonError("Add at least one subject.", 400);
+    if (examDate && !/^\d{4}-\d{2}-\d{2}$/.test(examDate)) {
+      return jsonError("Exam date must be in YYYY-MM-DD format.", 400);
     }
 
-    // IMPORTANT:
-    // Keep the institute ID in a
-    // guaranteed string variable.
-    const instituteId =
-      session.instituteId;
+    const preparedSubjects: PreparedSubject[] = subjects.map((subject: unknown) => {
+      const item = subject && typeof subject === "object" ? (subject as Record<string, unknown>) : {};
+      return {
+        subjectName: typeof item.subjectName === "string" ? item.subjectName.trim() : "",
+        totalMarks: Number(item.totalMarks),
+      };
+    });
 
-    const body =
-      await request.json();
-
-    // ─────────────────────────────────────
-    // Basic values
-    // ─────────────────────────────────────
-
-    const batchId =
-      typeof body?.batchId ===
-      "string"
-        ? body.batchId.trim()
-        : "";
-
-    const programmeId =
-      typeof body?.programmeId ===
-      "string"
-        ? body.programmeId.trim()
-        : "";
-
-    const semesterId =
-      typeof body?.semesterId ===
-      "string"
-        ? body.semesterId.trim()
-        : "";
-
-    const name =
-      typeof body?.name ===
-      "string"
-        ? body.name.trim()
-        : "";
-
-    const examDate =
-      typeof body?.examDate ===
-        "string" &&
-      body.examDate.trim()
-        ? body.examDate.trim()
-        : undefined;
-
-    const subjects =
-      Array.isArray(
-        body?.subjects
-      )
-        ? body.subjects
-        : [];
-
-    // ─────────────────────────────────────
-    // Required validation
-    // ─────────────────────────────────────
-
-    if (!programmeId) {
-      return jsonError(
-        "Programme is required.",
-        400
-      );
-    }
-
-    if (!semesterId) {
-      return jsonError(
-        "Semester is required.",
-        400
-      );
-    }
-
-    if (!batchId) {
-      return jsonError(
-        "Batch is required.",
-        400
-      );
-    }
-
-    if (!name) {
-      return jsonError(
-        "Exam name is required.",
-        400
-      );
-    }
-
-    if (name.length > 255) {
-      return jsonError(
-        "Exam name must be 255 characters or less.",
-        400
-      );
-    }
-
-    if (subjects.length === 0) {
-      return jsonError(
-        "Add at least one subject.",
-        400
-      );
-    }
-
-    // ─────────────────────────────────────
-    // Validate exam date
-    // ─────────────────────────────────────
-
-    if (examDate) {
-      const validDate =
-        /^\d{4}-\d{2}-\d{2}$/.test(
-          examDate
-        );
-
-      if (!validDate) {
-        return jsonError(
-          "Exam date must be in YYYY-MM-DD format.",
-          400
-        );
+    for (const subject of preparedSubjects) {
+      if (!subject.subjectName) return jsonError("Every subject must have a name.", 400);
+      if (subject.subjectName.length > 255) return jsonError("Subject name must be 255 characters or less.", 400);
+      if (!Number.isInteger(subject.totalMarks) || subject.totalMarks <= 0) {
+        return jsonError("Every subject must have a positive whole-number total mark.", 400);
       }
+      if (subject.totalMarks > 1000) return jsonError("Total marks cannot exceed 1000.", 400);
     }
 
-    // ─────────────────────────────────────
-    // Prepare subjects
-    // ─────────────────────────────────────
-
-    const preparedSubjects:
-      PreparedSubject[] =
-      subjects.map(
-        (subject: unknown) => {
-          const item =
-            subject &&
-            typeof subject ===
-              "object"
-              ? (subject as Record<
-                  string,
-                  unknown
-                >)
-              : {};
-
-          const subjectName =
-            typeof item.subjectName ===
-            "string"
-              ? item.subjectName.trim()
-              : "";
-
-          const totalMarks =
-            Number(
-              item.totalMarks
-            );
-
-          return {
-            subjectName,
-            totalMarks,
-          };
-        }
-      );
-
-    // ─────────────────────────────────────
-    // Subject validation
-    // ─────────────────────────────────────
-
-    for (
-      const subject of
-        preparedSubjects
-    ) {
-      if (
-        !subject.subjectName
-      ) {
-        return jsonError(
-          "Every subject must have a name.",
-          400
-        );
-      }
-
-      if (
-        subject.subjectName
-          .length > 255
-      ) {
-        return jsonError(
-          "Subject name must be 255 characters or less.",
-          400
-        );
-      }
-
-      if (
-        !Number.isInteger(
-          subject.totalMarks
-        ) ||
-        subject.totalMarks <= 0
-      ) {
-        return jsonError(
-          "Every subject must have a positive whole-number total mark.",
-          400
-        );
-      }
-
-      if (
-        subject.totalMarks >
-        1000
-      ) {
-        return jsonError(
-          "Total marks cannot exceed 1000.",
-          400
-        );
-      }
+    const subjectNames = preparedSubjects.map((s) => s.subjectName.toLowerCase());
+    if (new Set(subjectNames).size !== subjectNames.length) {
+      return jsonError("Duplicate subject names are not allowed.", 400);
     }
 
-    // ─────────────────────────────────────
-    // Duplicate subject validation
-    // ─────────────────────────────────────
+    let batch: { id: string; name: string } | null = null;
+    let programme: { id: string; name: string } | null = null;
+    let semester: { id: string; name: string; semesterNo: number } | null = null;
 
-    const subjectNames =
-      preparedSubjects.map(
-        (subject) =>
-          subject.subjectName
-            .trim()
-            .toLowerCase()
-      );
-
-    if (
-      new Set(
-        subjectNames
-      ).size !==
-      subjectNames.length
-    ) {
-      return jsonError(
-        "Duplicate subject names are not allowed.",
-        400
-      );
-    }
-
-    // ─────────────────────────────────────
-    // Validate Programme
-    // ─────────────────────────────────────
-
-    const [programme] =
-      await db
-        .select({
-          id:
-            programmes.id,
-
-          instituteId:
-            programmes
-              .instituteId,
-
-          name:
-            programmes.name,
-        })
-        .from(
-          programmes
-        )
-        .where(
-          and(
-            eq(
-              programmes.id,
-              programmeId
-            ),
-
-            eq(
-              programmes
-                .instituteId,
-              instituteId
-            )
-          )
-        )
-        .limit(1);
-
-    if (!programme) {
-      return jsonError(
-        "Selected programme was not found.",
-        404
-      );
-    }
-
-    // ─────────────────────────────────────
-    // Validate Semester
-    //
-    // Semester must belong to
-    // selected Programme.
-    // ─────────────────────────────────────
-
-    const [semester] =
-      await db
-        .select({
-          id:
-            programmeSemesters.id,
-
-          instituteId:
-            programmeSemesters
-              .instituteId,
-
-          programmeId:
-            programmeSemesters
-              .programmeId,
-
-          semesterNo:
-            programmeSemesters
-              .semesterNo,
-
-          name:
-            programmeSemesters
-              .name,
-        })
-        .from(
-          programmeSemesters
-        )
-        .where(
-          and(
-            eq(
-              programmeSemesters.id,
-              semesterId
-            ),
-
-            eq(
-              programmeSemesters
-                .programmeId,
-              programmeId
-            ),
-
-            eq(
-              programmeSemesters
-                .instituteId,
-              instituteId
-            )
-          )
-        )
-        .limit(1);
-
-    if (!semester) {
-      return jsonError(
-        "Selected semester does not belong to the selected programme.",
-        400
-      );
-    }
-
-    // ─────────────────────────────────────
-    // Validate Batch
-    //
-    // Batch must belong to:
-    // same institute
-    // same programme
-    // same semester
-    // ─────────────────────────────────────
-
-    const [batch] =
-      await db
-        .select({
-          id:
-            batches.id,
-
-          instituteId:
-            batches
-              .instituteId,
-
-          programmeId:
-            batches
-              .programmeId,
-
-          semesterId:
-            batches
-              .semesterId,
-
-          name:
-            batches.name,
-        })
+    if (mode === "BATCH") {
+      if (!batchId) return jsonError("Batch is required for a Batch Exam.", 400);
+      const rows = await db
+        .select({ id: batches.id, name: batches.name })
         .from(batches)
+        .where(and(eq(batches.id, batchId), eq(batches.instituteId, instituteId)))
+        .limit(1);
+      batch = rows[0] ?? null;
+      if (!batch) return jsonError("Selected batch was not found.", 404);
+    } else {
+      if (!programmeId) return jsonError("Programme is required for a Programme Exam.", 400);
+      if (!semesterId) return jsonError("Semester is required for a Programme Exam.", 400);
+
+      const programmeRows = await db
+        .select({ id: programmes.id, name: programmes.name })
+        .from(programmes)
+        .where(and(eq(programmes.id, programmeId), eq(programmes.instituteId, instituteId)))
+        .limit(1);
+      programme = programmeRows[0] ?? null;
+      if (!programme) return jsonError("Selected programme was not found.", 404);
+
+      const semesterRows = await db
+        .select({
+          id: programmeSemesters.id,
+          name: programmeSemesters.name,
+          semesterNo: programmeSemesters.semesterNo,
+        })
+        .from(programmeSemesters)
         .where(
           and(
-            eq(
-              batches.id,
-              batchId
-            ),
-
-            eq(
-              batches
-                .instituteId,
-              instituteId
-            )
+            eq(programmeSemesters.id, semesterId),
+            eq(programmeSemesters.programmeId, programmeId),
+            eq(programmeSemesters.instituteId, instituteId)
           )
         )
         .limit(1);
+      semester = semesterRows[0] ?? null;
+      if (!semester) return jsonError("Selected semester does not belong to the selected programme.", 400);
 
-    if (!batch) {
-      return jsonError(
-        "Selected batch was not found.",
-        404
-      );
+      if (batchId) {
+        const batchRows = await db
+          .select({ id: batches.id, name: batches.name })
+          .from(batches)
+          .where(and(eq(batches.id, batchId), eq(batches.instituteId, instituteId)))
+          .limit(1);
+        batch = batchRows[0] ?? null;
+        if (!batch) return jsonError("Selected batch was not found.", 404);
+      }
     }
 
-    if (
-      batch.programmeId !==
-      programmeId
-    ) {
-      return jsonError(
-        "Selected batch does not belong to the selected programme.",
-        400
-      );
-    }
-
-    if (
-      batch.semesterId !==
-      semesterId
-    ) {
-      return jsonError(
-        "Selected batch does not belong to the selected semester.",
-        400
-      );
-    }
-
-    // ─────────────────────────────────────
-    // Create Exam + Subjects
-    // in one transaction
-    // ─────────────────────────────────────
-
-    const examValues = {
-      instituteId:
+    const [createdExam] = await db
+      .insert(exams)
+      .values({
         instituteId,
-
-      batchId:
-        batchId,
-
-      programmeId:
-        programmeId,
-
-      semesterId:
-        semesterId,
-
-      name:
+        batchId: batchId || null,
+        programmeId: mode === "PROGRAMME" ? programmeId : null,
+        semesterId: mode === "PROGRAMME" ? semesterId : null,
         name,
+        ...(examDate !== undefined ? { examDate } : {}),
+      })
+      .returning();
 
-      ...(examDate !==
-      undefined
-        ? {
-            examDate:
-              examDate,
-          }
-        : {}),
-    };
+    if (!createdExam) throw new Error("Failed to create exam.");
 
-    const result =
-      await db.transaction(
-        async (tx) => {
-          const [
-            createdExam,
-          ] = await tx
-            .insert(exams)
-            .values(
-              examValues
-            )
-            .returning();
-
-          if (
-            !createdExam
-          ) {
-            throw new Error(
-              "Failed to create exam."
-            );
-          }
-
-          const createdSubjects =
-            await tx
-              .insert(
-                examSubjects
-              )
-              .values(
-                preparedSubjects.map(
-                  (
-                    subject
-                  ) => ({
-                    instituteId:
-                      instituteId,
-
-                    examId:
-                      createdExam.id,
-
-                    subjectName:
-                      subject.subjectName,
-
-                    totalMarks:
-                      subject.totalMarks,
-                  })
-                )
-              )
-              .returning();
-
-          return {
-            exam:
-              createdExam,
-
-            subjects:
-              createdSubjects,
-          };
-        }
-      );
-
-    // ─────────────────────────────────────
-    // Success
-    // ─────────────────────────────────────
+    const createdSubjects = await db
+      .insert(examSubjects)
+      .values(
+        preparedSubjects.map((subject) => ({
+          instituteId,
+          examId: createdExam.id,
+          subjectName: subject.subjectName,
+          totalMarks: subject.totalMarks,
+        }))
+      )
+      .returning();
 
     return Response.json(
       {
-        message:
-          "Exam created successfully.",
-
-        exam:
-          result.exam,
-
-        subjects:
-          result.subjects,
-
+        message: "Exam created successfully.",
+        exam: createdExam,
+        subjects: createdSubjects,
         academic: {
-          programmeId:
-            programme.id,
-
-          programmeName:
-            programme.name,
-
-          semesterId:
-            semester.id,
-
-          semesterNo:
-            semester.semesterNo,
-
-          semesterName:
-            semester.name,
-
-          batchId:
-            batch.id,
-
-          batchName:
-            batch.name,
+          mode,
+          programmeId: programme?.id ?? null,
+          programmeName: programme?.name ?? null,
+          semesterId: semester?.id ?? null,
+          semesterNo: semester?.semesterNo ?? null,
+          semesterName: semester?.name ?? null,
+          batchId: batch?.id ?? null,
+          batchName: batch?.name ?? null,
         },
       },
-      {
-        status: 201,
-      }
+      { status: 201 }
     );
   } catch (error) {
-    console.error(
-      "POST /api/exams error:",
-      error
-    );
-
-    return Response.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to create exam.",
-      },
-      {
-        status: 500,
-      }
+    console.error("POST /api/exams error:", error);
+    return jsonError(
+      error instanceof Error ? error.message : "Failed to create exam.",
+      500
     );
   }
 }

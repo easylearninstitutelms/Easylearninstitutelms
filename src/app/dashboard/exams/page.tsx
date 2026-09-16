@@ -7,9 +7,26 @@ import {
   useState,
 } from "react";
 
+type ProgrammeSemester = {
+  id: string;
+  semesterNo: number;
+  name: string;
+};
+
+type Programme = {
+  id: string;
+  name: string;
+  code?: string | null;
+  semesters: ProgrammeSemester[];
+};
+
 type Batch = {
   id: string;
   name: string;
+  programmeId?: string | null;
+  programmeName?: string | null;
+  semesterId?: string | null;
+  semesterName?: string | null;
 };
 
 type ExamSubject = {
@@ -18,16 +35,24 @@ type ExamSubject = {
   totalMarks: number;
 };
 
+type ExamMode = "BATCH" | "PROGRAMME";
+
 type Exam = {
   id: string;
   name: string;
+  batchId?: string | null;
   examDate: string | null;
   createdAt: string;
+  programmeId?: string | null;
+  semesterId?: string | null;
 };
 
 type ExamRow = {
   exam: Exam;
+  mode: ExamMode;
   batchName: string;
+  programmeName?: string | null;
+  semesterName?: string | null;
   subjects?: ExamSubject[];
 };
 
@@ -81,8 +106,15 @@ type MarksheetSubjectRow = {
   marks: number | null;
   percentage: number;
   grade: string;
+  passMark: number;
+  status: "PASS" | "FAIL" | "PENDING";
   remarks: string;
 };
+
+function calculatePassMark(totalMarks: number): number {
+  if (!Number.isFinite(totalMarks) || totalMarks <= 0) return 0;
+  return Math.ceil(totalMarks * 0.33);
+}
 
 type MarksheetData = {
   student: Student;
@@ -243,10 +275,17 @@ function normalizeExamRows(
           return null;
         }
 
+        const mode: ExamMode =
+          row.mode === "PROGRAMME" ? "PROGRAMME" : "BATCH";
+
         return {
           exam: {
             id,
             name,
+            batchId:
+              typeof exam.batchId === "string"
+                ? exam.batchId
+                : null,
             examDate:
               typeof exam.examDate === "string"
                 ? exam.examDate
@@ -255,11 +294,28 @@ function normalizeExamRows(
               typeof exam.createdAt === "string"
                 ? exam.createdAt
                 : new Date().toISOString(),
+            programmeId:
+              typeof exam.programmeId === "string"
+                ? exam.programmeId
+                : null,
+            semesterId:
+              typeof exam.semesterId === "string"
+                ? exam.semesterId
+                : null,
           },
+          mode,
           batchName:
             typeof row.batchName === "string"
               ? row.batchName
               : "Unknown Batch",
+          programmeName:
+            typeof row.programmeName === "string"
+              ? row.programmeName
+              : null,
+          semesterName:
+            typeof row.semesterName === "string"
+              ? row.semesterName
+              : null,
           subjects: normalizeSubjects(
             row.subjects
           ),
@@ -430,6 +486,9 @@ export default function ExamsPage() {
   const [batches, setBatches] =
     useState<Batch[]>([]);
 
+  const [programmes, setProgrammes] =
+    useState<Programme[]>([]);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -447,6 +506,15 @@ export default function ExamsPage() {
 
   const [selectedExamId, setSelectedExamId] =
     useState<string | null>(null);
+
+  const [examMode, setExamMode] =
+    useState<ExamMode>("BATCH");
+
+  const [examProgrammeId, setExamProgrammeId] =
+    useState("");
+
+  const [examSemesterId, setExamSemesterId] =
+    useState("");
 
   const [examBatchId, setExamBatchId] =
     useState("");
@@ -524,6 +592,29 @@ export default function ExamsPage() {
   const selectedSubjects = useMemo(
     () => selectedExam?.subjects ?? [],
     [selectedExam]
+  );
+
+  const selectedExamProgramme = useMemo(
+    () =>
+      programmes.find(
+        (programme: Programme) =>
+          programme.id === selectedExam?.exam.programmeId
+      ) ?? null,
+    [programmes, selectedExam]
+  );
+
+  const examSemesters = useMemo(
+    () =>
+      programmes.find(
+        (programme: Programme) =>
+          programme.id === examProgrammeId
+      )?.semesters ?? [],
+    [programmes, examProgrammeId]
+  );
+
+  const examBatches = useMemo(
+    () => batches,
+    [batches]
   );
 
   const selectedSubject = useMemo(() => {
@@ -656,6 +747,15 @@ export default function ExamsPage() {
                   100
                 : 0;
 
+            const totalForSubject = Number(subject.totalMarks);
+            const passMark = calculatePassMark(totalForSubject);
+            const status: MarksheetSubjectRow["status"] =
+              finalMarks === null
+                ? "PENDING"
+                : finalMarks >= totalForSubject * 0.33
+                  ? "PASS"
+                  : "FAIL";
+
             return {
               subject,
               marks: finalMarks,
@@ -664,11 +764,11 @@ export default function ExamsPage() {
                 finalMarks !== null
                   ? calculateGrade(
                       finalMarks,
-                      Number(
-                        subject.totalMarks
-                      )
+                      totalForSubject
                     )
                   : "—",
+              passMark,
+              status,
               remarks:
                 matching?.result
                   ?.remarks ?? "",
@@ -827,6 +927,7 @@ export default function ExamsPage() {
   useEffect(() => {
     void loadExams();
     void loadBatches();
+    void loadProgrammes();
   }, []);
 
   useEffect(() => {
@@ -952,6 +1053,88 @@ export default function ExamsPage() {
     }
   }
 
+  async function loadProgrammes() {
+    try {
+      const response = await fetch("/api/programmes", {
+        cache: "no-store",
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load programmes.");
+      }
+
+      const raw = Array.isArray(data?.programmes)
+        ? data.programmes
+        : Array.isArray(data)
+          ? data
+          : [];
+
+      const normalized: Programme[] = raw
+        .map((item: unknown): Programme | null => {
+          if (!item || typeof item !== "object") return null;
+
+          const source = item as Record<string, unknown>;
+          const value =
+            source.programme && typeof source.programme === "object"
+              ? (source.programme as Record<string, unknown>)
+              : source;
+
+          if (typeof value.id !== "string" || typeof value.name !== "string") {
+            return null;
+          }
+
+          const rawSemesters =
+            Array.isArray(source.semesters)
+              ? source.semesters
+              : Array.isArray(value.semesters)
+                ? value.semesters
+                : [];
+
+          const semesters = rawSemesters
+            .map((semester: unknown): ProgrammeSemester | null => {
+              if (!semester || typeof semester !== "object") return null;
+              const row = semester as Record<string, unknown>;
+              const nested =
+                row.semester && typeof row.semester === "object"
+                  ? (row.semester as Record<string, unknown>)
+                  : row;
+              if (typeof nested.id !== "string") return null;
+              const semesterNo = Number(nested.semesterNo);
+              if (!Number.isInteger(semesterNo) || semesterNo < 1) return null;
+              return {
+                id: nested.id,
+                semesterNo,
+                name:
+                  typeof nested.name === "string"
+                    ? nested.name
+                    : `Semester ${semesterNo}`,
+              };
+            })
+            .filter((semester: ProgrammeSemester | null): semester is ProgrammeSemester => semester !== null)
+            .sort((a, b) => a.semesterNo - b.semesterNo);
+
+          return {
+            id: value.id,
+            name: value.name,
+            code: typeof value.code === "string" ? value.code : null,
+            semesters,
+          };
+        })
+        .filter((item: Programme | null): item is Programme => item !== null);
+
+      setProgrammes(normalized);
+
+      if (normalized.length > 0) {
+        setExamProgrammeId((current) => current || normalized[0].id);
+      }
+    } catch (error) {
+      console.error(error);
+      setProgrammes([]);
+    }
+  }
+
   async function loadBatches() {
     setLoadingBatches(true);
 
@@ -1032,6 +1215,26 @@ export default function ExamsPage() {
               return {
                 id: batch.id,
                 name: batch.name,
+                programmeId:
+                  typeof batch.programmeId === "string"
+                    ? batch.programmeId
+                    : null,
+                programmeName:
+                  typeof source.programmeName === "string"
+                    ? source.programmeName
+                    : typeof batch.programmeName === "string"
+                      ? batch.programmeName
+                      : null,
+                semesterId:
+                  typeof batch.semesterId === "string"
+                    ? batch.semesterId
+                    : null,
+                semesterName:
+                  typeof source.semesterName === "string"
+                    ? source.semesterName
+                    : typeof batch.semesterName === "string"
+                      ? batch.semesterName
+                      : null,
               };
             }
           )
@@ -1087,12 +1290,15 @@ export default function ExamsPage() {
       const batch =
         batches.find(
           (item: Batch) =>
-            item.name ===
-            examRow.batchName
+            item.id === examRow.exam.batchId
+        ) ??
+        batches.find(
+          (item: Batch) =>
+            item.name === examRow.batchName
         );
 
       let batchId =
-        batch?.id ?? "";
+        examRow.exam.batchId || batch?.id || "";
 
       if (!batchId) {
         const response =
@@ -1169,20 +1375,14 @@ export default function ExamsPage() {
         }
       }
 
-      if (!batchId) {
-        setStudents([]);
-        return;
-      }
-
-      const response =
-        await fetch(
-          `/api/students?batchId=${encodeURIComponent(
-            batchId
-          )}`,
-          {
-            cache: "no-store",
-          }
-        );
+      const response = await fetch(
+        batchId
+          ? `/api/students?batchId=${encodeURIComponent(batchId)}`
+          : "/api/students",
+        {
+          cache: "no-store",
+        }
+      );
 
       const data =
         await response.json().catch(
@@ -1339,18 +1539,13 @@ export default function ExamsPage() {
   }
 
   function resetExamForm() {
-    setExamBatchId(
-      batches.length > 0
-        ? batches[0].id
-        : ""
-    );
-
+    setExamMode("BATCH");
+    setExamProgrammeId("");
+    setExamSemesterId("");
+    setExamBatchId(batches[0]?.id ?? "");
     setExamName("");
     setExamDate("");
-
-    setSubjects([
-      { ...EMPTY_SUBJECT },
-    ]);
+    setSubjects([{ ...EMPTY_SUBJECT }]);
   }
 
   function addSubject() {
@@ -1440,13 +1635,30 @@ export default function ExamsPage() {
     const trimmedName =
       examName.trim();
 
-    if (!examBatchId) {
-      setNotice({
-        type: "error",
-        message:
-          "Please select a batch.",
-      });
-      return;
+    if (examMode === "BATCH") {
+      if (!examBatchId) {
+        setNotice({
+          type: "error",
+          message: "Please select a batch.",
+        });
+        return;
+      }
+    } else {
+      if (!examProgrammeId) {
+        setNotice({
+          type: "error",
+          message: "Please select a programme.",
+        });
+        return;
+      }
+
+      if (!examSemesterId) {
+        setNotice({
+          type: "error",
+          message: "Please select a semester.",
+        });
+        return;
+      }
     }
 
     if (!trimmedName) {
@@ -1554,7 +1766,12 @@ export default function ExamsPage() {
               "application/json",
           },
           body: JSON.stringify({
-            batchId: examBatchId,
+            mode: examMode,
+            programmeId:
+              examMode === "PROGRAMME" ? examProgrammeId : null,
+            semesterId:
+              examMode === "PROGRAMME" ? examSemesterId : null,
+            batchId: examBatchId || null,
             name: trimmedName,
             examDate:
               examDate || null,
@@ -2152,12 +2369,25 @@ export default function ExamsPage() {
                                       .name
                                   }
                                 </h3>
-
-                                <p className="mt-1 text-sm text-gray-600">
-                                  {
-                                    item.batchName
-                                  }
-                                </p>
+                                 {item.mode === "PROGRAMME" ? (
+                                   <>
+                                     <p className="mt-1 text-sm font-medium text-[#0f766e]">
+                                       Programme: {item.programmeName || "Not set"}
+                                     </p>
+                                     <p className="mt-1 text-sm text-[#b45309]">
+                                       Semester: {item.semesterName || "Not set"}
+                                     </p>
+                                     {item.batchName && (
+                                       <p className="mt-1 text-sm text-gray-600">
+                                         Student Batch: {item.batchName}
+                                       </p>
+                                     )}
+                                   </>
+                                 ) : (
+                                   <p className="mt-1 text-sm text-gray-600">
+                                     Batch: {item.batchName}
+                                   </p>
+                                 )}
                               </div>
 
                               <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
@@ -2226,13 +2456,25 @@ export default function ExamsPage() {
                               .name
                           }
                         </h2>
-
-                        <p className="mt-1 text-sm text-gray-600">
-                          Batch:{" "}
-                          {
-                            selectedExam.batchName
-                          }
-                        </p>
+                         {selectedExam.mode === "PROGRAMME" ? (
+                           <>
+                             <p className="mt-1 text-sm text-gray-600">
+                               Programme: {selectedExamProgramme?.name || selectedExam.programmeName || "Not set"}
+                             </p>
+                             <p className="mt-1 text-sm text-[#b45309]">
+                               Semester: {selectedExam.semesterName || "Not set"}
+                             </p>
+                             {selectedExam.batchName && (
+                               <p className="mt-1 text-sm text-gray-600">
+                                 Student Batch: {selectedExam.batchName}
+                               </p>
+                             )}
+                           </>
+                         ) : (
+                           <p className="mt-1 text-sm text-gray-600">
+                             Batch: {selectedExam.batchName}
+                           </p>
+                         )}
                       </div>
 
                       <div className="rounded-lg bg-gray-50 px-4 py-3 text-right">
@@ -2851,78 +3093,131 @@ export default function ExamsPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                      Batch
+                      Exam Type
                     </label>
-
                     <select
-                      value={
-                        examBatchId
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setExamBatchId(
-                          event.target
-                            .value
-                        )
-                      }
-                      disabled={
-                        loadingBatches ||
-                        submitting
-                      }
+                      value={examMode}
+                      onChange={(event) => {
+                        const value = event.target.value as ExamMode;
+                        setExamMode(value);
+                        if (value === "BATCH") {
+                          setExamProgrammeId("");
+                          setExamSemesterId("");
+                          setExamBatchId(batches[0]?.id ?? "");
+                        } else {
+                          const firstProgramme = programmes[0];
+                          setExamProgrammeId(firstProgramme?.id ?? "");
+                          setExamSemesterId(firstProgramme?.semesters[0]?.id ?? "");
+                          setExamBatchId("");
+                        }
+                      }}
+                      disabled={submitting}
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                     >
-                      <option value="">
-                        Select batch
-                      </option>
-
-                      {batches.map(
-                        (
-                          batch: Batch
-                        ) => (
-                          <option
-                            key={
-                              batch.id
-                            }
-                            value={
-                              batch.id
-                            }
-                          >
-                            {
-                              batch.name
-                            }
-                          </option>
-                        )
-                      )}
+                      <option value="BATCH">Batch Exam</option>
+                      <option value="PROGRAMME">Programme Exam</option>
                     </select>
                   </div>
+
+                  {examMode === "PROGRAMME" ? (
+                    <>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                          Programme
+                        </label>
+                        <select
+                          value={examProgrammeId}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setExamProgrammeId(value);
+                            const firstSemester =
+                              programmes.find((programme) => programme.id === value)?.semesters[0];
+                            setExamSemesterId(firstSemester?.id ?? "");
+                          }}
+                          disabled={submitting}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/10 disabled:bg-gray-100"
+                        >
+                          <option value="">Select programme</option>
+                          {programmes.map((programme) => (
+                            <option key={programme.id} value={programme.id}>
+                              {programme.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                          Semester
+                        </label>
+                        <select
+                          value={examSemesterId}
+                          onChange={(event) => setExamSemesterId(event.target.value)}
+                          disabled={submitting || !examProgrammeId}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#f59e0b] focus:ring-2 focus:ring-[#f59e0b]/10 disabled:bg-gray-100"
+                        >
+                          <option value="">Select semester</option>
+                          {examSemesters.map((semester) => (
+                            <option key={semester.id} value={semester.id}>
+                              {semester.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                          Student Source Batch <span className="font-normal text-gray-400">(optional)</span>
+                        </label>
+                        <select
+                          value={examBatchId}
+                          onChange={(event) => setExamBatchId(event.target.value)}
+                          disabled={loadingBatches || submitting}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                        >
+                          <option value="">All institute students</option>
+                          {examBatches.map((batch) => (
+                            <option key={batch.id} value={batch.id}>
+                              {batch.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                        Batch
+                      </label>
+                      <select
+                        value={examBatchId}
+                        onChange={(event) => setExamBatchId(event.target.value)}
+                        disabled={loadingBatches || submitting}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                      >
+                        <option value="">Select batch</option>
+                        {examBatches.map((batch) => (
+                          <option key={batch.id} value={batch.id}>
+                            {batch.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-gray-700">
                       Exam Date
                     </label>
-
                     <input
                       type="date"
-                      value={
-                        examDate
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setExamDate(
-                          event.target
-                            .value
-                        )
-                      }
-                      disabled={
-                        submitting
-                      }
+                      value={examDate}
+                      onChange={(event) => setExamDate(event.target.value)}
+                      disabled={submitting}
                       className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
                     />
                   </div>
                 </div>
-
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-gray-700">
                     Exam Name
@@ -3334,6 +3629,15 @@ export default function ExamsPage() {
                         {selectedExam.exam.name}
                       </p>
 
+                      <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                        <span className="rounded-full bg-[#f0fdfa] px-3 py-1 text-[10px] font-bold text-[#0f766e]">
+                          Programme: {selectedExamProgramme?.name || selectedExam.programmeName || "Not set"}
+                        </span>
+                        <span className="rounded-full bg-[#fffbeb] px-3 py-1 text-[10px] font-bold text-[#b45309]">
+                          Semester: {selectedExam.semesterName || "Not set"}
+                        </span>
+                      </div>
+
                       <p className="mt-1 text-[11px] text-gray-500">
                         Examination Date:{" "}
                         {formatDate(selectedExam.exam.examDate)}
@@ -3367,6 +3671,21 @@ export default function ExamsPage() {
                             </p>
                             <p className="mt-1 text-sm font-semibold text-gray-800">
                               {selectedExam.batchName}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#0f766e]">
+                              Programme
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-gray-800">
+                              {selectedExamProgramme?.name || selectedExam.programmeName || "—"}
+                            </p>
+                            <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[#b45309]">
+                              Semester
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-gray-800">
+                              {selectedExam.semesterName || "—"}
                             </p>
                           </div>
 
@@ -3434,14 +3753,16 @@ export default function ExamsPage() {
                     <section className="mt-5 overflow-hidden rounded-xl border-2 border-[#0f766e]">
                       <table className="min-w-full border-collapse">
                         <thead>
-                          <tr className="bg-[#0f766e] text-white">
-                            <th className="border-r border-white/20 px-2 py-3 text-center text-[10px] font-bold">#</th>
-                            <th className="border-r border-white/20 px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wide">Subject</th>
-                            <th className="border-r border-white/20 px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wide">Total</th>
-                            <th className="border-r border-white/20 px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wide">Obtained</th>
-                            <th className="border-r border-white/20 px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wide">%</th>
-                            <th className="border-r border-white/20 px-3 py-3 text-center text-[10px] font-bold uppercase tracking-wide">Grade</th>
-                            <th className="px-3 py-3 text-left text-[10px] font-bold uppercase tracking-wide">Remarks</th>
+                          <tr>
+                            <th className="border-r border-white/20 bg-[#0f766e] px-2 py-3 text-center text-[10px] font-extrabold !text-white">#</th>
+                            <th className="border-r border-white/20 bg-[#0f766e] px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wide !text-white">Subject</th>
+                            <th className="border-r border-white/20 bg-[#0f766e] px-3 py-3 text-center text-[10px] font-extrabold uppercase tracking-wide !text-white">Total</th>
+                            <th className="border-r border-[#92400e]/30 bg-[#d97706] px-3 py-3 text-center text-[10px] font-extrabold uppercase tracking-wide !text-white">Pass Mark</th>
+                            <th className="border-r border-white/20 bg-[#0f766e] px-3 py-3 text-center text-[10px] font-extrabold uppercase tracking-wide !text-white">Obtained</th>
+                            <th className="border-r border-white/20 bg-[#0f766e] px-3 py-3 text-center text-[10px] font-extrabold uppercase tracking-wide !text-white">%</th>
+                            <th className="border-r border-white/20 bg-[#4338ca] px-3 py-3 text-center text-[10px] font-extrabold uppercase tracking-wide !text-white">Grade</th>
+                            <th className="border-r border-white/20 bg-[#047857] px-3 py-3 text-center text-[10px] font-extrabold uppercase tracking-wide !text-white">Status</th>
+                            <th className="bg-[#0f766e] px-3 py-3 text-left text-[10px] font-extrabold uppercase tracking-wide !text-white">Remarks</th>
                           </tr>
                         </thead>
 
@@ -3460,6 +3781,9 @@ export default function ExamsPage() {
                                 </td>
                                 <td className="border-b border-gray-200 px-3 py-3 text-center text-xs font-semibold text-gray-700">
                                   {row.subject.totalMarks}
+                                </td>
+                                <td className="border-b border-gray-200 px-3 py-3 text-center text-xs font-bold text-[#b45309]">
+                                  {row.passMark} <span className="text-[9px] font-semibold text-gray-500">(33%)</span>
                                 </td>
                                 <td className="border-b border-gray-200 px-3 py-3 text-center text-xs font-extrabold text-[#0f766e]">
                                   {row.marks === null ? "—" : row.marks}
@@ -3480,6 +3804,19 @@ export default function ExamsPage() {
                                     {row.grade}
                                   </span>
                                 </td>
+                                <td className="border-b border-gray-200 px-3 py-3 text-center">
+                                  <span
+                                    className={`inline-flex min-w-14 justify-center rounded-full px-2 py-1 text-[10px] font-extrabold ${
+                                      row.status === "PASS"
+                                        ? "bg-emerald-100 text-emerald-700"
+                                        : row.status === "FAIL"
+                                          ? "bg-red-100 text-red-700"
+                                          : "bg-gray-100 text-gray-500"
+                                    }`}
+                                  >
+                                    {row.status}
+                                  </span>
+                                </td>
                                 <td className="border-b border-gray-200 px-3 py-3 text-xs text-gray-600">
                                   {row.remarks || "—"}
                                 </td>
@@ -3497,6 +3834,9 @@ export default function ExamsPage() {
                               {marksheetData.totalMarks}
                             </td>
                             <td className="px-3 py-3 text-center text-xs font-extrabold">
+                              {marksheetData.subjects.reduce((sum, row) => sum + row.passMark, 0)}
+                            </td>
+                            <td className="px-3 py-3 text-center text-xs font-extrabold">
                               {marksheetData.obtainedMarks}
                             </td>
                             <td className="px-3 py-3 text-center text-xs font-extrabold">
@@ -3504,6 +3844,9 @@ export default function ExamsPage() {
                             </td>
                             <td className="px-3 py-3 text-center text-xs font-extrabold">
                               {marksheetData.grade}
+                            </td>
+                            <td className="px-3 py-3 text-center text-xs font-extrabold">
+                              {marksheetData.result}
                             </td>
                             <td className="px-3 py-3 text-xs font-semibold">—</td>
                           </tr>
