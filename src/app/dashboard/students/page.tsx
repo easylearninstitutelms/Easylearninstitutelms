@@ -1466,7 +1466,10 @@ export default function StudentsPage() {
                 </div>
 
                 <div className="modal-body">
-                  <div className="mb-4 flex flex-wrap items-center justify-end gap-2 print:hidden">
+                  <div className="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
+                    <div className="text-sm text-slate-500">
+                      Front &amp; back preview
+                    </div>
                     <button
                       type="button"
                       onClick={printIdCard}
@@ -1505,7 +1508,7 @@ export default function StudentsPage() {
                         return (
                           <>
                             {/* FRONT */}
-                            <section className="student-id-card">
+                            <section className="id-card-screen-wrap"><span className="id-card-side-label">FRONT</span><section className="student-id-card">
                               <div className="id-card-topbar" />
                               <div className="id-card-main">
                                 <div className="id-card-brand">
@@ -1601,10 +1604,10 @@ export default function StudentsPage() {
                                 </span>
                                 <b>www.easylearninstitute.com</b>
                               </div>
-                            </section>
+                            </section></section>
 
                             {/* BACK */}
-                            <section className="student-id-card">
+                            <section className="id-card-screen-wrap"><span className="id-card-side-label">BACK</span><section className="student-id-card">
                               <div className="id-card-topbar" />
                               <div className="id-card-main id-card-back-main">
                                 <div className="id-card-back-title">
@@ -1670,7 +1673,7 @@ export default function StudentsPage() {
                                 </span>
                                 <b>www.easylearninstitute.com</b>
                               </div>
-                            </section>
+                            </section></section>
                           </>
                         );
                       })()}
@@ -2074,15 +2077,36 @@ export default function StudentsPage() {
     </div>
 
       <style jsx global>{`
+        /* Screen preview: enlarge the real ID cards so they are readable on desktop.
+           Print media below resets these dimensions to exact CR80 size. */
+        .print-id-card-overlay .modal-box {
+          max-width: 1180px;
+        }
+
+        .print-id-card-overlay .modal-body {
+          overflow-x: auto;
+          overflow-y: auto;
+        }
+
+        .id-card-print-area {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          overflow: visible;
+        }
+
         .id-card-print-grid {
           display: grid;
-          grid-template-columns: minmax(0, 85.6mm);
-          gap: 8mm;
+          grid-template-columns: repeat(2, 362px);
+          gap: 16px;
           justify-content: center;
           align-items: start;
+          width: max-content;
+          padding: 8px 4px 14px;
         }
 
         .student-id-card {
+          zoom: 1.12;
           box-sizing: border-box;
           position: relative;
           width: 85.6mm;
@@ -2371,6 +2395,28 @@ export default function StudentsPage() {
           text-align: center;
         }
 
+        .id-card-screen-wrap {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 5px;
+          width: 362px;
+        }
+
+        .id-card-side-label {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 54px;
+          padding: 3px 9px;
+          border-radius: 999px;
+          background: #ecfdf5;
+          color: #0f766e;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+        }
+
         @media print {
           @page {
             size: A4 landscape;
@@ -2448,7 +2494,16 @@ export default function StudentsPage() {
             break-inside: avoid !important;
           }
 
+          .id-card-screen-wrap {
+            display: contents !important;
+          }
+
+          .id-card-side-label {
+            display: none !important;
+          }
+
           .student-id-card {
+            zoom: 1 !important;
             box-sizing: border-box !important;
             width: 85.6mm !important;
             height: 54mm !important;
@@ -2464,6 +2519,11 @@ export default function StudentsPage() {
             overflow: hidden !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
+          }
+
+          .id-card-print-grid > .id-card-screen-wrap:nth-child(n + 3) .student-id-card {
+            break-before: page !important;
+            page-break-before: always !important;
           }
 
           .id-card-print-grid > .student-id-card:nth-child(n + 3) {
