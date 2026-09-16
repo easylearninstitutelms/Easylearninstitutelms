@@ -2076,13 +2076,14 @@ export default function StudentsPage() {
       <style jsx global>{`
         .id-card-print-grid {
           display: grid;
-          grid-template-columns: repeat(2, 85.6mm);
+          grid-template-columns: minmax(0, 85.6mm);
           gap: 8mm;
           justify-content: center;
           align-items: start;
         }
 
         .student-id-card {
+          box-sizing: border-box;
           position: relative;
           width: 85.6mm;
           height: 54mm;
@@ -2372,12 +2373,16 @@ export default function StudentsPage() {
 
         @media print {
           @page {
-            size: A4 portrait;
-            margin: 12mm;
+            size: A4 landscape;
+            margin: 10mm;
           }
 
           html,
           body {
+            width: 100% !important;
+            min-height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
             background: #fff !important;
           }
 
@@ -2399,52 +2404,71 @@ export default function StudentsPage() {
             position: static !important;
             inset: auto !important;
             display: block !important;
-            width: auto !important;
+            width: 100% !important;
             height: auto !important;
+            min-height: 0 !important;
             padding: 0 !important;
+            margin: 0 !important;
             background: #fff !important;
+            overflow: visible !important;
           }
 
-          .print-id-card-overlay .modal-box {
-            width: auto !important;
+          .print-id-card-overlay .modal-box,
+          .print-id-card-overlay .modal-content,
+          .print-id-card-overlay .modal-body {
+            width: 100% !important;
             max-width: none !important;
+            height: auto !important;
+            max-height: none !important;
             margin: 0 !important;
             padding: 0 !important;
             border: 0 !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             overflow: visible !important;
+            background: #fff !important;
           }
 
-          .print-id-card-overlay .modal-body {
-            padding: 0 !important;
+          .print-id-card-overlay button {
+            display: none !important;
           }
 
           .id-card-print-grid {
+            width: 181.2mm !important;
+            max-width: none !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
             display: grid !important;
-            grid-template-columns: repeat(2, 85.6mm) !important;
-            gap: 8mm !important;
+            grid-template-columns: 85.6mm 85.6mm !important;
+            grid-template-rows: 54mm !important;
+            gap: 10mm !important;
             justify-content: center !important;
             align-items: start !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
 
           .student-id-card {
+            box-sizing: border-box !important;
             width: 85.6mm !important;
             height: 54mm !important;
+            min-width: 85.6mm !important;
             min-height: 54mm !important;
+            max-width: 85.6mm !important;
             max-height: 54mm !important;
             margin: 0 !important;
+            padding: 0 !important;
             box-shadow: none !important;
-            border: 0.25mm solid #dbe4e8 !important;
-            border-radius: 4mm !important;
+            border: 0.3mm solid #cbd5e1 !important;
+            border-radius: 3mm !important;
             overflow: hidden !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
 
           .id-card-print-grid > .student-id-card:nth-child(n + 3) {
-            break-before: page;
-            page-break-before: always;
+            break-before: page !important;
+            page-break-before: always !important;
           }
         }
       `}</style>
