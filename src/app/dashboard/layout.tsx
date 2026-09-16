@@ -8,6 +8,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
+  allowedRoles?: string[];
 }
 
 function NavIcon({ children }: { children: React.ReactNode }) {
@@ -18,10 +19,57 @@ function NavIcon({ children }: { children: React.ReactNode }) {
   );
 }
 
+const ALL_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+];
+
+const TEACHER_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "TEACHER",
+];
+
+const RECEPTIONIST_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "RECEPTIONIST",
+];
+
+const ACCOUNTANT_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "ACCOUNTANT",
+];
+
+const STAFF_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "STAFF",
+  "MANAGER",
+];
+
+const STUDENT_MANAGEMENT_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "STAFF",
+  "MANAGER",
+  "TEACHER",
+  "RECEPTIONIST",
+];
+
 const navItems: NavItem[] = [
   {
     href: "/dashboard",
     label: "Dashboard",
+    allowedRoles: [
+      ...ALL_ROLES,
+      "TEACHER",
+      "RECEPTIONIST",
+      "ACCOUNTANT",
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -40,9 +88,11 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/students",
     label: "Students",
+    allowedRoles: STUDENT_MANAGEMENT_ROLES,
     icon: (
       <NavIcon>
         <svg
@@ -61,9 +111,15 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/staff",
     label: "Staff",
+    allowedRoles: [
+      ...ALL_ROLES,
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -82,9 +138,16 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/courses",
     label: "Courses",
+    allowedRoles: [
+      ...ALL_ROLES,
+      "TEACHER",
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -104,10 +167,14 @@ const navItems: NavItem[] = [
     ),
   },
 
-  // NEW: PROGRAMMES
   {
     href: "/dashboard/programmes",
     label: "Programmes",
+    allowedRoles: [
+      ...ALL_ROLES,
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -136,6 +203,12 @@ const navItems: NavItem[] = [
   {
     href: "/dashboard/batches",
     label: "Batches",
+    allowedRoles: [
+      ...ALL_ROLES,
+      "TEACHER",
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -154,9 +227,16 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/attendance",
     label: "Attendance",
+    allowedRoles: [
+      ...ALL_ROLES,
+      "TEACHER",
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -175,9 +255,17 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/fees",
     label: "Fees & Payments",
+    allowedRoles: [
+      ...ALL_ROLES,
+      ...RECEPTIONIST_ROLES,
+      ...ACCOUNTANT_ROLES,
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -196,9 +284,16 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/expenses",
     label: "Expenses",
+    allowedRoles: [
+      ...ALL_ROLES,
+      ...ACCOUNTANT_ROLES,
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -217,9 +312,16 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/salary",
     label: "Salary",
+    allowedRoles: [
+      ...ALL_ROLES,
+      ...ACCOUNTANT_ROLES,
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -238,9 +340,16 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/enquiries",
     label: "Enquiries",
+    allowedRoles: [
+      ...ALL_ROLES,
+      ...RECEPTIONIST_ROLES,
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -259,9 +368,16 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/homework",
     label: "Homework",
+    allowedRoles: [
+      ...ALL_ROLES,
+      "TEACHER",
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -280,9 +396,16 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/exams",
     label: "Exams & Results",
+    allowedRoles: [
+      ...ALL_ROLES,
+      "TEACHER",
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -301,9 +424,17 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/reports",
     label: "Reports",
+    allowedRoles: [
+      ...ALL_ROLES,
+      ...ACCOUNTANT_ROLES,
+      "STAFF",
+      "MANAGER",
+      "RECEPTIONIST",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -322,9 +453,18 @@ const navItems: NavItem[] = [
       </NavIcon>
     ),
   },
+
   {
     href: "/dashboard/notifications",
     label: "Notifications",
+    allowedRoles: [
+      ...ALL_ROLES,
+      "TEACHER",
+      "RECEPTIONIST",
+      "ACCOUNTANT",
+      "STAFF",
+      "MANAGER",
+    ],
     icon: (
       <NavIcon>
         <svg
@@ -417,6 +557,16 @@ export default function DashboardLayout({
     SUSPENDED: "bg-yellow-500",
   };
 
+  const visibleNavItems = user
+    ? navItems.filter((item) => {
+        if (!item.allowedRoles) {
+          return true;
+        }
+
+        return item.allowedRoles.includes(user.role);
+      })
+    : [];
+
   const Sidebar = () => (
     <aside className="flex h-full flex-col border-r border-slate-100 bg-white">
       {/* Logo */}
@@ -466,7 +616,7 @@ export default function DashboardLayout({
 
       {/* Navigation */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive =
             item.href === "/dashboard"
               ? pathname === "/dashboard"
