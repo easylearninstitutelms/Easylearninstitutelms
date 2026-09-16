@@ -1443,9 +1443,7 @@ export default function StudentsPage() {
         <div
           className="modal-overlay print-id-card-overlay"
           onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              closeIdCard();
-            }
+            if (e.target === e.currentTarget) closeIdCard();
           }}
         >
           <div className="modal-box max-w-6xl">
@@ -1457,19 +1455,12 @@ export default function StudentsPage() {
               <>
                 <div className="modal-header print:hidden">
                   <div>
-                    <h2 className="modal-title">
-                      Student ID Card
-                    </h2>
+                    <h2 className="modal-title">Student ID Card</h2>
                     <p className="text-sm text-slate-400 mt-1">
-                      {idCardStudent.student.name} ·{" "}
-                      {idCardStudent.student.studentId}
+                      {idCardStudent.student.name} · {idCardStudent.student.studentId}
                     </p>
                   </div>
-
-                  <button
-                    onClick={closeIdCard}
-                    className="btn btn-ghost btn-sm"
-                  >
+                  <button onClick={closeIdCard} className="btn btn-ghost btn-sm">
                     ✕
                   </button>
                 </div>
@@ -1495,282 +1486,189 @@ export default function StudentsPage() {
                   <div className="id-card-print-area">
                     <div className="id-card-print-grid">
                       {(() => {
-                        const student =
-                          idCardStudent.student;
-
+                        const student = idCardStudent.student;
                         const enrollment =
                           idCardStudent.enrollments?.find(
-                            (item) =>
-                              item.enrollment.status ===
-                              "ACTIVE"
+                            (item) => item.enrollment.status === "ACTIVE"
                           ) ||
                           idCardStudent.enrollments?.[0] ||
                           null;
 
-                        const initials =
-                          student.name
-                            .split(/\s+/)
-                            .filter(Boolean)
-                            .map(
-                              (part) => part[0]
-                            )
-                            .join("")
-                            .slice(0, 2)
-                            .toUpperCase();
+                        const initials = student.name
+                          .split(/\s+/)
+                          .filter(Boolean)
+                          .map((part) => part[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase();
 
                         return (
                           <>
                             {/* FRONT */}
                             <section className="student-id-card">
-                              <div className="h-2 bg-[#0f766e]" />
-                              <div className="h-1 bg-[#f59e0b]" />
-
-                              <div className="p-5">
-                                <div className="flex items-center gap-3">
+                              <div className="id-card-topbar" />
+                              <div className="id-card-main">
+                                <div className="id-card-brand">
                                   <img
                                     src="/easylearn-logo.jpg"
                                     alt="Easylearn Institute"
-                                    className="h-12 w-12 rounded-lg object-contain"
+                                    className="id-card-logo"
                                   />
-                                  <div>
-                                    <p className="text-base font-extrabold tracking-wide text-[#0f766e]">
+                                  <div className="min-w-0">
+                                    <p className="id-card-institute">
                                       EASY LEARN INSTITUTE
                                     </p>
-                                    <p className="text-[8px] font-bold tracking-[0.18em] text-slate-500">
+                                    <p className="id-card-subtitle">
                                       STUDENT IDENTIFICATION CARD
                                     </p>
                                   </div>
                                 </div>
 
-                                <div className="mt-5 flex gap-4">
-                                  <div className="h-28 w-24 shrink-0 overflow-hidden rounded-xl border-2 border-[#0f766e] bg-[#f0fdfa]">
+                                <div className="id-card-front-body">
+                                  <div className="id-card-photo">
                                     {student.photoUrl ? (
                                       <img
-                                        src={
-                                          student.photoUrl
-                                        }
+                                        src={student.photoUrl}
                                         alt=""
                                         className="h-full w-full object-cover"
                                       />
                                     ) : (
-                                      <div className="flex h-full w-full items-center justify-center text-3xl font-extrabold text-[#0f766e]">
+                                      <div className="id-card-initials">
                                         {initials}
                                       </div>
                                     )}
                                   </div>
 
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#0f766e]">
-                                      Student Name
-                                    </p>
-                                    <p className="mt-1 text-lg font-extrabold text-slate-900">
-                                      {student.name}
-                                    </p>
+                                  <div className="id-card-front-info">
+                                    <p className="id-card-label">STUDENT NAME</p>
+                                    <p className="id-card-name">{student.name}</p>
 
-                                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+                                    <div className="id-card-meta-grid">
                                       <div>
-                                        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                          Student ID
-                                        </p>
-                                        <p className="mt-0.5 text-xs font-extrabold text-slate-800">
+                                        <p className="id-card-label">STUDENT ID</p>
+                                        <p className="id-card-value">
                                           {student.studentId}
                                         </p>
                                       </div>
-
                                       <div>
-                                        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                          Status
-                                        </p>
-                                        <p className="mt-0.5 text-xs font-extrabold text-[#0f766e]">
+                                        <p className="id-card-label">STATUS</p>
+                                        <p className="id-card-value id-card-green">
                                           {student.status}
                                         </p>
                                       </div>
-
                                       <div>
-                                        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                          Batch
-                                        </p>
-                                        <p className="mt-0.5 text-xs font-semibold text-slate-700">
-                                          {enrollment?.batch?.name ||
-                                            "—"}
+                                        <p className="id-card-label">BATCH</p>
+                                        <p className="id-card-value">
+                                          {enrollment?.batch?.name || "—"}
                                         </p>
                                       </div>
-
                                       <div>
-                                        <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                          Course
-                                        </p>
-                                        <p className="mt-0.5 text-xs font-semibold text-slate-700">
-                                          {enrollment?.course?.name ||
-                                            "—"}
+                                        <p className="id-card-label">COURSE</p>
+                                        <p className="id-card-value">
+                                          {enrollment?.course?.name || "—"}
                                         </p>
                                       </div>
                                     </div>
                                   </div>
                                 </div>
 
-                                <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-[#f0fdfa] p-3">
+                                <div className="id-card-contact-row">
                                   <div>
-                                    <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                      Phone
-                                    </p>
-                                    <p className="mt-1 text-xs font-semibold text-slate-800">
-                                      {student.phone || "—"}
-                                    </p>
+                                    <span className="id-card-label">PHONE</span>
+                                    <strong>{student.phone || "—"}</strong>
                                   </div>
-
                                   <div>
-                                    <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                      Admission
-                                    </p>
-                                    <p className="mt-1 text-xs font-semibold text-slate-800">
-                                      {formatDate(
-                                        student.admissionDate
-                                      )}
-                                    </p>
+                                    <span className="id-card-label">ADMISSION</span>
+                                    <strong>
+                                      {formatDate(student.admissionDate)}
+                                    </strong>
                                   </div>
                                 </div>
 
-                                <div className="mt-4 grid grid-cols-2 gap-4">
-                                  <div className="border-t border-slate-300 pt-1.5 text-center text-[7px] font-semibold text-slate-500">
-                                    Institute Authority
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                      Validity
-                                    </p>
-                                    <p className="mt-0.5 text-[8px] font-bold text-slate-700">
-                                      While Active
-                                    </p>
+                                <div className="id-card-sign-row">
+                                  <div className="id-card-sign">Institute Authority</div>
+                                  <div className="id-card-valid">
+                                    <span className="id-card-label">VALIDITY</span>
+                                    <strong>WHILE ACTIVE</strong>
                                   </div>
                                 </div>
                               </div>
 
-                              <div className="mt-auto border-t border-slate-200 bg-slate-50 px-5 py-3 text-center">
-                                <p className="text-[7px] font-semibold text-slate-500">
+                              <div className="id-card-footer">
+                                <span>
                                   Hazibag Dhla, Near Tazuddin Ahmed Medical Collage Hospital,
                                   Joydebpur, Gazipur
-                                </p>
-                                <p className="mt-0.5 text-[7px] font-bold text-[#0f766e]">
-                                  www.easylearninstitute.com
-                                </p>
+                                </span>
+                                <b>www.easylearninstitute.com</b>
                               </div>
                             </section>
 
                             {/* BACK */}
                             <section className="student-id-card">
-                              <div className="h-2 bg-[#0f766e]" />
-                              <div className="h-1 bg-[#f59e0b]" />
-
-                              <div className="p-5">
-                                <div className="rounded-xl bg-[#f0fdfa] p-3">
-                                  <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#0f766e]">
-                                    Student / Emergency Contact
-                                  </p>
-
-                                  <div className="mt-3 space-y-2.5">
-                                    <div>
-                                      <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                        Guardian
-                                      </p>
-                                      <p className="mt-0.5 text-xs font-bold text-slate-800">
-                                        {student.guardianName ||
-                                          "—"}
-                                      </p>
-                                    </div>
-
-                                    <div>
-                                      <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                        Guardian Phone
-                                      </p>
-                                      <p className="mt-0.5 text-xs font-bold text-slate-800">
-                                        {student.guardianPhone ||
-                                          "—"}
-                                      </p>
-                                    </div>
-
-                                    <div>
-                                      <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                        Address
-                                      </p>
-                                      <p className="mt-0.5 text-xs leading-4 font-medium text-slate-700">
-                                        {student.address ||
-                                          "—"}
-                                      </p>
-                                    </div>
-                                  </div>
+                              <div className="id-card-topbar" />
+                              <div className="id-card-main id-card-back-main">
+                                <div className="id-card-back-title">
+                                  <span>STUDENT / EMERGENCY CONTACT</span>
+                                  <span>{student.studentId}</span>
                                 </div>
 
-                                <div className="mt-4 rounded-xl border border-slate-200 p-3">
-                                  <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-[#0f766e]">
-                                    Important
-                                  </p>
-                                  <ul className="mt-2 space-y-1.5 text-[9px] leading-4 text-slate-600">
-                                    <li>
-                                      • This card remains the property of Easylearn Institute.
-                                    </li>
-                                    <li>
-                                      • Carry this card during institute activities.
-                                    </li>
-                                    <li>
-                                      • Report a lost card to the institute office.
-                                    </li>
-                                  </ul>
-                                </div>
-
-                                <div className="mt-4 grid grid-cols-2 gap-2">
-                                  <div className="rounded-xl border border-slate-200 p-3">
-                                    <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                      Date of Birth
-                                    </p>
-                                    <p className="mt-0.5 text-xs font-semibold text-slate-800">
-                                      {formatDate(
-                                        student.dob
-                                      )}
+                                <div className="id-card-back-grid">
+                                  <div>
+                                    <p className="id-card-label">GUARDIAN</p>
+                                    <p className="id-card-value">
+                                      {student.guardianName || "—"}
                                     </p>
                                   </div>
-
-                                  <div className="rounded-xl border border-slate-200 p-3">
-                                    <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                      Gender
-                                    </p>
-                                    <p className="mt-0.5 text-xs font-semibold text-slate-800">
-                                      {student.gender ||
-                                        "—"}
+                                  <div>
+                                    <p className="id-card-label">GUARDIAN PHONE</p>
+                                    <p className="id-card-value">
+                                      {student.guardianPhone || "—"}
                                     </p>
                                   </div>
                                 </div>
 
-                                <div className="mt-4 rounded-xl border-2 border-dashed border-[#0f766e]/30 bg-[#f8fffd] p-3 text-center">
-                                  <p className="text-[8px] font-bold uppercase tracking-[0.18em] text-[#0f766e]">
-                                    Verification
-                                  </p>
-                                  <p className="mt-1.5 text-lg font-black tracking-[0.16em] text-slate-900">
-                                    {student.studentId}
-                                  </p>
-                                  <p className="mt-1.5 text-[8px] text-slate-500">
-                                    Present this card to the institute office for verification.
-                                  </p>
+                                <div className="id-card-address">
+                                  <p className="id-card-label">ADDRESS</p>
+                                  <p>{student.address || "—"}</p>
                                 </div>
 
-                                <div className="mt-6 grid grid-cols-2 gap-8">
-                                  <div className="border-t border-slate-300 pt-1.5 text-center text-[7px] font-semibold text-slate-500">
-                                    Class Teacher
+                                <div className="id-card-back-grid">
+                                  <div>
+                                    <p className="id-card-label">DATE OF BIRTH</p>
+                                    <p className="id-card-value">
+                                      {formatDate(student.dob)}
+                                    </p>
                                   </div>
-                                  <div className="border-t border-slate-300 pt-1.5 text-center text-[7px] font-semibold text-slate-500">
-                                    Principal / Director
+                                  <div>
+                                    <p className="id-card-label">GENDER</p>
+                                    <p className="id-card-value">{student.gender || "—"}</p>
                                   </div>
+                                </div>
+
+                                <div className="id-card-verify">
+                                  <p className="id-card-label">VERIFICATION</p>
+                                  <strong>{student.studentId}</strong>
+                                  <span>Present this card to the institute office for verification.</span>
+                                </div>
+
+                                <div className="id-card-note">
+                                  This card remains the property of Easylearn Institute.
+                                  Carry this card during institute activities and report any loss
+                                  to the institute office.
+                                </div>
+
+                                <div className="id-card-signatures">
+                                  <span>Class Teacher</span>
+                                  <span>Principal / Director</span>
                                 </div>
                               </div>
 
-                              <div className="mt-auto border-t border-slate-200 bg-slate-50 px-5 py-3 text-center">
-                                <p className="text-[7px] font-semibold text-slate-500">
+                              <div className="id-card-footer">
+                                <span>
                                   Hazibag Dhla, Near Tazuddin Ahmed Medical Collage Hospital,
                                   Joydebpur, Gazipur
-                                </p>
-                                <p className="mt-0.5 text-[7px] font-bold text-[#0f766e]">
-                                  www.easylearninstitute.com
-                                </p>
+                                </span>
+                                <b>www.easylearninstitute.com</b>
                               </div>
                             </section>
                           </>
@@ -1784,7 +1682,6 @@ export default function StudentsPage() {
           </div>
         </div>
       )}
-
       {/* Add / Edit Student Modal */}
       {showModal && (
         <div
@@ -2177,15 +2074,316 @@ export default function StudentsPage() {
     </div>
 
       <style jsx global>{`
+        .id-card-print-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 85.6mm);
+          gap: 8mm;
+          justify-content: center;
+          align-items: start;
+        }
+
+        .student-id-card {
+          position: relative;
+          width: 85.6mm;
+          height: 54mm;
+          overflow: hidden;
+          border: 1px solid #dbe4e8;
+          border-radius: 4mm;
+          background: #ffffff;
+          box-shadow: 0 8px 24px rgba(15, 118, 110, 0.08);
+          color: #0f172a;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .id-card-topbar {
+          height: 2.2mm;
+          flex: 0 0 auto;
+          background: linear-gradient(90deg, #0f766e 0 78%, #f59e0b 78% 100%);
+        }
+
+        .id-card-main {
+          padding: 2.8mm 3.2mm 2.4mm;
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow: hidden;
+        }
+
+        .id-card-brand {
+          display: flex;
+          align-items: center;
+          gap: 2.2mm;
+        }
+
+        .id-card-logo {
+          width: 9.5mm;
+          height: 9.5mm;
+          border-radius: 1.6mm;
+          object-fit: contain;
+          background: #fff;
+          flex: 0 0 auto;
+        }
+
+        .id-card-institute {
+          margin: 0;
+          font-size: 10.5px;
+          line-height: 1.05;
+          font-weight: 900;
+          letter-spacing: 0.05em;
+          color: #0f766e;
+        }
+
+        .id-card-subtitle,
+        .id-card-label {
+          margin: 0;
+          font-size: 5.8px;
+          line-height: 1.15;
+          font-weight: 800;
+          letter-spacing: 0.10em;
+          text-transform: uppercase;
+          color: #94a3b8;
+        }
+
+        .id-card-subtitle {
+          margin-top: 1mm;
+          color: #64748b;
+        }
+
+        .id-card-front-body {
+          display: grid;
+          grid-template-columns: 20mm minmax(0, 1fr);
+          gap: 2.8mm;
+          margin-top: 2.4mm;
+        }
+
+        .id-card-photo {
+          width: 20mm;
+          height: 23.5mm;
+          border: 0.55mm solid #0f766e;
+          border-radius: 2.4mm;
+          overflow: hidden;
+          background: #f0fdfa;
+        }
+
+        .id-card-initials {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 17px;
+          font-weight: 900;
+          color: #0f766e;
+        }
+
+        .id-card-front-info {
+          min-width: 0;
+        }
+
+        .id-card-name {
+          margin: 0.6mm 0 1.8mm;
+          font-size: 12px;
+          line-height: 1.05;
+          font-weight: 900;
+          color: #0f172a;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .id-card-meta-grid,
+        .id-card-back-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5mm 2.2mm;
+        }
+
+        .id-card-value {
+          margin: 0.4mm 0 0;
+          font-size: 7.2px;
+          line-height: 1.1;
+          font-weight: 800;
+          color: #334155;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .id-card-green {
+          color: #0f766e;
+        }
+
+        .id-card-contact-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 2.2mm;
+          margin-top: 2.1mm;
+          padding: 1.6mm 2mm;
+          border-radius: 1.8mm;
+          background: #f0fdfa;
+        }
+
+        .id-card-contact-row div {
+          min-width: 0;
+        }
+
+        .id-card-contact-row strong {
+          display: block;
+          margin-top: 0.6mm;
+          font-size: 7px;
+          line-height: 1.05;
+          font-weight: 800;
+          color: #334155;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .id-card-sign-row {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 2mm;
+          align-items: end;
+          margin-top: 1.9mm;
+        }
+
+        .id-card-sign {
+          border-top: 0.25mm solid #cbd5e1;
+          padding-top: 0.9mm;
+          font-size: 5.6px;
+          font-weight: 800;
+          color: #64748b;
+          text-align: center;
+        }
+
+        .id-card-valid {
+          text-align: right;
+        }
+
+        .id-card-valid strong {
+          display: block;
+          margin-top: 0.5mm;
+          font-size: 5.9px;
+          color: #334155;
+        }
+
+        .id-card-footer {
+          padding: 1.35mm 3.2mm 1.7mm;
+          border-top: 1px solid #e2e8f0;
+          background: #f8fafc;
+          font-size: 5.4px;
+          line-height: 1.2;
+          color: #64748b;
+          text-align: center;
+          flex: 0 0 8.4mm;
+        }
+
+        .id-card-footer b {
+          display: block;
+          margin-top: 0.5mm;
+          color: #0f766e;
+          font-weight: 900;
+        }
+
+        .id-card-back-main {
+          padding-top: 2.6mm;
+        }
+
+        .id-card-back-title {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 2mm;
+          padding-bottom: 1.6mm;
+          border-bottom: 0.25mm solid #e2e8f0;
+          font-size: 6.4px;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          color: #0f766e;
+        }
+
+        .id-card-address {
+          margin-top: 1.8mm;
+          padding: 1.5mm 1.8mm;
+          border: 0.25mm solid #e2e8f0;
+          border-radius: 1.6mm;
+        }
+
+        .id-card-address p:last-child {
+          margin: 0.6mm 0 0;
+          font-size: 6.7px;
+          line-height: 1.2;
+          font-weight: 700;
+          color: #475569;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .id-card-verify {
+          margin-top: 1.8mm;
+          padding: 1.6mm 2mm;
+          border: 0.3mm dashed rgba(15, 118, 110, 0.4);
+          border-radius: 1.8mm;
+          background: #f8fffd;
+          text-align: center;
+        }
+
+        .id-card-verify strong {
+          display: block;
+          margin-top: 0.7mm;
+          font-size: 11px;
+          line-height: 1;
+          font-weight: 950;
+          letter-spacing: 0.16em;
+          color: #0f172a;
+        }
+
+        .id-card-verify span {
+          display: block;
+          margin-top: 0.7mm;
+          font-size: 5.5px;
+          line-height: 1.15;
+          color: #64748b;
+        }
+
+        .id-card-note {
+          margin-top: 1.5mm;
+          font-size: 5.5px;
+          line-height: 1.25;
+          color: #64748b;
+        }
+
+        .id-card-signatures {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 5mm;
+          margin-top: 2.4mm;
+        }
+
+        .id-card-signatures span {
+          border-top: 0.25mm solid #cbd5e1;
+          padding-top: 0.9mm;
+          font-size: 5.5px;
+          font-weight: 800;
+          color: #64748b;
+          text-align: center;
+        }
+
         @media print {
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 12mm;
           }
 
           html,
           body {
             background: #fff !important;
+          }
+
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
 
           body * {
@@ -2200,8 +2398,11 @@ export default function StudentsPage() {
           .print-id-card-overlay {
             position: static !important;
             inset: auto !important;
-            background: #fff !important;
+            display: block !important;
+            width: auto !important;
+            height: auto !important;
             padding: 0 !important;
+            background: #fff !important;
           }
 
           .print-id-card-overlay .modal-box {
@@ -2209,30 +2410,41 @@ export default function StudentsPage() {
             max-width: none !important;
             margin: 0 !important;
             padding: 0 !important;
-            box-shadow: none !important;
+            border: 0 !important;
             border-radius: 0 !important;
+            box-shadow: none !important;
             overflow: visible !important;
+          }
+
+          .print-id-card-overlay .modal-body {
+            padding: 0 !important;
           }
 
           .id-card-print-grid {
             display: grid !important;
-            grid-template-columns: repeat(2, 86mm) !important;
-            gap: 6mm !important;
-            align-items: start !important;
+            grid-template-columns: repeat(2, 85.6mm) !important;
+            gap: 8mm !important;
             justify-content: center !important;
+            align-items: start !important;
           }
 
           .student-id-card {
-            width: 86mm !important;
-            min-height: 54mm !important;
+            width: 85.6mm !important;
             height: 54mm !important;
+            min-height: 54mm !important;
+            max-height: 54mm !important;
             margin: 0 !important;
             box-shadow: none !important;
-            border: 1px solid #e2e8f0 !important;
-            border-radius: 5mm !important;
+            border: 0.25mm solid #dbe4e8 !important;
+            border-radius: 4mm !important;
             overflow: hidden !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
+          }
+
+          .id-card-print-grid > .student-id-card:nth-child(n + 3) {
+            break-before: page;
+            page-break-before: always;
           }
         }
       `}</style>
