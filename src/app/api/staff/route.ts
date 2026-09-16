@@ -252,7 +252,7 @@ export async function POST(request: Request) {
           role,
           username: loginEmail,
           loginEmail,
-          loginUrl: "/login",
+          loginUrl: "/",
           temporaryPassword,
         },
       },
