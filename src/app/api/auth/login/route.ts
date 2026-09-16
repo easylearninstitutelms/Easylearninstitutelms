@@ -3,9 +3,13 @@ import { users, institutes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
-function hashPassword(password: string): string {
-  return crypto.createHash("sha256").update(password + "easylearn_salt").digest("hex");
+function hashLegacyPassword(password: string): string {
+  return crypto
+    .createHash("sha256")
+    .update(password + "easylearn_salt")
+    .digest("hex");
 }
 
 export async function POST(request: Request) {
@@ -14,29 +18,64 @@ export async function POST(request: Request) {
     const { email, password } = body;
 
     if (!email || !password) {
-      return Response.json({ error: "Email and password required" }, { status: 400 });
+      return Response.json(
+        { error: "Email and password required" },
+        { status: 400 }
+      );
     }
+
+    const loginEmail = email.toLowerCase().trim();
 
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.email, email.toLowerCase().trim()))
+      .where(eq(users.email, loginEmail))
       .limit(1);
 
     if (!user) {
-      return Response.json({ error: "Invalid credentials" }, { status: 401 });
+      return Response.json(
+        { error: "Invalid credentials" },
+        { status: 401 }
+      );
     }
 
-    const hashedPassword = hashPassword(password);
-    if (user.passwordHash !== hashedPassword) {
-      return Response.json({ error: "Invalid credentials" }, { status: 401 });
+    /*
+     * New staff/teacher accounts use bcrypt.
+     * Older accounts may still use the legacy SHA-256 hash.
+     * Support both so existing users do not break.
+     */
+    let passwordValid = false;
+
+    try {
+      passwordValid = await bcrypt.compare(
+        password,
+        user.passwordHash
+      );
+    } catch {
+      passwordValid = false;
+    }
+
+    if (!passwordValid) {
+      const legacyHash = hashLegacyPassword(password);
+      passwordValid = user.passwordHash === legacyHash;
+    }
+
+    if (!passwordValid) {
+      return Response.json(
+        { error: "Invalid credentials" },
+        { status: 401 }
+      );
     }
 
     if (user.status !== "ACTIVE") {
-      return Response.json({ error: "Account is not active" }, { status: 403 });
+      return Response.json(
+        { error: "Account is not active" },
+        { status: 403 }
+      );
     }
 
     let institute = null;
+
     if (user.instituteId) {
       [institute] = await db
         .select()
@@ -56,13 +95,18 @@ export async function POST(request: Request) {
     };
 
     const cookieStore = await cookies();
-    cookieStore.set("session", JSON.stringify(sessionData), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
+
+    cookieStore.set(
+      "session",
+      JSON.stringify(sessionData),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+      }
+    );
 
     return Response.json({
       success: true,
@@ -70,6 +114,10 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Login error:", error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+
+    return Response.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
