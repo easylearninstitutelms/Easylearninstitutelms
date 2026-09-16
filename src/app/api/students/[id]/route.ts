@@ -7,17 +7,42 @@ import {
   attendance,
   fees,
   payments,
+  staff,
 } from "@/db/schema";
 import {
   eq,
   and,
   desc,
 } from "drizzle-orm";
-import { getSession } from "@/lib/session";
+import {
+  getSession,
+  requireRoles,
+} from "@/lib/session";
 
 const MAX_PHOTO_CHARS = 5_000_000;
 
-function cleanText(value: unknown) {
+const STUDENT_VIEW_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "MANAGER",
+  "TEACHER",
+  "RECEPTIONIST",
+];
+
+const STUDENT_EDIT_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "MANAGER",
+  "RECEPTIONIST",
+];
+
+const STUDENT_DELETE_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "MANAGER",
+];
+
+function cleanText(value: unknown): string {
   return typeof value === "string"
     ? value.trim()
     : "";
@@ -53,6 +78,81 @@ function validGender(value: unknown) {
   return null;
 }
 
+async function getTeacherId(
+  instituteId: string,
+  userId: string,
+) {
+  const [teacher] = await db
+    .select({
+      id: staff.id,
+    })
+    .from(staff)
+    .where(
+      and(
+        eq(staff.userId, userId),
+        eq(staff.instituteId, instituteId),
+      ),
+    )
+    .limit(1);
+
+  return teacher?.id ?? null;
+}
+
+async function teacherCanAccessStudent(
+  studentId: string,
+  instituteId: string,
+  userId: string,
+) {
+  const teacherId = await getTeacherId(
+    instituteId,
+    userId,
+  );
+
+  if (!teacherId) {
+    return false;
+  }
+
+  const [access] = await db
+    .select({
+      enrollmentId: enrollments.id,
+    })
+    .from(enrollments)
+    .innerJoin(
+      batches,
+      eq(
+        enrollments.batchId,
+        batches.id,
+      ),
+    )
+    .where(
+      and(
+        eq(
+          enrollments.studentId,
+          studentId,
+        ),
+        eq(
+          enrollments.instituteId,
+          instituteId,
+        ),
+        eq(
+          enrollments.status,
+          "ACTIVE",
+        ),
+        eq(
+          batches.instituteId,
+          instituteId,
+        ),
+        eq(
+          batches.teacherId,
+          teacherId,
+        ),
+      ),
+    )
+    .limit(1);
+
+  return Boolean(access);
+}
+
 export async function GET(
   request: Request,
   {
@@ -61,145 +161,186 @@ export async function GET(
     params: Promise<{
       id: string;
     }>;
-  }
+  },
 ) {
   const session = await getSession();
 
   if (!session?.instituteId) {
     return Response.json(
       { error: "Unauthorized" },
-      { status: 401 }
+      { status: 401 },
     );
+  }
+
+  const permissionError = requireRoles(
+    session,
+    STUDENT_VIEW_ROLES,
+  );
+
+  if (permissionError) {
+    return permissionError;
   }
 
   const { id } = await params;
+  const instituteId = session.instituteId;
 
-  const [student] = await db
-    .select()
-    .from(students)
-    .where(
-      and(
-        eq(students.id, id),
-        eq(
-          students.instituteId,
-          session.instituteId
-        )
-      )
-    )
-    .limit(1);
+  if (session.role === "TEACHER") {
+    const allowed =
+      await teacherCanAccessStudent(
+        id,
+        instituteId,
+        session.userId,
+      );
 
-  if (!student) {
-    return Response.json(
-      { error: "Not found" },
-      { status: 404 }
-    );
+    if (!allowed) {
+      return Response.json(
+        { error: "Not found" },
+        { status: 404 },
+      );
+    }
   }
 
-  const studentEnrollments =
-    await db
-      .select({
-        enrollment: enrollments,
-        batch: batches,
-        course: courses,
-      })
-      .from(enrollments)
-      .leftJoin(
-        batches,
-        eq(
-          enrollments.batchId,
-          batches.id
-        )
-      )
-      .leftJoin(
-        courses,
-        eq(
-          batches.courseId,
-          courses.id
-        )
-      )
-      .where(
-        and(
-          eq(
-            enrollments.studentId,
-            id
-          ),
-          eq(
-            enrollments.instituteId,
-            session.instituteId
-          )
-        )
-      );
-
-  const recentAttendance =
-    await db
+  try {
+    const [student] = await db
       .select()
-      .from(attendance)
+      .from(students)
       .where(
         and(
+          eq(students.id, id),
           eq(
-            attendance.studentId,
-            id
+            students.instituteId,
+            instituteId,
           ),
-          eq(
-            attendance.instituteId,
-            session.instituteId
-          )
-        )
+        ),
       )
-      .orderBy(
-        desc(attendance.date)
-      )
-      .limit(10);
+      .limit(1);
 
-  const studentFees =
-    await db
-      .select()
-      .from(fees)
-      .where(
-        and(
-          eq(
-            fees.studentId,
-            id
-          ),
-          eq(
-            fees.instituteId,
-            session.instituteId
-          )
-        )
-      )
-      .orderBy(
-        desc(fees.createdAt)
+    if (!student) {
+      return Response.json(
+        { error: "Not found" },
+        { status: 404 },
       );
+    }
 
-  const studentPayments =
-    await db
-      .select()
-      .from(payments)
-      .where(
-        and(
+    const studentEnrollments =
+      await db
+        .select({
+          enrollment: enrollments,
+          batch: batches,
+          course: courses,
+        })
+        .from(enrollments)
+        .leftJoin(
+          batches,
           eq(
-            payments.studentId,
-            id
+            enrollments.batchId,
+            batches.id,
           ),
-          eq(
-            payments.instituteId,
-            session.instituteId
-          )
         )
-      )
-      .orderBy(
-        desc(payments.paidAt)
-      );
+        .leftJoin(
+          courses,
+          eq(
+            batches.courseId,
+            courses.id,
+          ),
+        )
+        .where(
+          and(
+            eq(
+              enrollments.studentId,
+              id,
+            ),
+            eq(
+              enrollments.instituteId,
+              instituteId,
+            ),
+          ),
+        );
 
-  return Response.json({
-    student,
-    enrollments:
-      studentEnrollments,
-    attendance:
-      recentAttendance,
-    fees: studentFees,
-    payments: studentPayments,
-  });
+    const recentAttendance =
+      await db
+        .select()
+        .from(attendance)
+        .where(
+          and(
+            eq(
+              attendance.studentId,
+              id,
+            ),
+            eq(
+              attendance.instituteId,
+              instituteId,
+            ),
+          ),
+        )
+        .orderBy(
+          desc(attendance.date),
+        )
+        .limit(10);
+
+    const studentFees =
+      await db
+        .select()
+        .from(fees)
+        .where(
+          and(
+            eq(
+              fees.studentId,
+              id,
+            ),
+            eq(
+              fees.instituteId,
+              instituteId,
+            ),
+          ),
+        )
+        .orderBy(
+          desc(fees.createdAt),
+        );
+
+    const studentPayments =
+      await db
+        .select()
+        .from(payments)
+        .where(
+          and(
+            eq(
+              payments.studentId,
+              id,
+            ),
+            eq(
+              payments.instituteId,
+              instituteId,
+            ),
+          ),
+        )
+        .orderBy(
+          desc(payments.paidAt),
+        );
+
+    return Response.json({
+      student,
+      enrollments:
+        studentEnrollments,
+      attendance:
+        recentAttendance,
+      fees: studentFees,
+      payments: studentPayments,
+    });
+  } catch (error) {
+    console.error(
+      "GET /api/students/[id] error:",
+      error,
+    );
+
+    return Response.json(
+      {
+        error:
+          "Failed to load student",
+      },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PATCH(
@@ -210,30 +351,28 @@ export async function PATCH(
     params: Promise<{
       id: string;
     }>;
-  }
+  },
 ) {
   const session = await getSession();
 
   if (!session?.instituteId) {
     return Response.json(
       { error: "Unauthorized" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
-  if (
-    session.role !==
-      "INSTITUTE_ADMIN" &&
-    session.role !==
-      "SUPER_ADMIN"
-  ) {
-    return Response.json(
-      { error: "Forbidden" },
-      { status: 403 }
-    );
+  const permissionError = requireRoles(
+    session,
+    STUDENT_EDIT_ROLES,
+  );
+
+  if (permissionError) {
+    return permissionError;
   }
 
   const { id } = await params;
+  const instituteId = session.instituteId;
 
   try {
     const body =
@@ -248,9 +387,9 @@ export async function PATCH(
             eq(students.id, id),
             eq(
               students.instituteId,
-              session.instituteId
-            )
-          )
+              instituteId,
+            ),
+          ),
         )
         .limit(1);
 
@@ -260,7 +399,7 @@ export async function PATCH(
           error:
             "Student not found",
         },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -269,7 +408,7 @@ export async function PATCH(
 
     const admissionDate =
       cleanText(
-        body.admissionDate
+        body.admissionDate,
       );
 
     if (
@@ -281,7 +420,7 @@ export async function PATCH(
           error:
             "Name and admission date are required",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -293,12 +432,12 @@ export async function PATCH(
     if (
       Object.prototype.hasOwnProperty.call(
         body,
-        "photoUrl"
+        "photoUrl",
       )
     ) {
       cleanedPhoto =
         sanitizePhoto(
-          body.photoUrl
+          body.photoUrl,
         );
 
       if (
@@ -310,7 +449,7 @@ export async function PATCH(
             error:
               "Invalid student photo. Please choose a JPG, PNG, or WEBP image up to 2 MB.",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -322,32 +461,32 @@ export async function PATCH(
 
       phone:
         cleanText(
-          body.phone
+          body.phone,
         ) || null,
 
       guardianName:
         cleanText(
-          body.guardianName
+          body.guardianName,
         ) || null,
 
       guardianPhone:
         cleanText(
-          body.guardianPhone
+          body.guardianPhone,
         ) || null,
 
       address:
         cleanText(
-          body.address
+          body.address,
         ) || null,
 
       dob:
         cleanText(
-          body.dob
+          body.dob,
         ) || null,
 
       gender:
         validGender(
-          body.gender
+          body.gender,
         ),
 
       admissionDate,
@@ -356,13 +495,6 @@ export async function PATCH(
         new Date(),
     };
 
-    /*
-     * Photo handling:
-     *
-     * - photoUrl provided with data URL -> update photo
-     * - photoUrl provided as empty string/null -> remove photo
-     * - photoUrl not provided -> keep existing photo
-     */
     if (
       cleanedPhoto !==
       undefined
@@ -380,9 +512,9 @@ export async function PATCH(
             eq(students.id, id),
             eq(
               students.instituteId,
-              session.instituteId
-            )
-          )
+              instituteId,
+            ),
+          ),
         )
         .returning();
 
@@ -392,33 +524,19 @@ export async function PATCH(
           error:
             "Student could not be updated",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    /*
-     * Batch update.
-     *
-     * If batchId is present:
-     * - validate batch belongs to this institute
-     * - update existing active enrollment
-     * - otherwise create a new enrollment
-     *
-     * If batchId is empty:
-     * - do not modify existing enrollment
-     *
-     * This keeps the existing student's batch safe
-     * when the edit form doesn't send batchId.
-     */
     if (
       Object.prototype.hasOwnProperty.call(
         body,
-        "batchId"
+        "batchId",
       )
     ) {
       const batchId =
         cleanText(
-          body.batchId
+          body.batchId,
         );
 
       if (batchId) {
@@ -432,13 +550,13 @@ export async function PATCH(
               and(
                 eq(
                   batches.id,
-                  batchId
+                  batchId,
                 ),
                 eq(
                   batches.instituteId,
-                  session.instituteId
-                )
-              )
+                  instituteId,
+                ),
+              ),
             )
             .limit(1);
 
@@ -448,7 +566,7 @@ export async function PATCH(
               error:
                 "Invalid batch",
             },
-            { status: 400 }
+            { status: 400 },
           );
         }
 
@@ -462,17 +580,17 @@ export async function PATCH(
               and(
                 eq(
                   enrollments.studentId,
-                  id
+                  id,
                 ),
                 eq(
                   enrollments.instituteId,
-                  session.instituteId
+                  instituteId,
                 ),
                 eq(
                   enrollments.status,
-                  "ACTIVE"
-                )
-              )
+                  "ACTIVE",
+                ),
+              ),
             )
             .limit(1);
 
@@ -491,23 +609,18 @@ export async function PATCH(
               eq(
                 enrollments.id,
                 activeEnrollment[0]
-                  .id
-              )
+                  .id,
+              ),
             );
         } else {
           await db
             .insert(enrollments)
             .values({
-              instituteId:
-                session.instituteId,
-
+              instituteId,
               studentId: id,
-
               batchId,
-
               enrollmentDate:
                 admissionDate,
-
               status: "ACTIVE",
             });
         }
@@ -520,7 +633,7 @@ export async function PATCH(
   } catch (error) {
     console.error(
       "PATCH /api/students/[id] error:",
-      error
+      error,
     );
 
     return Response.json(
@@ -528,7 +641,7 @@ export async function PATCH(
         error:
           "Failed to update student",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -541,30 +654,29 @@ export async function DELETE(
     params: Promise<{
       id: string;
     }>;
-  }
+  },
 ) {
   const session = await getSession();
 
   if (!session?.instituteId) {
     return Response.json(
       { error: "Unauthorized" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
-  if (
-    session.role !==
-      "INSTITUTE_ADMIN" &&
-    session.role !==
-      "SUPER_ADMIN"
-  ) {
-    return Response.json(
-      { error: "Forbidden" },
-      { status: 403 }
-    );
+  const permissionError = requireRoles(
+    session,
+    STUDENT_DELETE_ROLES,
+  );
+
+  if (permissionError) {
+    return permissionError;
   }
 
   const { id } = await params;
+  const instituteId =
+    session.instituteId;
 
   const [updated] =
     await db
@@ -579,9 +691,9 @@ export async function DELETE(
           eq(students.id, id),
           eq(
             students.instituteId,
-            session.instituteId
-          )
-        )
+            instituteId,
+          ),
+        ),
       )
       .returning();
 
@@ -591,7 +703,7 @@ export async function DELETE(
         error:
           "Student not found",
       },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
