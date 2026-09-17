@@ -11,6 +11,7 @@ export function ensureAcademicSchema() {
         institute_id uuid NOT NULL,
         name varchar(255) NOT NULL,
         code varchar(50),
+        programme_no integer,
         description text,
         duration varchar(100),
         status varchar(20) NOT NULL DEFAULT 'ACTIVE',
@@ -19,8 +20,15 @@ export function ensureAcademicSchema() {
         UNIQUE (institute_id, name)
       );
 
+      ALTER TABLE programmes
+        ADD COLUMN IF NOT EXISTS programme_no integer;
+
       CREATE INDEX IF NOT EXISTS programmes_institute_idx
       ON programmes(institute_id);
+
+      CREATE UNIQUE INDEX IF NOT EXISTS programmes_institute_no_idx
+      ON programmes(institute_id, programme_no)
+      WHERE programme_no IS NOT NULL;
 
       CREATE TABLE IF NOT EXISTS programme_semesters (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -45,8 +53,15 @@ export function ensureAcademicSchema() {
       ALTER TABLE batches
         ADD COLUMN IF NOT EXISTS semester_id uuid;
 
+      ALTER TABLE batches
+        ADD COLUMN IF NOT EXISTS batch_no integer;
+
       CREATE INDEX IF NOT EXISTS batches_programme_semester_idx
       ON batches(programme_id, semester_id);
+
+      CREATE UNIQUE INDEX IF NOT EXISTS batches_institute_no_idx
+      ON batches(institute_id, batch_no)
+      WHERE batch_no IS NOT NULL;
 
       ALTER TABLE exams
         ADD COLUMN IF NOT EXISTS programme_id uuid;
