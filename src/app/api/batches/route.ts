@@ -106,8 +106,29 @@ export async function GET() {
       ORDER BY b.created_at DESC
     `);
 
+    const batchRows = rowsOf(result);
+
     return Response.json({
-      batches: rowsOf(result),
+      batches: batchRows.map((row) => ({
+        ...row,
+        batch: {
+          id: row.id,
+          name: row.name,
+          room: row.room ?? null,
+          startDate: row.startDate ?? null,
+          endDate: row.endDate ?? null,
+          fee: row.fee ?? null,
+          status: row.status,
+          batchNo: row.batchNo ?? null,
+          programmeId: row.programmeId ?? null,
+          programmeName: row.programmeName ?? null,
+          programmeCode: row.programmeCode ?? null,
+          programmeNo: row.programmeNo ?? null,
+          semesterId: row.semesterId ?? null,
+          semesterName: row.semesterName ?? null,
+          semesterNo: row.semesterNo ?? null,
+        },
+      })),
       nextBatchNo: await nextBatchNo(session.instituteId),
     });
   } catch (error) {
