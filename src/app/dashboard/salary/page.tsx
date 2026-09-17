@@ -1,6 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, type FormEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  type FormEvent,
+} from "react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 interface Salary {
@@ -79,13 +84,13 @@ function normalizeSalaryRow(row: any): SalaryRow | null {
       row?.staffName ??
         row?.staff?.name ??
         rawSalary.staffName ??
-        "Unknown Staff"
+        "Unknown Staff",
     ),
     designation: String(
       row?.designation ??
         row?.staff?.designation ??
         rawSalary.designation ??
-        "-"
+        "-",
     ),
   };
 }
@@ -114,6 +119,22 @@ export default function SalaryPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  /*
+   * Staff API access is also used as the frontend signal
+   * that the current user can manage salary records.
+   *
+   * Teacher:
+   *   /api/staff -> 403
+   *   => salary remains visible, but Pay Salary is hidden.
+   *
+   * Manager/Admin:
+   *   /api/staff -> success
+   *   => salary management controls are enabled.
+   *
+   * The real security is still enforced by /api/salaries.
+   */
+  const [canManageSalary, setCanManageSalary] = useState(false);
+
   const [selectedMonth, setSelectedMonth] =
     useState(getCurrentMonth());
 
@@ -131,50 +152,87 @@ export default function SalaryPage() {
     try {
       setLoading(true);
       setError("");
+      setCanManageSalary(false);
+      setStaffList([]);
 
-      const [salRes, staffRes] = await Promise.all([
-        fetch(
-          `/api/salaries?month=${encodeURIComponent(
-            selectedMonth
-          )}`,
-          {
-            cache: "no-store",
-          }
-        ),
-        fetch("/api/staff?status=ACTIVE", {
+      /*
+       * Salary data must load independently from staff-management
+       * permission. Previously both requests were inside Promise.all(),
+       * so a 403 from /api/staff broke the whole Salary page.
+       */
+      const salRes = await fetch(
+        `/api/salaries?month=${encodeURIComponent(selectedMonth)}`,
+        {
           cache: "no-store",
-        }),
-      ]);
+        },
+      );
 
-      const [salData, staffData] = await Promise.all([
-        salRes.json(),
-        staffRes.json(),
-      ]);
+      const salData = await salRes.json();
 
       if (!salRes.ok) {
         throw new Error(
-          salData.error || "Failed to load salary records."
-        );
-      }
-
-      if (!staffRes.ok) {
-        throw new Error(
-          staffData.error || "Failed to load staff members."
+          salData.error || "Failed to load salary records.",
         );
       }
 
       setSalaries(normalizeSalaryRows(salData));
 
-      setStaffList(
-        Array.isArray(staffData?.staff)
-          ? staffData.staff
-          : []
-      );
+      /*
+       * Staff list is needed only to create/process a salary.
+       * A Teacher may legitimately receive 403 here, so that
+       * response is intentionally NOT treated as a page error.
+       */
+      try {
+        const staffRes = await fetch(
+          "/api/staff?status=ACTIVE",
+          {
+            cache: "no-store",
+          },
+        );
+
+        const staffData = await staffRes.json();
+
+        if (staffRes.ok) {
+          setStaffList(
+            Array.isArray(staffData?.staff)
+              ? staffData.staff
+              : [],
+          );
+
+          setCanManageSalary(true);
+        } else {
+          /*
+           * 401/403 means the user can view salary but cannot
+           * use staff-management data from this page.
+           *
+           * Keep Salary page working.
+           */
+          setStaffList([]);
+          setCanManageSalary(false);
+
+          /*
+           * For unexpected staff API failures (500 etc.),
+           * keep salary visible but show a small useful message.
+           */
+          if (staffRes.status !== 401 && staffRes.status !== 403) {
+            setError(
+              staffData.error ||
+                "Salary records loaded, but staff list could not be loaded.",
+            );
+          }
+        }
+      } catch {
+        /*
+         * Network failure on staff API should not hide salary data.
+         */
+        setStaffList([]);
+        setCanManageSalary(false);
+      }
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to load salary information."
+          : "Failed to load salary information.",
       );
     } finally {
       setLoading(false);
@@ -198,6 +256,10 @@ export default function SalaryPage() {
   }
 
   function openModal() {
+    if (!canManageSalary) {
+      return;
+    }
+
     setError("");
     setSuccess("");
 
@@ -219,7 +281,7 @@ export default function SalaryPage() {
 
   function handleStaffSelect(staffId: string) {
     const staff = staffList.find(
-      (item) => item.id === staffId
+      (item) => item.id === staffId,
     );
 
     setForm((prev) => ({
@@ -241,9 +303,16 @@ export default function SalaryPage() {
   }
 
   async function handleSubmit(
-    e: FormEvent<HTMLFormElement>
+    e: FormEvent<HTMLFormElement>,
   ) {
     e.preventDefault();
+
+    if (!canManageSalary) {
+      setError(
+        "You do not have permission to process salary.",
+      );
+      return;
+    }
 
     setSubmitting(true);
     setError("");
@@ -267,7 +336,7 @@ export default function SalaryPage() {
 
     if (basic <= 0) {
       setError(
-        "Basic salary must be greater than 0."
+        "Basic salary must be greater than 0.",
       );
       setSubmitting(false);
       return;
@@ -289,7 +358,7 @@ export default function SalaryPage() {
 
     if (payable <= 0) {
       setError(
-        "Payable salary must be greater than 0."
+        "Payable salary must be greater than 0.",
       );
       setSubmitting(false);
       return;
@@ -313,14 +382,14 @@ export default function SalaryPage() {
 
       if (!res.ok) {
         throw new Error(
-          data.error || "Failed to process salary."
+          data.error || "Failed to process salary.",
         );
       }
 
       setShowModal(false);
 
       setSuccess(
-        "Salary processed successfully."
+        "Salary processed successfully.",
       );
 
       resetForm();
@@ -330,7 +399,7 @@ export default function SalaryPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to process salary."
+          : "Failed to process salary.",
       );
     } finally {
       setSubmitting(false);
@@ -340,31 +409,31 @@ export default function SalaryPage() {
   const totalPayable = salaries.reduce(
     (sum, row) =>
       sum + toNumber(row.salary.payable),
-    0
+    0,
   );
 
   const totalPaid = salaries.reduce(
     (sum, row) =>
       sum + toNumber(row.salary.paid),
-    0
+    0,
   );
 
   const totalDue = salaries.reduce(
     (sum, row) =>
       sum + toNumber(row.salary.due),
-    0
+    0,
   );
 
   const totalBonus = salaries.reduce(
     (sum, row) =>
       sum + toNumber(row.salary.bonus),
-    0
+    0,
   );
 
   const totalDeduction = salaries.reduce(
     (sum, row) =>
       sum + toNumber(row.salary.deduction),
-    0
+    0,
   );
 
   return (
@@ -389,27 +458,29 @@ export default function SalaryPage() {
             }
           />
 
-          <button
-            type="button"
-            onClick={openModal}
-            className="btn btn-primary"
-          >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          {canManageSalary && (
+            <button
+              type="button"
+              onClick={openModal}
+              className="btn btn-primary"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
 
-            Pay Salary
-          </button>
+              Pay Salary
+            </button>
+          )}
         </div>
       </div>
 
@@ -548,18 +619,26 @@ export default function SalaryPage() {
               No salary records for {selectedMonth}
             </p>
 
-            <p className="mt-1 text-sm text-slate-400">
-              Click &quot;Pay Salary&quot; to create a
-              salary record.
-            </p>
+            {canManageSalary ? (
+              <>
+                <p className="mt-1 text-sm text-slate-400">
+                  Click &quot;Pay Salary&quot; to create a
+                  salary record.
+                </p>
 
-            <button
-              type="button"
-              onClick={openModal}
-              className="btn btn-primary btn-sm mt-4"
-            >
-              Pay Salary
-            </button>
+                <button
+                  type="button"
+                  onClick={openModal}
+                  className="btn btn-primary btn-sm mt-4"
+                >
+                  Pay Salary
+                </button>
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-slate-400">
+                No salary record is available for this month.
+              </p>
+            )}
           </div>
         ) : (
           <div className="table-wrapper">
@@ -602,31 +681,31 @@ export default function SalaryPage() {
 
                     <td>
                       {formatCurrency(
-                        row.salary.basic
+                        row.salary.basic,
                       )}
                     </td>
 
                     <td className="text-green-600">
                       {formatCurrency(
-                        row.salary.bonus
+                        row.salary.bonus,
                       )}
                     </td>
 
                     <td className="text-red-600">
                       {formatCurrency(
-                        row.salary.deduction
+                        row.salary.deduction,
                       )}
                     </td>
 
                     <td className="font-bold text-slate-700">
                       {formatCurrency(
-                        row.salary.payable
+                        row.salary.payable,
                       )}
                     </td>
 
                     <td className="font-bold text-green-600">
                       {formatCurrency(
-                        row.salary.paid
+                        row.salary.paid,
                       )}
                     </td>
 
@@ -638,7 +717,7 @@ export default function SalaryPage() {
                       }`}
                     >
                       {formatCurrency(
-                        row.salary.due
+                        row.salary.due,
                       )}
                     </td>
 
@@ -651,7 +730,7 @@ export default function SalaryPage() {
                     <td className="text-slate-500">
                       {row.salary.paymentDate
                         ? formatDate(
-                            row.salary.paymentDate
+                            row.salary.paymentDate,
                           )
                         : "—"}
                     </td>
@@ -663,7 +742,7 @@ export default function SalaryPage() {
         )}
       </div>
 
-      {showModal && (
+      {showModal && canManageSalary && (
         <div
           className="modal-overlay"
           onClick={(e) => {
@@ -717,7 +796,7 @@ export default function SalaryPage() {
                       value={form.staffId}
                       onChange={(e) =>
                         handleStaffSelect(
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       required
@@ -870,7 +949,7 @@ export default function SalaryPage() {
                           >
                             {method.label}
                           </option>
-                        )
+                        ),
                       )}
                     </select>
                   </div>
@@ -890,7 +969,7 @@ export default function SalaryPage() {
 
                         <span className="font-semibold text-slate-700">
                           {formatCurrency(
-                            toNumber(form.basic)
+                            toNumber(form.basic),
                           )}
                         </span>
                       </div>
@@ -902,7 +981,7 @@ export default function SalaryPage() {
 
                         <span className="font-semibold text-green-600">
                           {formatCurrency(
-                            toNumber(form.bonus)
+                            toNumber(form.bonus),
                           )}
                         </span>
                       </div>
@@ -915,8 +994,8 @@ export default function SalaryPage() {
                         <span className="font-semibold text-red-600">
                           {formatCurrency(
                             toNumber(
-                              form.deduction
-                            )
+                              form.deduction,
+                            ),
                           )}
                         </span>
                       </div>
@@ -931,15 +1010,15 @@ export default function SalaryPage() {
                             Math.max(
                               0,
                               toNumber(
-                                form.basic
+                                form.basic,
                               ) +
                                 toNumber(
-                                  form.bonus
+                                  form.bonus,
                                 ) -
                                 toNumber(
-                                  form.deduction
-                                )
-                            )
+                                  form.deduction,
+                                ),
+                            ),
                           )}
                         </span>
                       </div>
@@ -960,7 +1039,11 @@ export default function SalaryPage() {
 
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={
+                    submitting ||
+                    !canManageSalary ||
+                    staffList.length === 0
+                  }
                   className="btn btn-primary"
                 >
                   {submitting
