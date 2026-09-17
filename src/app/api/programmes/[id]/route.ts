@@ -1,4 +1,4 @@
-import { db } from "@/db";
+﻿import { db } from "@/db";
 import {
   assignments,
   attendance,
@@ -34,6 +34,8 @@ export async function DELETE(
     );
   }
 
+  const instituteId = session.instituteId;
+
   if (
     !PROGRAMME_DELETE_ROLES.includes(
       session.role,
@@ -61,7 +63,7 @@ export async function DELETE(
           eq(programmes.id, id),
           eq(
             programmes.instituteId,
-            session.instituteId,
+            instituteId,
           ),
         ),
       )
@@ -86,7 +88,7 @@ export async function DELETE(
             ),
             eq(
               batches.instituteId,
-              session.instituteId,
+              instituteId,
             ),
           ),
         );
@@ -102,7 +104,7 @@ export async function DELETE(
           and(
             eq(
               exams.instituteId,
-              session.instituteId,
+              instituteId,
             ),
             eq(
               exams.programmeId,
@@ -123,7 +125,7 @@ export async function DELETE(
             and(
               eq(
                 exams.instituteId,
-                session.instituteId,
+                instituteId,
               ),
               inArray(
                 exams.batchId,
@@ -172,7 +174,7 @@ export async function DELETE(
             and(
               eq(
                 homework.instituteId,
-                session.instituteId,
+                instituteId,
               ),
               inArray(
                 homework.batchId,
@@ -187,7 +189,7 @@ export async function DELETE(
             and(
               eq(
                 assignments.instituteId,
-                session.instituteId,
+                instituteId,
               ),
               inArray(
                 assignments.batchId,
@@ -202,7 +204,7 @@ export async function DELETE(
             and(
               eq(
                 routines.instituteId,
-                session.instituteId,
+                instituteId,
               ),
               inArray(
                 routines.batchId,
@@ -217,7 +219,7 @@ export async function DELETE(
             and(
               eq(
                 attendance.instituteId,
-                session.instituteId,
+                instituteId,
               ),
               inArray(
                 attendance.batchId,
@@ -232,7 +234,7 @@ export async function DELETE(
             and(
               eq(
                 enrollments.instituteId,
-                session.instituteId,
+                instituteId,
               ),
               inArray(
                 enrollments.batchId,
@@ -247,7 +249,7 @@ export async function DELETE(
             and(
               eq(
                 batches.instituteId,
-                session.instituteId,
+                instituteId,
               ),
               inArray(
                 batches.id,
@@ -267,7 +269,7 @@ export async function DELETE(
             ),
             eq(
               programmeSemesters.instituteId,
-              session.instituteId,
+              instituteId,
             ),
           ),
         );
@@ -279,7 +281,7 @@ export async function DELETE(
             eq(programmes.id, id),
             eq(
               programmes.instituteId,
-              session.instituteId,
+              instituteId,
             ),
           ),
         );

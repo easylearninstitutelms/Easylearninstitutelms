@@ -1,4 +1,4 @@
-import { db } from "@/db";
+﻿import { db } from "@/db";
 import {
   batches,
   enrollments,
@@ -288,6 +288,8 @@ export async function DELETE(
     );
   }
 
+  const instituteId = session.instituteId;
+
   const permissionError = requireRoles(
     session,
     BATCH_MANAGE_ROLES,
@@ -308,7 +310,7 @@ export async function DELETE(
           eq(batches.id, id),
           eq(
             batches.instituteId,
-            session.instituteId,
+            instituteId,
           ),
         ),
       )
@@ -330,7 +332,7 @@ export async function DELETE(
             eq(exams.batchId, id),
             eq(
               exams.instituteId,
-              session.instituteId,
+              instituteId,
             ),
           ),
         );
@@ -372,7 +374,7 @@ export async function DELETE(
             eq(homework.batchId, id),
             eq(
               homework.instituteId,
-              session.instituteId,
+              instituteId,
             ),
           ),
         );
@@ -384,7 +386,7 @@ export async function DELETE(
             eq(assignments.batchId, id),
             eq(
               assignments.instituteId,
-              session.instituteId,
+              instituteId,
             ),
           ),
         );
@@ -396,7 +398,7 @@ export async function DELETE(
             eq(routines.batchId, id),
             eq(
               routines.instituteId,
-              session.instituteId,
+              instituteId,
             ),
           ),
         );
@@ -408,7 +410,7 @@ export async function DELETE(
             eq(attendance.batchId, id),
             eq(
               attendance.instituteId,
-              session.instituteId,
+              instituteId,
             ),
           ),
         );
@@ -420,7 +422,7 @@ export async function DELETE(
             eq(enrollments.batchId, id),
             eq(
               enrollments.instituteId,
-              session.instituteId,
+              instituteId,
             ),
           ),
         );
@@ -432,7 +434,7 @@ export async function DELETE(
             eq(batches.id, id),
             eq(
               batches.instituteId,
-              session.instituteId,
+              instituteId,
             ),
           ),
         );
@@ -459,3 +461,4 @@ export async function DELETE(
     );
   }
 }
+
