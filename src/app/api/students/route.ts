@@ -66,6 +66,29 @@ function generateTemporaryPassword(): string {
   return `EL@${randomBytes(9).toString("base64url")}`;
 }
 
+function suggestProgrammeCode(name: string): string {
+  const words = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const raw = words
+    .map((word) => {
+      const normalized = word.replace(/[^a-zA-Z0-9]/g, "");
+
+      if (!normalized) return "";
+
+      if (/^[A-Z0-9]{2,3}$/.test(normalized)) {
+        return normalized.toUpperCase();
+      }
+
+      return normalized[0].toUpperCase();
+    })
+    .join("");
+
+  return raw.replace(/[^A-Z0-9]/g, "").slice(0, 12) || "PRG";
+}
+
 async function usernameTaken(email: string) {
   const [existing] = await db
     .select({ id: users.id })
@@ -270,7 +293,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Invalid batch" }, { status: 400 });
     }
 
-    const programmeCode = cleanText(batch.programmeCode).toUpperCase();
+    const programmeCode = suggestProgrammeCode(cleanText(batch.programmeName));
     const batchNo = Number(batch.batchNo);
 
     if (!programmeCode || !Number.isInteger(batchNo) || batchNo < 211) {
