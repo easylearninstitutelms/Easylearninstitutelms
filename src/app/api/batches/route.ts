@@ -1,15 +1,21 @@
 import { db } from "@/db";
-import {
-  batches,
-  courses,
-  staff,
-  enrollments,
-} from "@/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
-import {
-  getSession,
-  requireRoles,
-} from "@/lib/session";
+import { sql } from "drizzle-orm";
+import { getSession, requireRoles } from "@/lib/session";
+import { ensureAcademicSchema } from "@/lib/academic";
+
+type Row = Record<string, any>;
+
+function rowsOf(result: unknown): Row[] {
+  if (
+    result &&
+    typeof result === "object" &&
+    "rows" in result &&
+    Array.isArray((result as { rows?: unknown }).rows)
+  ) {
+    return (result as { rows: Row[] }).rows;
+  }
+  return Array.isArray(result) ? (result as Row[]) : [];
+}
 
 const BATCH_VIEW_ROLES = [
   "SUPER_ADMIN",
@@ -24,109 +30,89 @@ const BATCH_MANAGE_ROLES = [
   "MANAGER",
 ];
 
+async function nextBatchNo(instituteId: string) {
+  const result = await db.execute(sql`
+    SELECT COALESCE(MAX(batch_no), 210) + 1 AS next_no
+    FROM batches
+    WHERE institute_id = ${instituteId}
+  `);
+  const rows = rowsOf(result);
+  return Number(rows[0]?.next_no || 211);
+}
+
 export async function GET() {
   const session = await getSession();
 
   if (!session?.instituteId) {
-    return Response.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const permissionError = requireRoles(
-    session,
-    BATCH_VIEW_ROLES,
-  );
-
-  if (permissionError) {
-    return permissionError;
-  }
+  const permissionError = requireRoles(session, BATCH_VIEW_ROLES);
+  if (permissionError) return permissionError;
 
   try {
-    let teacherFilter:
-      | ReturnType<typeof eq>
-      | null = null;
+    await ensureAcademicSchema();
 
-    if (session.role === "TEACHER") {
-      const [teacher] = await db
-        .select({
-          id: staff.id,
-        })
-        .from(staff)
-        .where(
-          and(
-            eq(staff.userId, session.userId),
-            eq(staff.instituteId, session.instituteId),
-          ),
-        )
-        .limit(1);
+    const teacherId =
+      session.role === "TEACHER"
+        ? rowsOf(await db.execute(sql`
+            SELECT id
+            FROM staff
+            WHERE user_id = ${session.userId}
+              AND institute_id = ${session.instituteId}
+            LIMIT 1
+          `))[0]?.id
+        : null;
 
-      if (!teacher) {
-        return Response.json(
-          {
-            error:
-              "Teacher profile is not linked to this account.",
-          },
-          { status: 403 },
-        );
-      }
-
-      teacherFilter = eq(
-        batches.teacherId,
-        teacher.id,
+    if (session.role === "TEACHER" && !teacherId) {
+      return Response.json(
+        { error: "Teacher profile is not linked to this account." },
+        { status: 403 },
       );
     }
 
-    const whereCondition = teacherFilter
-      ? and(
-          eq(
-            batches.instituteId,
-            session.instituteId,
-          ),
-          teacherFilter,
-        )
-      : eq(
-          batches.instituteId,
-          session.instituteId,
-        );
-
-    const rows = await db
-      .select({
-        batch: batches,
-        courseName: courses.name,
-        teacherName: staff.name,
-        studentCount: sql<number>`
-          (
-            SELECT COUNT(*)
-            FROM enrollments
-            WHERE batch_id = ${batches.id}
-              AND status = 'ACTIVE'
-          )
-        `,
-      })
-      .from(batches)
-      .leftJoin(
-        courses,
-        eq(batches.courseId, courses.id),
-      )
-      .leftJoin(
-        staff,
-        eq(batches.teacherId, staff.id),
-      )
-      .where(whereCondition)
-      .orderBy(desc(batches.createdAt));
+    const result = await db.execute(sql`
+      SELECT
+        b.id,
+        b.name,
+        b.room,
+        b.start_date AS "startDate",
+        b.end_date AS "endDate",
+        b.fee,
+        b.status,
+        b.batch_no AS "batchNo",
+        b.programme_id AS "programmeId",
+        b.semester_id AS "semesterId",
+        c.name AS "courseName",
+        s.name AS "teacherName",
+        p.name AS "programmeName",
+        p.code AS "programmeCode",
+        p.programme_no AS "programmeNo",
+        ps.name AS "semesterName",
+        ps.semester_no AS "semesterNo",
+        (
+          SELECT COUNT(*)::int
+          FROM enrollments e
+          WHERE e.batch_id = b.id
+            AND e.status = 'ACTIVE'
+        ) AS "studentCount"
+      FROM batches b
+      LEFT JOIN courses c ON c.id = b.course_id
+      LEFT JOIN staff s ON s.id = b.teacher_id
+      LEFT JOIN programmes p ON p.id = b.programme_id
+      LEFT JOIN programme_semesters ps ON ps.id = b.semester_id
+      WHERE b.institute_id = ${session.instituteId}
+        ${teacherId ? sql`AND b.teacher_id = ${teacherId}` : sql``}
+      ORDER BY b.created_at DESC
+    `);
 
     return Response.json({
-      batches: rows,
+      batches: rowsOf(result),
+      nextBatchNo: await nextBatchNo(session.instituteId),
     });
   } catch (error) {
     console.error("Batches GET error:", error);
-
-    return Response.json(
-      { error: "Failed to load batches" },
-      { status: 500 },
-    );
+    return Response.json({ error: "Failed to load batches" }, { status: 500 });
   }
 }
 
@@ -134,119 +120,162 @@ export async function POST(request: Request) {
   const session = await getSession();
 
   if (!session?.instituteId) {
-    return Response.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const permissionError = requireRoles(
-    session,
-    BATCH_MANAGE_ROLES,
-  );
-
-  if (permissionError) {
-    return permissionError;
-  }
+  const permissionError = requireRoles(session, BATCH_MANAGE_ROLES);
+  if (permissionError) return permissionError;
 
   try {
+    await ensureAcademicSchema();
+
     const body = await request.json();
 
-    const {
-      name,
-      courseId,
-      teacherId,
-      room,
-      startDate,
-      endDate,
-      fee,
-    } = body;
+    const name = String(body.name || "").trim();
+    const courseId = body.courseId || null;
+    const teacherId = body.teacherId || null;
+    const programmeId = body.programmeId || null;
+    const semesterId = body.semesterId || null;
+    const room = String(body.room || "").trim() || null;
+    const startDate = body.startDate || null;
+    const endDate = body.endDate || null;
+    const fee = body.fee === "" || body.fee == null ? null : String(body.fee);
 
-    if (!name || !String(name).trim()) {
+    if (!name) {
+      return Response.json({ error: "Batch name is required" }, { status: 400 });
+    }
+
+    if (!programmeId) {
       return Response.json(
-        { error: "Batch name is required" },
+        { error: "Programme is required for a new batch" },
         { status: 400 },
       );
     }
 
+    const requestedNo = Number(body.batchNo);
+    const batchNo = Number.isInteger(requestedNo)
+      ? requestedNo
+      : await nextBatchNo(session.instituteId);
+
+    if (batchNo < 211) {
+      return Response.json(
+        { error: "Batch number must start from 211." },
+        { status: 400 },
+      );
+    }
+
+    const duplicateNo = rowsOf(await db.execute(sql`
+      SELECT id
+      FROM batches
+      WHERE institute_id = ${session.instituteId}
+        AND batch_no = ${batchNo}
+      LIMIT 1
+    `));
+
+    if (duplicateNo.length > 0) {
+      return Response.json(
+        { error: `Batch number ${batchNo} is already in use.` },
+        { status: 409 },
+      );
+    }
+
+    const programme = rowsOf(await db.execute(sql`
+      SELECT id, name, code, programme_no AS "programmeNo"
+      FROM programmes
+      WHERE id = ${programmeId}
+        AND institute_id = ${session.instituteId}
+      LIMIT 1
+    `))[0];
+
+    if (!programme) {
+      return Response.json({ error: "Invalid programme" }, { status: 400 });
+    }
+
+    if (semesterId) {
+      const semester = rowsOf(await db.execute(sql`
+        SELECT id
+        FROM programme_semesters
+        WHERE id = ${semesterId}
+          AND programme_id = ${programmeId}
+          AND institute_id = ${session.instituteId}
+        LIMIT 1
+      `))[0];
+
+      if (!semester) {
+        return Response.json({ error: "Invalid semester" }, { status: 400 });
+      }
+    }
+
     if (courseId) {
-      const [course] = await db
-        .select({
-          id: courses.id,
-        })
-        .from(courses)
-        .where(
-          and(
-            eq(courses.id, courseId),
-            eq(
-              courses.instituteId,
-              session.instituteId,
-            ),
-          ),
-        )
-        .limit(1);
+      const course = rowsOf(await db.execute(sql`
+        SELECT id
+        FROM courses
+        WHERE id = ${courseId}
+          AND institute_id = ${session.instituteId}
+        LIMIT 1
+      `))[0];
 
       if (!course) {
-        return Response.json(
-          { error: "Invalid course" },
-          { status: 400 },
-        );
+        return Response.json({ error: "Invalid course" }, { status: 400 });
       }
     }
 
     if (teacherId) {
-      const [teacher] = await db
-        .select({
-          id: staff.id,
-        })
-        .from(staff)
-        .where(
-          and(
-            eq(staff.id, teacherId),
-            eq(
-              staff.instituteId,
-              session.instituteId,
-            ),
-          ),
-        )
-        .limit(1);
+      const teacher = rowsOf(await db.execute(sql`
+        SELECT id
+        FROM staff
+        WHERE id = ${teacherId}
+          AND institute_id = ${session.instituteId}
+        LIMIT 1
+      `))[0];
 
       if (!teacher) {
-        return Response.json(
-          { error: "Invalid teacher" },
-          { status: 400 },
-        );
+        return Response.json({ error: "Invalid teacher" }, { status: 400 });
       }
     }
 
-    const [batch] = await db
-      .insert(batches)
-      .values({
-        instituteId: session.instituteId,
-        name: String(name).trim(),
-        courseId: courseId || null,
-        teacherId: teacherId || null,
-        room: room || null,
-        startDate: startDate || null,
-        endDate: endDate || null,
-        fee: fee || null,
-        status: "ACTIVE",
-      })
-      .returning();
+    const created = rowsOf(await db.execute(sql`
+      INSERT INTO batches (
+        institute_id,
+        name,
+        course_id,
+        teacher_id,
+        programme_id,
+        semester_id,
+        batch_no,
+        room,
+        start_date,
+        end_date,
+        fee,
+        status
+      )
+      VALUES (
+        ${session.instituteId},
+        ${name},
+        ${courseId},
+        ${teacherId},
+        ${programmeId},
+        ${semesterId},
+        ${batchNo},
+        ${room},
+        ${startDate},
+        ${endDate},
+        ${fee},
+        'ACTIVE'
+      )
+      RETURNING id, name, batch_no AS "batchNo", programme_id AS "programmeId", semester_id AS "semesterId"
+    `))[0];
 
     return Response.json(
-      { batch },
+      {
+        batch: created,
+        programme,
+        batchNo,
+      },
       { status: 201 },
     );
   } catch (error) {
-    console.error(
-      "Batches POST error:",
-      error,
-    );
-
-    return Response.json(
-      { error: "Failed to create batch" },
-      { status: 500 },
-    );
+    console.error("Batches POST error:", error);
+    return Response.json({ error: "Failed to create batch" }, { status: 500 });
   }
 }
