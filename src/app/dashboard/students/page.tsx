@@ -944,7 +944,7 @@ export default function StudentsPage() {
             0 ? (
             <div className="text-center py-12">
               <div className="text-4xl mb-3">
-                👨‍🎓
+                ðŸ‘¨â€ðŸŽ“
               </div>
 
               <p className="text-slate-500 font-medium">
@@ -1020,7 +1020,7 @@ export default function StudentsPage() {
 
                               <p className="text-xs text-slate-400">
                                 {s.gender ||
-                                  "—"}
+                                  "â€”"}
                               </p>
                             </div>
                           </button>
@@ -1034,14 +1034,14 @@ export default function StudentsPage() {
 
                         <td className="text-slate-500">
                           {s.phone ||
-                            "—"}
+                            "â€”"}
                         </td>
 
                         <td>
                           <div>
                             <p className="text-sm text-slate-600">
                               {s.guardianName ||
-                                "—"}
+                                "â€”"}
                             </p>
 
                             <p className="text-xs text-slate-400">
@@ -1239,7 +1239,7 @@ export default function StudentsPage() {
                       }
                       className="btn btn-ghost btn-sm"
                     >
-                      ✕
+                      âœ•
                     </button>
                   </div>
 
@@ -1352,7 +1352,7 @@ export default function StudentsPage() {
                                     .student
                                     .dob
                                 )
-                              : "—"
+                              : "â€”"
                           }
                         />
 
@@ -1431,7 +1431,7 @@ export default function StudentsPage() {
                                   {item
                                     .course
                                     ?.name ||
-                                    "—"}
+                                    "â€”"}
                                 </p>
 
                                 <p className="text-xs text-slate-400 mt-1">
@@ -1495,7 +1495,7 @@ export default function StudentsPage() {
 
                                     <td className="text-slate-500">
                                       {a.note ||
-                                        "—"}
+                                        "â€”"}
                                     </td>
                                   </tr>
                                 )
@@ -1544,14 +1544,14 @@ export default function StudentsPage() {
                                     </td>
 
                                     <td>
-                                      ৳{" "}
+                                      à§³{" "}
                                       {
                                         fee.amount
                                       }
                                     </td>
 
                                     <td>
-                                      ৳{" "}
+                                      à§³{" "}
                                       {
                                         fee.dueAmount
                                       }
@@ -1611,7 +1611,7 @@ export default function StudentsPage() {
                                     </td>
 
                                     <td>
-                                      ৳{" "}
+                                      à§³{" "}
                                       {
                                         payment.amount
                                       }
@@ -1689,7 +1689,7 @@ export default function StudentsPage() {
                             .student
                             .name
                         }{" "}
-                        ·{" "}
+                        Â·{" "}
                         {
                           idCardStudent
                             .student
@@ -1704,7 +1704,7 @@ export default function StudentsPage() {
                       }
                       className="btn btn-ghost btn-sm"
                     >
-                      ✕
+                      âœ•
                     </button>
                   </div>
 
@@ -1722,7 +1722,7 @@ export default function StudentsPage() {
                         }
                         className="btn btn-primary"
                       >
-                        🖨 Print Student ID
+                        ðŸ–¨ Print Student ID
                         Card
                       </button>
 
@@ -1873,7 +1873,7 @@ export default function StudentsPage() {
                                                 enrollment
                                                   ?.batch
                                                   ?.name ||
-                                                "—"
+                                                "â€”"
                                               }
                                             </p>
                                           </div>
@@ -1888,7 +1888,7 @@ export default function StudentsPage() {
                                                 enrollment
                                                   ?.course
                                                   ?.name ||
-                                                "—"
+                                                "â€”"
                                               }
                                             </p>
                                           </div>
@@ -1905,7 +1905,7 @@ export default function StudentsPage() {
                                         <strong>
                                           {
                                             student.phone ||
-                                            "—"
+                                            "â€”"
                                           }
                                         </strong>
                                       </div>
@@ -1991,7 +1991,7 @@ export default function StudentsPage() {
                                         <p className="id-card-value">
                                           {
                                             student.guardianName ||
-                                            "—"
+                                            "â€”"
                                           }
                                         </p>
                                       </div>
@@ -2004,7 +2004,7 @@ export default function StudentsPage() {
                                         <p className="id-card-value">
                                           {
                                             student.guardianPhone ||
-                                            "—"
+                                            "â€”"
                                           }
                                         </p>
                                       </div>
@@ -2018,7 +2018,7 @@ export default function StudentsPage() {
                                       <p>
                                         {
                                           student.address ||
-                                          "—"
+                                          "â€”"
                                         }
                                       </p>
                                     </div>
@@ -2045,7 +2045,7 @@ export default function StudentsPage() {
                                         <p className="id-card-value">
                                           {
                                             student.gender ||
-                                            "—"
+                                            "â€”"
                                           }
                                         </p>
                                       </div>
@@ -2161,7 +2161,7 @@ export default function StudentsPage() {
                   disabled={submitting}
                   className="btn btn-ghost btn-sm"
                 >
-                  ✕
+                  âœ•
                 </button>
               </div>
 
@@ -2192,7 +2192,7 @@ export default function StudentsPage() {
                               ? getInitials(
                                   form.name
                                 )
-                              : "👤"}
+                              : "ðŸ‘¤"}
                           </span>
                         )}
                       </div>
@@ -2203,7 +2203,7 @@ export default function StudentsPage() {
                         </label>
 
                         <p className="text-xs text-slate-400 mb-3">
-                          JPG, PNG or WEBP •
+                          JPG, PNG or WEBP â€¢
                           Maximum 2 MB
                         </p>
 
@@ -2546,7 +2546,7 @@ export default function StudentsPage() {
                   }}
                   className="btn btn-ghost btn-sm"
                 >
-                  ✕
+                  âœ•
                 </button>
               </div>
 
@@ -2623,7 +2623,7 @@ export default function StudentsPage() {
                     "copied" && (
                     <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
                       <p className="text-xs font-semibold text-emerald-700">
-                        ✓ Credentials copied successfully.
+                        âœ“ Credentials copied successfully.
                       </p>
                     </div>
                   )}
@@ -2647,7 +2647,7 @@ export default function StudentsPage() {
                   className="btn btn-outline"
                 >
                   {copyStatus === "copied"
-                    ? "✓ Copied"
+                    ? "âœ“ Copied"
                     : copyStatus === "error"
                       ? "Copy Failed"
                       : "Copy Credentials"}
@@ -3169,31 +3169,8 @@ function InfoItem({
       </p>
 
       <p className="text-sm font-medium text-slate-700">
-        {value || "—"}
+        {value || "â€”"}
       </p>
     </div>
   );
-}",
-[L3]   "encoding": "utf-8",
-[L4]   "sha": "9445efd6dd8d5237c1451aa5c3f8ee00ac0c9ad",
-[L5]   "display_url": "https://github.com/easylearninstitutelms/Easylearninstitutelms/blob/main/src/app/dashboard/students/page.tsx",
-[L6]   "display_title": "page.tsx"
-L7 "close": " }` (from content wrapper?)? Actually line 1 JSON, line 2 entire content. Could maybe parse with model? The source content appears in line 2 fully. We can modify by replacing exact substrings, then output. But final code still 1773 lines. Maybe we can exploit user can directly download from GitHub? No.
-
-Could create a small "patch" instead. But user says full. I think we should not burden with 1773 lines in chat. We can say "ভাই, full file অনেক বড়—আমি exact file + fix একটি downloadable file হিসেবে দিলাম" but we can't create file. Maybe we can create modified code file from the content via manual code? We could use a script that embeds the entire `content` from GitHub response. Since the model has it, maybe we can create a Python script in commentary using the code content manually? That's too long.
-
-Maybe use `GitHub.create_file` to create a temp file `tmp/students-page-fixed.tsx` in a *branch* from current? But would modify repo. Could create then delete, but that still creates commits and requires branch, and no need. Could create on a new branch and then download via GitHub fetch? But still no local bytes. Yet GitHub tool may return content, but not file. We could then use `container.download` from the raw URL once branch is public and maybe web view; but no.
-
-Maybe user isn't asking to preserve current file exactly; a full rewrite that retains functionality can be given. Let's do a reasonable full code of ~600 lines. The screenshot suggests only student account modal issue. I can make a complete simpler Students page that doesn't include existing ID card print, but maybe still include enough. But user might lose existing UI. Better to keep key functionality.
-
-Could use existing current page from GitHub in response by simply saying "your current page is 1773 lines; full unchanged code would be huge. Since only two targeted fixes are needed, use replacement snippet." But user explicitly asked full code, so likely not satisfied. Yet better than causing accidental regressions.
-
-Could perhaps provide exact full file in a downloadable link by creating file from a smaller **fixed full version**, not current. We can create with python_user_visible a complete rewrite. But user didn't ask for downloadable specifically. However final link is useful. We can create a file with corrected full code. But then they can use Notepad. We can give both link and Notepad command maybe.
-
-Let's create a full code version as a file with the current main functionality. We'll use python_user_visible to write it. Need no web. We can make ~700 lines. But user asked full code, maybe file link is acceptable. Yet user prefers code in chat. Could maybe also include the critical exact fixed sections and link the full file. But "full code daw" maybe link satisfies. Let's do a downloadable `page.tsx` file with a full replacement preserving student list, add/edit, details, ID card, account modal and fixes. Need code. We can generate from scratch in python_user_visible. This is user-visible. Let's ensure code valid. Could maybe less than 600 lines. Need no specific colors in charts irrelevant.
-
-Let's write code via python_user_visible to create file. It is commentary. We'll produce complete source. Need be careful code uses `React.ChangeEvent`, `React.FormEvent`, but React namespace maybe automatically available with jsx? In TSX with react-jsx, `React` namespace may not be in scope without import. Existing file used `React.ChangeEvent`, presumably compile because types global? Better import `type ChangeEvent, type FormEvent` from react. Use `useState` etc. We'll create.
-Need data types same.
-We can keep CSS but simplified.
-Let's produce 500 lines. Need maybe `StudentDetails` fees fields exact.
-Let's call python_user_visible.
+}
