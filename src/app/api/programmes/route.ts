@@ -23,6 +23,42 @@ function rowsOf(result: unknown): DbRow[] {
   return [];
 }
 
+function suggestProgrammeCode(name: string) {
+  const words = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const raw = words
+    .map((word) => {
+      const normalized = word.replace(/[^a-zA-Z0-9]/g, "");
+
+      if (!normalized) return "";
+
+      if (/^[A-Z0-9]{2,3}$/.test(normalized)) {
+        return normalized.toUpperCase();
+      }
+
+      return normalized[0].toUpperCase();
+    })
+    .join("");
+
+  const code = raw.replace(/[^A-Z0-9]/g, "").slice(0, 12);
+
+  return code || "PRG";
+}
+
+async function nextProgrammeNo(instituteId: string) {
+  const result = await db.execute(sql`
+    SELECT COALESCE(MAX(programme_no), 210) + 1 AS next_no
+    FROM programmes
+    WHERE institute_id = ${instituteId}
+  `);
+
+  const rows = rowsOf(result);
+  return Number(rows[0]?.next_no || 211);
+}
+
 export async function GET() {
   try {
     const session = await getSession();
@@ -30,7 +66,7 @@ export async function GET() {
     if (!session?.instituteId) {
       return NextResponse.json(
         { error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -41,6 +77,7 @@ export async function GET() {
         p.id,
         p.name,
         p.code,
+        p.programme_no AS "programmeNo",
         p.description,
         p.duration,
         p.status,
@@ -65,13 +102,18 @@ export async function GET() {
       ORDER BY p.created_at DESC
     `);
 
-    return NextResponse.json(rowsOf(result));
+    const nextNo = await nextProgrammeNo(session.instituteId);
+
+    return NextResponse.json({
+      programmes: rowsOf(result),
+      nextProgrammeNo: nextNo,
+    });
   } catch (error) {
     console.error("Programme GET error:", error);
 
     return NextResponse.json(
       { error: "Failed to load programmes" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -83,7 +125,7 @@ export async function POST(req: Request) {
     if (!session?.instituteId) {
       return NextResponse.json(
         { error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -95,7 +137,7 @@ export async function POST(req: Request) {
         {
           error: "You do not have permission to create programmes",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -108,10 +150,13 @@ export async function POST(req: Request) {
         ? body.name.trim()
         : "";
 
-    const code =
+    const suppliedCode =
       typeof body.code === "string"
-        ? body.code.trim()
-        : null;
+        ? body.code.trim().toUpperCase()
+        : "";
+
+    const code =
+      suppliedCode || suggestProgrammeCode(name);
 
     const description =
       typeof body.description === "string"
@@ -127,10 +172,8 @@ export async function POST(req: Request) {
 
     if (!name) {
       return NextResponse.json(
-        {
-          error: "Programme name is required",
-        },
-        { status: 400 }
+        { error: "Programme name is required" },
+        { status: 400 },
       );
     }
 
@@ -143,26 +186,70 @@ export async function POST(req: Request) {
         {
           error: "Semester count must be between 4 and 30",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const existingResult = await db.execute(sql`
-      SELECT id
-      FROM programmes
-      WHERE institute_id = ${session.instituteId}
-        AND LOWER(name) = LOWER(${name})
-      LIMIT 1
-    `);
+    const requestedNo = Number(body.programmeNo);
+    const programmeNo = Number.isInteger(requestedNo)
+      ? requestedNo
+      : await nextProgrammeNo(session.instituteId);
 
-    const existingRows = rowsOf(existingResult);
-
-    if (existingRows.length > 0) {
+    if (programmeNo < 211) {
       return NextResponse.json(
-        {
-          error: "This programme already exists",
-        },
-        { status: 409 }
+        { error: "Programme number must start from 211." },
+        { status: 400 },
+      );
+    }
+
+    const existingName = rowsOf(
+      await db.execute(sql`
+        SELECT id
+        FROM programmes
+        WHERE institute_id = ${session.instituteId}
+          AND LOWER(name) = LOWER(${name})
+        LIMIT 1
+      `),
+    );
+
+    if (existingName.length > 0) {
+      return NextResponse.json(
+        { error: "This programme already exists" },
+        { status: 409 },
+      );
+    }
+
+    const existingNo = rowsOf(
+      await db.execute(sql`
+        SELECT id
+        FROM programmes
+        WHERE institute_id = ${session.instituteId}
+          AND programme_no = ${programmeNo}
+        LIMIT 1
+      `),
+    );
+
+    if (existingNo.length > 0) {
+      return NextResponse.json(
+        { error: `Programme number ${programmeNo} is already in use.` },
+        { status: 409 },
+      );
+    }
+
+    const existingCode = rowsOf(
+      await db.execute(sql`
+        SELECT id
+        FROM programmes
+        WHERE institute_id = ${session.instituteId}
+          AND UPPER(code) = UPPER(${code})
+        LIMIT 1
+      `),
+    );
+
+    if (existingCode.length > 0) {
+      return NextResponse.json(
+        { error: `Programme code ${code} is already in use.` },
+        { status: 409 },
       );
     }
 
@@ -171,6 +258,7 @@ export async function POST(req: Request) {
         institute_id,
         name,
         code,
+        programme_no,
         description,
         duration,
         status
@@ -179,6 +267,7 @@ export async function POST(req: Request) {
         ${session.instituteId},
         ${name},
         ${code},
+        ${programmeNo},
         ${description},
         ${duration},
         'ACTIVE'
@@ -187,16 +276,13 @@ export async function POST(req: Request) {
     `);
 
     const programmeRows = rowsOf(programmeResult);
-
     const programmeId = programmeRows[0]?.id;
 
     if (!programmeId) {
-      throw new Error(
-        "Programme ID was not created"
-      );
+      throw new Error("Programme ID was not created");
     }
 
-    for (let i = 1; i <= semesterCount; i++) {
+    for (let i = 1; i <= semesterCount; i += 1) {
       await db.execute(sql`
         INSERT INTO programme_semesters (
           institute_id,
@@ -217,18 +303,18 @@ export async function POST(req: Request) {
       {
         success: true,
         programmeId,
+        programmeNo,
+        code,
         semesterCount,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Programme POST error:", error);
 
     return NextResponse.json(
-      {
-        error: "Failed to create programme",
-      },
-      { status: 500 }
+      { error: "Failed to create programme" },
+      { status: 500 },
     );
   }
 }
