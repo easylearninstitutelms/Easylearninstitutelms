@@ -5,87 +5,174 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"login" | "register">("login");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+
+  const [tab, setTab] =
+    useState<"login" | "register">(
+      "login"
+    );
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
 
   // Login form
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [loginEmail, setLoginEmail] =
+    useState("");
+
+  const [
+    loginPassword,
+    setLoginPassword,
+  ] = useState("");
 
   // Register form
-  const [regName, setRegName] = useState("");
-  const [regEmail, setRegEmail] = useState("");
-  const [regPassword, setRegPassword] = useState("");
-  const [regPhone, setRegPhone] = useState("");
-  const [instituteName, setInstituteName] = useState("");
-  const [institutePhone, setInstitutePhone] = useState("");
-  const [instituteAddress, setInstituteAddress] = useState("");
+  const [regName, setRegName] =
+    useState("");
 
-  async function handleLogin(e: React.FormEvent) {
+  const [regEmail, setRegEmail] =
+    useState("");
+
+  const [
+    regPassword,
+    setRegPassword,
+  ] = useState("");
+
+  const [regPhone, setRegPhone] =
+    useState("");
+
+  const [
+    instituteName,
+    setInstituteName,
+  ] = useState("");
+
+  const [
+    institutePhone,
+    setInstitutePhone,
+  ] = useState("");
+
+  const [
+    instituteAddress,
+    setInstituteAddress,
+  ] = useState("");
+
+  function redirectByRole(
+    role: string
+  ) {
+    if (role === "SUPER_ADMIN") {
+      router.push("/admin");
+      return;
+    }
+
+    if (role === "STUDENT") {
+      router.push("/student");
+      return;
+    }
+
+    if (role === "GUARDIAN") {
+      router.push("/guardian");
+      return;
+    }
+
+    router.push("/dashboard");
+  }
+
+  async function handleLogin(
+    e: React.FormEvent
+  ) {
     e.preventDefault();
+
     setLoading(true);
     setError("");
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: loginEmail,
-          password: loginPassword,
-        }),
-      });
+      const res = await fetch(
+        "/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            email: loginEmail,
+            password:
+              loginPassword,
+          }),
+        }
+      );
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Login failed");
+        setError(
+          data.error ||
+            "Login failed"
+        );
         return;
       }
 
-      if (data.user.role === "SUPER_ADMIN") {
-        router.push("/admin");
-      } else {
-        router.push("/dashboard");
-      }
+      redirectByRole(
+        data.user?.role
+      );
     } catch {
-      setError("Network error. Please try again.");
+      setError(
+        "Network error. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleRegister(e: React.FormEvent) {
+  async function handleRegister(
+    e: React.FormEvent
+  ) {
     e.preventDefault();
+
     setLoading(true);
     setError("");
 
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: regName,
-          email: regEmail,
-          password: regPassword,
-          phone: regPhone,
-          instituteName,
-          institutePhone,
-          instituteAddress,
-        }),
-      });
+      const res = await fetch(
+        "/api/auth/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            name: regName,
+            email: regEmail,
+            password:
+              regPassword,
+            phone: regPhone,
+            instituteName,
+            institutePhone,
+            instituteAddress,
+          }),
+        }
+      );
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Registration failed");
+        setError(
+          data.error ||
+            "Registration failed"
+        );
         return;
       }
 
-      router.push("/dashboard");
+      redirectByRole(
+        data.user?.role
+      );
     } catch {
-      setError("Network error. Please try again.");
+      setError(
+        "Network error. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -153,29 +240,48 @@ export default function LoginPage() {
           )}
 
           {tab === "login" ? (
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form
+              onSubmit={
+                handleLogin
+              }
+              className="space-y-4"
+            >
               <div>
-                <label className="form-label">Email</label>
+                <label className="form-label">
+                  Email
+                </label>
 
                 <input
                   type="email"
                   className="form-input"
                   placeholder="your@email.com"
                   value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
+                  onChange={(e) =>
+                    setLoginEmail(
+                      e.target.value
+                    )
+                  }
                   required
                 />
               </div>
 
               <div>
-                <label className="form-label">Password</label>
+                <label className="form-label">
+                  Password
+                </label>
 
                 <input
                   type="password"
                   className="form-input"
                   placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
+                  value={
+                    loginPassword
+                  }
+                  onChange={(e) =>
+                    setLoginPassword(
+                      e.target.value
+                    )
+                  }
                   required
                 />
               </div>
@@ -185,62 +291,93 @@ export default function LoginPage() {
                 disabled={loading}
                 className="btn btn-primary w-full justify-center py-3"
               >
-                {loading ? "Logging in..." : "Login"}
+                {loading
+                  ? "Logging in..."
+                  : "Login"}
               </button>
             </form>
           ) : (
-            <form onSubmit={handleRegister} className="space-y-4">
+            <form
+              onSubmit={
+                handleRegister
+              }
+              className="space-y-4"
+            >
               <div className="p-3 bg-blue-50 rounded-xl text-xs text-blue-700 font-medium">
                 🎉 Free 30-day trial — no payment required
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">Your Name</label>
+                  <label className="form-label">
+                    Your Name
+                  </label>
 
                   <input
                     className="form-input"
                     placeholder="Full name"
                     value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
+                    onChange={(e) =>
+                      setRegName(
+                        e.target.value
+                      )
+                    }
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="form-label">Phone</label>
+                  <label className="form-label">
+                    Phone
+                  </label>
 
                   <input
                     className="form-input"
                     placeholder="01XXXXXXXXX"
                     value={regPhone}
-                    onChange={(e) => setRegPhone(e.target.value)}
+                    onChange={(e) =>
+                      setRegPhone(
+                        e.target.value
+                      )
+                    }
                   />
                 </div>
               </div>
 
               <div>
-                <label className="form-label">Email</label>
+                <label className="form-label">
+                  Email
+                </label>
 
                 <input
                   type="email"
                   className="form-input"
                   placeholder="your@email.com"
                   value={regEmail}
-                  onChange={(e) => setRegEmail(e.target.value)}
+                  onChange={(e) =>
+                    setRegEmail(
+                      e.target.value
+                    )
+                  }
                   required
                 />
               </div>
 
               <div>
-                <label className="form-label">Password</label>
+                <label className="form-label">
+                  Password
+                </label>
 
                 <input
                   type="password"
                   className="form-input"
                   placeholder="Min 8 characters"
                   value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
+                  onChange={(e) =>
+                    setRegPassword(
+                      e.target.value
+                    )
+                  }
                   required
                 />
               </div>
@@ -248,38 +385,60 @@ export default function LoginPage() {
               <hr className="border-slate-100" />
 
               <div>
-                <label className="form-label">Institute Name</label>
+                <label className="form-label">
+                  Institute Name
+                </label>
 
                 <input
                   className="form-input"
                   placeholder="e.g. Dhaka Science Academy"
-                  value={instituteName}
-                  onChange={(e) => setInstituteName(e.target.value)}
+                  value={
+                    instituteName
+                  }
+                  onChange={(e) =>
+                    setInstituteName(
+                      e.target.value
+                    )
+                  }
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">Institute Phone</label>
+                  <label className="form-label">
+                    Institute Phone
+                  </label>
 
                   <input
                     className="form-input"
                     placeholder="01XXXXXXXXX"
-                    value={institutePhone}
-                    onChange={(e) => setInstitutePhone(e.target.value)}
+                    value={
+                      institutePhone
+                    }
+                    onChange={(e) =>
+                      setInstitutePhone(
+                        e.target.value
+                      )
+                    }
                   />
                 </div>
 
                 <div>
-                  <label className="form-label">Address</label>
+                  <label className="form-label">
+                    Address
+                  </label>
 
                   <input
                     className="form-input"
                     placeholder="City, Area"
-                    value={instituteAddress}
+                    value={
+                      instituteAddress
+                    }
                     onChange={(e) =>
-                      setInstituteAddress(e.target.value)
+                      setInstituteAddress(
+                        e.target.value
+                      )
                     }
                   />
                 </div>
@@ -300,7 +459,8 @@ export default function LoginPage() {
       </div>
 
       <p className="text-xs text-slate-400 mt-6">
-        © {new Date().getFullYear()} Easylearn Institute. All rights reserved.
+        © {new Date().getFullYear()} Easylearn Institute.
+        All rights reserved.
       </p>
     </div>
   );

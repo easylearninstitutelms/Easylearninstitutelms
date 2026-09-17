@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import {
   useState,
@@ -81,7 +81,17 @@ interface FormData {
   photoUrl: string;
 }
 
-const MAX_PHOTO_SIZE = 2 * 1024 * 1024;
+interface CreatedAccount {
+  role: string;
+  loginEmail: string;
+  temporaryPassword: string;
+  loginUrl: string;
+  studentId: string;
+  studentName: string;
+}
+
+const MAX_PHOTO_SIZE =
+  2 * 1024 * 1024;
 
 const EMPTY_FORM: FormData = {
   name: "",
@@ -99,63 +109,99 @@ const EMPTY_FORM: FormData = {
 };
 
 export default function StudentsPage() {
-  const [students, setStudents] = useState<Student[]>(
-    []
-  );
+  const [students, setStudents] =
+    useState<Student[]>([]);
 
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [total, setTotal] =
+    useState(0);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [search, setSearch] =
+    useState("");
+
   const [statusFilter, setStatusFilter] =
     useState("ACTIVE");
 
   const [showModal, setShowModal] =
     useState(false);
 
-  const [editingStudentId, setEditingStudentId] =
-    useState<string | null>(null);
+  const [
+    editingStudentId,
+    setEditingStudentId,
+  ] = useState<string | null>(null);
 
   const [submitting, setSubmitting] =
     useState(false);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
-  const [batches, setBatches] = useState<
-    Array<{
-      batch: {
-        id: string;
-        name: string;
-      };
-    }>
-  >([]);
+  const [batches, setBatches] =
+    useState<
+      Array<{
+        batch: {
+          id: string;
+          name: string;
+        };
+      }>
+    >([]);
 
-  const [selectedStudent, setSelectedStudent] =
-    useState<StudentDetails | null>(null);
+  const [
+    selectedStudent,
+    setSelectedStudent,
+  ] =
+    useState<StudentDetails | null>(
+      null
+    );
 
-  const [detailsLoading, setDetailsLoading] =
-    useState(false);
+  const [
+    detailsLoading,
+    setDetailsLoading,
+  ] = useState(false);
 
-  const [idCardStudent, setIdCardStudent] =
-    useState<StudentDetails | null>(null);
+  const [
+    idCardStudent,
+    setIdCardStudent,
+  ] =
+    useState<StudentDetails | null>(
+      null
+    );
 
-  const [idCardLoading, setIdCardLoading] =
-    useState(false);
+  const [
+    idCardLoading,
+    setIdCardLoading,
+  ] = useState(false);
 
   const [form, setForm] =
-    useState<FormData>(EMPTY_FORM);
+    useState<FormData>(
+      EMPTY_FORM
+    );
+
+  const [
+    createdAccount,
+    setCreatedAccount,
+  ] =
+    useState<CreatedAccount | null>(
+      null
+    );
 
   const fileInputRef =
-    useRef<HTMLInputElement | null>(null);
+    useRef<HTMLInputElement | null>(
+      null
+    );
 
-  const fetchStudents = useCallback(
-    async () => {
+  const fetchStudents =
+    useCallback(async () => {
       setLoading(true);
 
       try {
-        const params = new URLSearchParams({
-          search,
-          status: statusFilter,
-        });
+        const params =
+          new URLSearchParams({
+            search,
+            status: statusFilter,
+          });
 
         const res = await fetch(
           `/api/students?${params}`,
@@ -164,7 +210,8 @@ export default function StudentsPage() {
           }
         );
 
-        const data = await res.json();
+        const data =
+          await res.json();
 
         if (!res.ok) {
           throw new Error(
@@ -173,18 +220,22 @@ export default function StudentsPage() {
           );
         }
 
-        setStudents(data.students || []);
-        setTotal(data.total || 0);
+        setStudents(
+          data.students || []
+        );
+
+        setTotal(
+          data.total || 0
+        );
       } catch (err) {
         console.error(err);
+
         setStudents([]);
         setTotal(0);
       } finally {
         setLoading(false);
       }
-    },
-    [search, statusFilter]
-  );
+    }, [search, statusFilter]);
 
   useEffect(() => {
     fetchStudents();
@@ -196,7 +247,9 @@ export default function StudentsPage() {
     })
       .then((r) => r.json())
       .then((d) => {
-        setBatches(d.batches || []);
+        setBatches(
+          d.batches || []
+        );
       })
       .catch((err) => {
         console.error(err);
@@ -218,7 +271,8 @@ export default function StudentsPage() {
         }
       );
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
       if (!res.ok) {
         alert(
@@ -238,7 +292,9 @@ export default function StudentsPage() {
     }
   }
 
-  async function openStudentIdCard(id: string) {
+  async function openStudentIdCard(
+    id: string
+  ) {
     setIdCardLoading(true);
     setIdCardStudent(null);
 
@@ -250,7 +306,8 @@ export default function StudentsPage() {
         }
       );
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
       if (!res.ok) {
         alert(
@@ -263,6 +320,7 @@ export default function StudentsPage() {
       setIdCardStudent(data);
     } catch (err) {
       console.error(err);
+
       alert(
         "Failed to load student ID card."
       );
@@ -289,7 +347,8 @@ export default function StudentsPage() {
     });
 
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value =
+        "";
     }
   }
 
@@ -305,11 +364,16 @@ export default function StudentsPage() {
   function handlePhotoChange(
     e: React.ChangeEvent<HTMLInputElement>
   ) {
-    const file = e.target.files?.[0];
+    const file =
+      e.target.files?.[0];
 
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
       setError(
         "Please select a valid image file."
       );
@@ -318,7 +382,10 @@ export default function StudentsPage() {
       return;
     }
 
-    if (file.size > MAX_PHOTO_SIZE) {
+    if (
+      file.size >
+      MAX_PHOTO_SIZE
+    ) {
       setError(
         "Student photo must be 2 MB or smaller."
       );
@@ -329,12 +396,17 @@ export default function StudentsPage() {
 
     setError("");
 
-    const reader = new FileReader();
+    const reader =
+      new FileReader();
 
     reader.onload = () => {
-      const result = reader.result;
+      const result =
+        reader.result;
 
-      if (typeof result === "string") {
+      if (
+        typeof result ===
+        "string"
+      ) {
         setForm((current) => ({
           ...current,
           photoUrl: result,
@@ -358,7 +430,8 @@ export default function StudentsPage() {
     }));
 
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value =
+        "";
     }
   }
 
@@ -392,48 +465,58 @@ export default function StudentsPage() {
       const activeEnrollment =
         details.enrollments?.find(
           (item) =>
-            item.enrollment.status ===
+            item.enrollment
+              .status ===
             "ACTIVE"
         );
 
-      setEditingStudentId(student.id);
+      setEditingStudentId(
+        student.id
+      );
 
       setForm({
         name:
-          details.student.name || "",
+          details.student.name ||
+          "",
 
         phone:
-          details.student.phone || "",
+          details.student.phone ||
+          "",
 
         guardianName:
-          details.student.guardianName ||
-          "",
+          details.student
+            .guardianName || "",
 
         guardianPhone:
-          details.student.guardianPhone ||
-          "",
+          details.student
+            .guardianPhone || "",
 
         address:
-          details.student.address || "",
+          details.student.address ||
+          "",
 
         dob:
-          details.student.dob || "",
+          details.student.dob ||
+          "",
 
         gender:
-          details.student.gender || "",
+          details.student.gender ||
+          "",
 
         admissionDate:
-          details.student.admissionDate ||
+          details.student
+            .admissionDate ||
           new Date()
             .toISOString()
             .split("T")[0],
 
         batchId:
-          activeEnrollment?.batch?.id ||
-          "",
+          activeEnrollment?.batch
+            ?.id || "",
 
         photoUrl:
-          details.student.photoUrl || "",
+          details.student.photoUrl ||
+          "",
       });
 
       setSelectedStudent(null);
@@ -471,9 +554,11 @@ export default function StudentsPage() {
 
     try {
       const payload = {
-        name: form.name.trim(),
+        name:
+          form.name.trim(),
 
-        phone: form.phone.trim(),
+        phone:
+          form.phone.trim(),
 
         guardianName:
           form.guardianName.trim(),
@@ -537,6 +622,43 @@ export default function StudentsPage() {
         return;
       }
 
+      /*
+       * New student account credentials
+       *
+       * The API creates the STUDENT user
+       * account together with the student.
+       */
+      if (
+        !editingStudentId &&
+        data.account
+      ) {
+        setCreatedAccount({
+          role:
+            data.account.role ||
+            "STUDENT",
+
+          loginEmail:
+            data.account
+              .loginEmail,
+
+          temporaryPassword:
+            data.account
+              .temporaryPassword,
+
+          loginUrl:
+            data.account.loginUrl ||
+            "/",
+
+          studentId:
+            data.student
+              ?.studentId || "",
+
+          studentName:
+            data.student?.name ||
+            form.name,
+        });
+      }
+
       setShowModal(false);
       setEditingStudentId(null);
       resetForm();
@@ -567,12 +689,13 @@ export default function StudentsPage() {
     }
 
     try {
-      const res = await fetch(
-        `/api/students/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const res =
+        await fetch(
+          `/api/students/${id}`,
+          {
+            method: "DELETE",
+          }
+        );
 
       if (!res.ok) {
         const data =
@@ -605,334 +728,252 @@ export default function StudentsPage() {
 
   return (
     <>
-    <div className="space-y-5">
-      {/* Page Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">
-            Students
-          </h1>
+      <div className="space-y-5">
+        {/* Page Header */}
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">
+              Students
+            </h1>
 
-          <p className="text-sm text-slate-500">
-            {total} students found
-          </p>
+            <p className="text-sm text-slate-500">
+              {total} students found
+            </p>
+          </div>
+
+          <button
+            onClick={
+              openAddStudent
+            }
+            className="btn btn-primary"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+
+            Add Student
+          </button>
         </div>
 
-        <button
-          onClick={openAddStudent}
-          className="btn btn-primary"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+
+            <input
+              className="form-input pl-9"
+              placeholder="Search by name, ID, or phone..."
+              value={search}
+              onChange={(e) =>
+                setSearch(
+                  e.target.value
+                )
+              }
             />
-          </svg>
+          </div>
 
-          Add Student
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-
-          <input
-            className="form-input pl-9"
-            placeholder="Search by name, ID, or phone..."
-            value={search}
+          <select
+            className="form-select w-auto"
+            value={statusFilter}
             onChange={(e) =>
-              setSearch(
+              setStatusFilter(
                 e.target.value
               )
             }
-          />
+          >
+            <option value="ALL">
+              All Status
+            </option>
+
+            <option value="ACTIVE">
+              Active
+            </option>
+
+            <option value="INACTIVE">
+              Inactive
+            </option>
+
+            <option value="ARCHIVED">
+              Archived
+            </option>
+          </select>
         </div>
 
-        <select
-          className="form-select w-auto"
-          value={statusFilter}
-          onChange={(e) =>
-            setStatusFilter(
-              e.target.value
-            )
-          }
-        >
-          <option value="ALL">
-            All Status
-          </option>
-
-          <option value="ACTIVE">
-            Active
-          </option>
-
-          <option value="INACTIVE">
-            Inactive
-          </option>
-
-          <option value="ARCHIVED">
-            Archived
-          </option>
-        </select>
-      </div>
-
-      {/* Student Table */}
-      <div className="card p-0">
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : students.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-3">
-              👨‍🎓
+        {/* Student Table */}
+        <div className="card p-0">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
             </div>
+          ) : students.length ===
+            0 ? (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-3">
+                👨‍🎓
+              </div>
 
-            <p className="text-slate-500 font-medium">
-              No students found
-            </p>
+              <p className="text-slate-500 font-medium">
+                No students found
+              </p>
 
-            <p className="text-sm text-slate-400 mt-1">
-              {search
-                ? "Try different search terms"
-                : "Add your first student to get started"}
-            </p>
+              <p className="text-sm text-slate-400 mt-1">
+                {search
+                  ? "Try different search terms"
+                  : "Add your first student to get started"}
+              </p>
 
-            {!search && (
-              <button
-                onClick={
-                  openAddStudent
-                }
-                className="btn btn-primary btn-sm mt-4"
-              >
-                Add Student
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>ID</th>
-                  <th>Phone</th>
-                  <th>Guardian</th>
-                  <th>Admission</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
+              {!search && (
+                <button
+                  onClick={
+                    openAddStudent
+                  }
+                  className="btn btn-primary btn-sm mt-4"
+                >
+                  Add Student
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>ID</th>
+                    <th>Phone</th>
+                    <th>Guardian</th>
+                    <th>Admission</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
 
-              <tbody>
-                {students.map(
-                  (s) => (
-                    <tr key={s.id}>
-                      <td>
-                        <button
-                          onClick={() =>
-                            openStudentDetails(
-                              s.id
-                            )
-                          }
-                          className="flex items-center gap-3 text-left hover:opacity-80"
-                          title="View student details"
-                        >
-                          <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600 flex-shrink-0">
-                            {s.photoUrl ? (
-                              <img
-                                src={
-                                  s.photoUrl
-                                }
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              getInitials(
-                                s.name
-                              )
-                            )}
-                          </div>
-
-                          <div>
-                            <p className="font-semibold text-slate-700">
-                              {s.name}
-                            </p>
-
-                            <p className="text-xs text-slate-400">
-                              {s.gender ||
-                                "—"}
-                            </p>
-                          </div>
-                        </button>
-                      </td>
-
-                      <td>
-                        <span className="badge badge-blue">
-                          {s.studentId}
-                        </span>
-                      </td>
-
-                      <td className="text-slate-500">
-                        {s.phone ||
-                          "—"}
-                      </td>
-
-                      <td>
-                        <div>
-                          <p className="text-sm text-slate-600">
-                            {s.guardianName ||
-                              "—"}
-                          </p>
-
-                          <p className="text-xs text-slate-400">
-                            {s.guardianPhone ||
-                              ""}
-                          </p>
-                        </div>
-                      </td>
-
-                      <td className="text-slate-500">
-                        {formatDate(
-                          s.admissionDate
-                        )}
-                      </td>
-
-                      <td>
-                        <span
-                          className={`badge ${getStatusColor(
-                            s.status
-                          )}`}
-                        >
-                          {s.status}
-                        </span>
-                      </td>
-
-                      <td>
-                        <div className="flex items-center gap-1 flex-wrap">
+                <tbody>
+                  {students.map(
+                    (s) => (
+                      <tr
+                        key={s.id}
+                      >
+                        <td>
                           <button
                             onClick={() =>
                               openStudentDetails(
                                 s.id
                               )
                             }
-                            className="btn btn-ghost btn-sm text-blue-500 hover:text-blue-700"
-                            title="View details"
+                            className="flex items-center gap-3 text-left hover:opacity-80"
+                            title="View student details"
                           >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={
-                                  2
-                                }
-                                d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"
-                              />
-                              <circle
-                                cx="12"
-                                cy="12"
-                                r="2.5"
-                                strokeWidth={
-                                  2
-                                }
-                              />
-                            </svg>
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              openStudentIdCard(
-                                s.id
-                              )
-                            }
-                            className="btn btn-ghost btn-sm text-emerald-600 hover:text-emerald-700"
-                            title="Print Student ID Card"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 7h6M8 11h8M8 15h8M9 19h6"
-                              />
-                            </svg>
-                          </button>
-
-                          {s.status !==
-                            "ARCHIVED" && (
-                            <button
-                              onClick={() =>
-                                openEditStudent(
-                                  s
-                                )
-                              }
-                              className="btn btn-ghost btn-sm text-amber-500 hover:text-amber-700"
-                              title="Edit student"
-                            >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={
-                                    2
+                            <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600 flex-shrink-0">
+                              {s.photoUrl ? (
+                                <img
+                                  src={
+                                    s.photoUrl
                                   }
-                                  d="M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                                  alt=""
+                                  className="w-full h-full object-cover"
                                 />
-                              </svg>
-                            </button>
-                          )}
+                              ) : (
+                                getInitials(
+                                  s.name
+                                )
+                              )}
+                            </div>
 
-                          {s.status !==
-                            "ARCHIVED" && (
+                            <div>
+                              <p className="font-semibold text-slate-700">
+                                {s.name}
+                              </p>
+
+                              <p className="text-xs text-slate-400">
+                                {s.gender ||
+                                  "—"}
+                              </p>
+                            </div>
+                          </button>
+                        </td>
+
+                        <td>
+                          <span className="badge badge-blue">
+                            {
+                              s.studentId
+                            }
+                          </span>
+                        </td>
+
+                        <td className="text-slate-500">
+                          {s.phone ||
+                            "—"}
+                        </td>
+
+                        <td>
+                          <div>
+                            <p className="text-sm text-slate-600">
+                              {
+                                s.guardianName ||
+                                "—"
+                              }
+                            </p>
+
+                            <p className="text-xs text-slate-400">
+                              {
+                                s.guardianPhone ||
+                                ""
+                              }
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="text-slate-500">
+                          {formatDate(
+                            s.admissionDate
+                          )}
+                        </td>
+
+                        <td>
+                          <span
+                            className={`badge ${getStatusColor(
+                              s.status
+                            )}`}
+                          >
+                            {
+                              s.status
+                            }
+                          </span>
+                        </td>
+
+                        <td>
+                          <div className="flex items-center gap-1 flex-wrap">
                             <button
                               onClick={() =>
-                                handleArchive(
+                                openStudentDetails(
                                   s.id
                                 )
                               }
-                              className="btn btn-ghost btn-sm text-red-500 hover:text-red-700"
-                              title="Archive"
+                              className="btn btn-ghost btn-sm text-blue-500 hover:text-blue-700"
+                              title="View details"
                             >
                               <svg
                                 className="w-4 h-4"
@@ -946,830 +987,237 @@ export default function StudentsPage() {
                                   strokeWidth={
                                     2
                                   }
-                                  d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12"
+                                  d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"
+                                />
+                                <circle
+                                  cx="12"
+                                  cy="12"
+                                  r="2.5"
+                                  strokeWidth={
+                                    2
+                                  }
                                 />
                               </svg>
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
 
-      {/* Student Details Modal */}
-      {(detailsLoading ||
-        selectedStudent) && (
-        <div
-          className="modal-overlay"
-          onClick={(e) => {
-            if (
-              e.target ===
-              e.currentTarget
-            ) {
-              setSelectedStudent(
-                null
-              );
-            }
-          }}
-        >
-          <div className="modal-box max-w-4xl">
-            {detailsLoading ? (
-              <div className="flex justify-center py-16">
-                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : selectedStudent ? (
-              <>
-                <div className="modal-header">
-                  <div>
-                    <h2 className="modal-title">
-                      Student Profile
-                    </h2>
+                            <button
+                              onClick={() =>
+                                openStudentIdCard(
+                                  s.id
+                                )
+                              }
+                              className="btn btn-ghost btn-sm text-emerald-600 hover:text-emerald-700"
+                              title="Print Student ID Card"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 7h6M8 11h8M8 15h8M9 19h6"
+                                />
+                              </svg>
+                            </button>
 
-                    <p className="text-sm text-slate-400">
-                      {
-                        selectedStudent
-                          .student
-                          .studentId
-                      }
-                    </p>
-                  </div>
+                            {s.status !==
+                              "ARCHIVED" && (
+                              <button
+                                onClick={() =>
+                                  openEditStudent(
+                                    s
+                                  )
+                                }
+                                className="btn btn-ghost btn-sm text-amber-500 hover:text-amber-700"
+                                title="Edit student"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={
+                                      2
+                                    }
+                                    d="M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                                  />
+                                </svg>
+                              </button>
+                            )}
 
-                  <button
-                    onClick={() =>
-                      setSelectedStudent(
-                        null
-                      )
-                    }
-                    className="btn btn-ghost btn-sm"
-                  >
-                    ✕
-                  </button>
+                            {s.status !==
+                              "ARCHIVED" && (
+                              <button
+                                onClick={() =>
+                                  handleArchive(
+                                    s.id
+                                  )
+                                }
+                                className="btn btn-ghost btn-sm text-red-500 hover:text-red-700"
+                                title="Archive"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={
+                                      2
+                                    }
+                                    d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 010 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Student Details Modal */}
+        {(detailsLoading ||
+          selectedStudent) && (
+          <div
+            className="modal-overlay"
+            onClick={(e) => {
+              if (
+                e.target ===
+                e.currentTarget
+              ) {
+                setSelectedStudent(
+                  null
+                );
+              }
+            }}
+          >
+            <div className="modal-box max-w-4xl">
+              {detailsLoading ? (
+                <div className="flex justify-center py-16">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
+              ) : selectedStudent ? (
+                <>
+                  <div className="modal-header">
+                    <div>
+                      <h2 className="modal-title">
+                        Student Profile
+                      </h2>
 
-                <div className="modal-body space-y-5">
-                  {/* Profile Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-slate-50 rounded-xl">
-                    <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white shadow-sm bg-blue-100 flex items-center justify-center text-lg font-bold text-blue-600 flex-shrink-0">
-                      {selectedStudent
-                        .student
-                        .photoUrl ? (
-                        <img
-                          src={
-                            selectedStudent
-                              .student
-                              .photoUrl
-                          }
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        getInitials(
-                          selectedStudent
-                            .student
-                            .name
-                        )
-                      )}
-                    </div>
-
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-slate-800">
-                        {
-                          selectedStudent
-                            .student
-                            .name
-                        }
-                      </h3>
-
-                      <p className="text-sm text-slate-500">
-                        Student ID:{" "}
+                      <p className="text-sm text-slate-400">
                         {
                           selectedStudent
                             .student
                             .studentId
                         }
                       </p>
-
-                      <span
-                        className={`badge mt-2 ${getStatusColor(
-                          selectedStudent
-                            .student
-                            .status
-                        )}`}
-                      >
-                        {
-                          selectedStudent
-                            .student
-                            .status
-                        }
-                      </span>
                     </div>
 
-                    {selectedStudent
-                      .student
-                      .status !==
-                      "ARCHIVED" && (
-                      <button
-                        onClick={() =>
-                          openEditStudent(
-                            selectedStudent.student
-                          )
-                        }
-                        className="btn btn-outline btn-sm"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-                          />
-                        </svg>
-                        Edit
-                      </button>
-                    )}
+                    <button
+                      onClick={() =>
+                        setSelectedStudent(
+                          null
+                        )
+                      }
+                      className="btn btn-ghost btn-sm"
+                    >
+                      ✕
+                    </button>
                   </div>
 
-                  {/* Personal Information */}
-                  <div>
-                    <h3 className="font-semibold text-slate-700 mb-3">
-                      Personal Information
-                    </h3>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <InfoItem
-                        label="Phone"
-                        value={
-                          selectedStudent
-                            .student
-                            .phone
-                        }
-                      />
-
-                      <InfoItem
-                        label="Gender"
-                        value={
-                          selectedStudent
-                            .student
-                            .gender
-                        }
-                      />
-
-                      <InfoItem
-                        label="Date of Birth"
-                        value={
-                          selectedStudent
-                            .student
-                            .dob
-                            ? formatDate(
-                                selectedStudent
-                                  .student
-                                  .dob
-                              )
-                            : "—"
-                        }
-                      />
-
-                      <InfoItem
-                        label="Admission Date"
-                        value={formatDate(
-                          selectedStudent
-                            .student
-                            .admissionDate
-                        )}
-                      />
-
-                      <InfoItem
-                        label="Guardian"
-                        value={
-                          selectedStudent
-                            .student
-                            .guardianName
-                        }
-                      />
-
-                      <InfoItem
-                        label="Guardian Phone"
-                        value={
-                          selectedStudent
-                            .student
-                            .guardianPhone
-                        }
-                      />
-
-                      <div className="sm:col-span-2 lg:col-span-3">
-                        <InfoItem
-                          label="Address"
-                          value={
+                  <div className="modal-body space-y-5">
+                    {/* Profile Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-slate-50 rounded-xl">
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white shadow-sm bg-blue-100 flex items-center justify-center text-lg font-bold text-blue-600 flex-shrink-0">
+                        {selectedStudent
+                          .student
+                          .photoUrl ? (
+                          <img
+                            src={
+                              selectedStudent
+                                .student
+                                .photoUrl
+                            }
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          getInitials(
                             selectedStudent
                               .student
-                              .address
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Enrollment */}
-                  <div>
-                    <h3 className="font-semibold text-slate-700 mb-3">
-                      Batch / Course
-                    </h3>
-
-                    {selectedStudent
-                      .enrollments.length ===
-                    0 ? (
-                      <p className="text-sm text-slate-400">
-                        No batch enrollment
-                        found.
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {selectedStudent.enrollments.map(
-                          (item) => (
-                            <div
-                              key={
-                                item.enrollment
-                                  .id
-                              }
-                              className="p-3 border rounded-xl"
-                            >
-                              <p className="font-medium text-slate-700">
-                                {item.batch?.name ||
-                                  "Unknown Batch"}
-                              </p>
-
-                              <p className="text-sm text-slate-500">
-                                Course:{" "}
-                                {item.course
-                                  ?.name ||
-                                  "—"}
-                              </p>
-
-                              <p className="text-xs text-slate-400 mt-1">
-                                Enrolled:{" "}
-                                {formatDate(
-                                  item
-                                    .enrollment
-                                    .enrollmentDate
-                                )}
-                              </p>
-                            </div>
+                              .name
                           )
                         )}
                       </div>
-                    )}
-                  </div>
 
-                  {/* Attendance */}
-                  <div>
-                    <h3 className="font-semibold text-slate-700 mb-3">
-                      Recent Attendance
-                    </h3>
-
-                    {selectedStudent
-                      .attendance.length ===
-                    0 ? (
-                      <p className="text-sm text-slate-400">
-                        No attendance records.
-                      </p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Date</th>
-                              <th>Status</th>
-                              <th>Note</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            {selectedStudent.attendance.map(
-                              (a) => (
-                                <tr
-                                  key={a.id}
-                                >
-                                  <td>
-                                    {formatDate(
-                                      a.date
-                                    )}
-                                  </td>
-
-                                  <td>
-                                    <span className="badge badge-blue">
-                                      {
-                                        a.status
-                                      }
-                                    </span>
-                                  </td>
-
-                                  <td className="text-slate-500">
-                                    {a.note ||
-                                      "—"}
-                                  </td>
-                                </tr>
-                              )
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Fees */}
-                  <div>
-                    <h3 className="font-semibold text-slate-700 mb-3">
-                      Fees
-                    </h3>
-
-                    {selectedStudent
-                      .fees.length === 0 ? (
-                      <p className="text-sm text-slate-400">
-                        No fee records.
-                      </p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Type</th>
-                              <th>Amount</th>
-                              <th>Due</th>
-                              <th>Status</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            {selectedStudent.fees.map(
-                              (fee) => (
-                                <tr
-                                  key={
-                                    fee.id
-                                  }
-                                >
-                                  <td>
-                                    {
-                                      fee.feeType
-                                    }
-                                  </td>
-
-                                  <td>
-                                    ৳
-                                    {
-                                      fee.amount
-                                    }
-                                  </td>
-
-                                  <td>
-                                    ৳
-                                    {
-                                      fee.dueAmount
-                                    }
-                                  </td>
-
-                                  <td>
-                                    <span className="badge badge-blue">
-                                      {
-                                        fee.status
-                                      }
-                                    </span>
-                                  </td>
-                                </tr>
-                              )
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Payments */}
-                  <div>
-                    <h3 className="font-semibold text-slate-700 mb-3">
-                      Payment History
-                    </h3>
-
-                    {selectedStudent
-                      .payments.length ===
-                    0 ? (
-                      <p className="text-sm text-slate-400">
-                        No payment records.
-                      </p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Receipt</th>
-                              <th>Amount</th>
-                              <th>Method</th>
-                              <th>Date</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            {selectedStudent.payments.map(
-                              (payment) => (
-                                <tr
-                                  key={
-                                    payment.id
-                                  }
-                                >
-                                  <td>
-                                    {
-                                      payment.receiptNumber
-                                    }
-                                  </td>
-
-                                  <td>
-                                    ৳
-                                    {
-                                      payment.amount
-                                    }
-                                  </td>
-
-                                  <td>
-                                    {
-                                      payment.method
-                                    }
-                                  </td>
-
-                                  <td>
-                                    {formatDate(
-                                      payment.paidAt
-                                    )}
-                                  </td>
-                                </tr>
-                              )
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="modal-footer">
-                  <button
-                    onClick={() =>
-                      setSelectedStudent(
-                        null
-                      )
-                    }
-                    className="btn btn-outline"
-                  >
-                    Close
-                  </button>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      )}
-
-      {/* Student ID Card Modal */}
-      {(idCardLoading || idCardStudent) && (
-        <div
-          className="modal-overlay print-id-card-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closeIdCard();
-          }}
-        >
-          <div className="modal-box max-w-6xl">
-            {idCardLoading ? (
-              <div className="flex justify-center py-16">
-                <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : idCardStudent ? (
-              <>
-                <div className="modal-header print:hidden">
-                  <div>
-                    <h2 className="modal-title">Student ID Card</h2>
-                    <p className="text-sm text-slate-400 mt-1">
-                      {idCardStudent.student.name} · {idCardStudent.student.studentId}
-                    </p>
-                  </div>
-                  <button onClick={closeIdCard} className="btn btn-ghost btn-sm">
-                    ✕
-                  </button>
-                </div>
-
-                <div className="modal-body">
-                  <div className="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
-                    <div className="text-sm text-slate-500">
-                      Front &amp; back preview
-                    </div>
-                    <button
-                      type="button"
-                      onClick={printIdCard}
-                      className="btn btn-primary"
-                    >
-                      🖨 Print Student ID Card
-                    </button>
-                    <button
-                      type="button"
-                      onClick={closeIdCard}
-                      className="btn btn-outline"
-                    >
-                      Close
-                    </button>
-                  </div>
-
-                  <div className="id-card-print-area">
-                    <div className="id-card-print-grid">
-                      {(() => {
-                        const student = idCardStudent.student;
-                        const enrollment =
-                          idCardStudent.enrollments?.find(
-                            (item) => item.enrollment.status === "ACTIVE"
-                          ) ||
-                          idCardStudent.enrollments?.[0] ||
-                          null;
-
-                        const initials = student.name
-                          .split(/\s+/)
-                          .filter(Boolean)
-                          .map((part) => part[0])
-                          .join("")
-                          .slice(0, 2)
-                          .toUpperCase();
-
-                        return (
-                          <>
-                            {/* FRONT */}
-                            <section className="id-card-screen-wrap"><span className="id-card-side-label">FRONT</span><section className="student-id-card">
-                              <div className="id-card-topbar" />
-                              <div className="id-card-main">
-                                <div className="id-card-brand">
-                                  <img
-                                    src="/easylearn-logo.jpg"
-                                    alt="Easylearn Institute"
-                                    className="id-card-logo"
-                                  />
-                                  <div className="min-w-0">
-                                    <p className="id-card-institute">
-                                      EASY LEARN INSTITUTE
-                                    </p>
-                                    <p className="id-card-subtitle">
-                                      STUDENT IDENTIFICATION CARD
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="id-card-front-body">
-                                  <div className="id-card-photo">
-                                    {student.photoUrl ? (
-                                      <img
-                                        src={student.photoUrl}
-                                        alt=""
-                                        className="h-full w-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="id-card-initials">
-                                        {initials}
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="id-card-front-info">
-                                    <p className="id-card-label">STUDENT NAME</p>
-                                    <p className="id-card-name">{student.name}</p>
-
-                                    <div className="id-card-meta-grid">
-                                      <div>
-                                        <p className="id-card-label">STUDENT ID</p>
-                                        <p className="id-card-value">
-                                          {student.studentId}
-                                        </p>
-                                      </div>
-                                      <div>
-                                        <p className="id-card-label">STATUS</p>
-                                        <p className="id-card-value id-card-green">
-                                          {student.status}
-                                        </p>
-                                      </div>
-                                      <div>
-                                        <p className="id-card-label">BATCH</p>
-                                        <p className="id-card-value">
-                                          {enrollment?.batch?.name || "—"}
-                                        </p>
-                                      </div>
-                                      <div>
-                                        <p className="id-card-label">COURSE</p>
-                                        <p className="id-card-value">
-                                          {enrollment?.course?.name || "—"}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="id-card-contact-row">
-                                  <div>
-                                    <span className="id-card-label">PHONE</span>
-                                    <strong>{student.phone || "—"}</strong>
-                                  </div>
-                                  <div>
-                                    <span className="id-card-label">ADMISSION</span>
-                                    <strong>
-                                      {formatDate(student.admissionDate)}
-                                    </strong>
-                                  </div>
-                                </div>
-
-                                <div className="id-card-sign-row">
-                                  <div className="id-card-sign">Institute Authority</div>
-                                  <div className="id-card-valid">
-                                    <span className="id-card-label">VALIDITY</span>
-                                    <strong>WHILE ACTIVE</strong>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="id-card-footer">
-                                <span>
-                                  Hazibag Dhla, Near Tazuddin Ahmed Medical Collage Hospital,
-                                  Joydebpur, Gazipur
-                                </span>
-                                <b>www.easylearninstitute.com</b>
-                              </div>
-                            </section></section>
-
-                            {/* BACK */}
-                            <section className="id-card-screen-wrap"><span className="id-card-side-label">BACK</span><section className="student-id-card">
-                              <div className="id-card-topbar" />
-                              <div className="id-card-main id-card-back-main">
-                                <div className="id-card-back-title">
-                                  <span>STUDENT / EMERGENCY CONTACT</span>
-                                  <span>{student.studentId}</span>
-                                </div>
-
-                                <div className="id-card-back-grid">
-                                  <div>
-                                    <p className="id-card-label">GUARDIAN</p>
-                                    <p className="id-card-value">
-                                      {student.guardianName || "—"}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="id-card-label">GUARDIAN PHONE</p>
-                                    <p className="id-card-value">
-                                      {student.guardianPhone || "—"}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="id-card-address">
-                                  <p className="id-card-label">ADDRESS</p>
-                                  <p>{student.address || "—"}</p>
-                                </div>
-
-                                <div className="id-card-back-grid">
-                                  <div>
-                                    <p className="id-card-label">DATE OF BIRTH</p>
-                                    <p className="id-card-value">
-                                      {formatDate(student.dob)}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="id-card-label">GENDER</p>
-                                    <p className="id-card-value">{student.gender || "—"}</p>
-                                  </div>
-                                </div>
-
-                                <div className="id-card-verify">
-                                  <p className="id-card-label">VERIFICATION</p>
-                                  <strong>{student.studentId}</strong>
-                                  <span>Present this card to the institute office for verification.</span>
-                                </div>
-
-                                <div className="id-card-note">
-                                  This card remains the property of Easylearn Institute.
-                                  Carry this card during institute activities and report any loss
-                                  to the institute office.
-                                </div>
-
-                                <div className="id-card-signatures">
-                                  <span>Class Teacher</span>
-                                  <span>Principal / Director</span>
-                                </div>
-                              </div>
-
-                              <div className="id-card-footer">
-                                <span>
-                                  Hazibag Dhla, Near Tazuddin Ahmed Medical Collage Hospital,
-                                  Joydebpur, Gazipur
-                                </span>
-                                <b>www.easylearninstitute.com</b>
-                              </div>
-                            </section></section>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      )}
-      {/* Add / Edit Student Modal */}
-      {showModal && (
-        <div
-          className="modal-overlay"
-          onClick={(e) => {
-            if (
-              e.target ===
-              e.currentTarget
-            ) {
-              closeStudentModal();
-            }
-          }}
-        >
-          <div className="modal-box max-w-2xl">
-            <div className="modal-header">
-              <div>
-                <h2 className="modal-title">
-                  {editingStudentId
-                    ? "Edit Student"
-                    : "Add New Student"}
-                </h2>
-
-                <p className="text-xs text-slate-400 mt-1">
-                  {editingStudentId
-                    ? "Update student information and photo"
-                    : "Add student information and photo"}
-                </p>
-              </div>
-
-              <button
-                onClick={
-                  closeStudentModal
-                }
-                disabled={submitting}
-                className="btn btn-ghost btn-sm"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form
-              onSubmit={handleSubmit}
-            >
-              <div className="modal-body">
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm mb-4">
-                    {error}
-                  </div>
-                )}
-
-                {/* Photo Upload */}
-                <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
-                    <div className="w-28 h-28 rounded-2xl overflow-hidden border-2 border-white shadow-sm bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600 flex-shrink-0">
-                      {form.photoUrl ? (
-                        <img
-                          src={
-                            form.photoUrl
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-slate-800">
+                          {
+                            selectedStudent
+                              .student
+                              .name
                           }
-                          alt="Student preview"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span>
-                          {form.name
-                            ? getInitials(
-                                form.name
-                              )
-                            : "👤"}
+                        </h3>
+
+                        <p className="text-sm text-slate-500">
+                          Student ID:{" "}
+                          {
+                            selectedStudent
+                              .student
+                              .studentId
+                          }
+                        </p>
+
+                        <span
+                          className={`badge mt-2 ${getStatusColor(
+                            selectedStudent
+                              .student
+                              .status
+                          )}`}
+                        >
+                          {
+                            selectedStudent
+                              .student
+                              .status
+                          }
                         </span>
-                      )}
-                    </div>
+                      </div>
 
-                    <div className="flex-1 w-full">
-                      <label className="form-label">
-                        Student Photo
-                      </label>
-
-                      <p className="text-xs text-slate-400 mb-3">
-                        JPG, PNG or WEBP • Maximum
-                        2 MB
-                      </p>
-
-                      <div className="flex flex-wrap gap-2">
-                        <label className="btn btn-outline btn-sm cursor-pointer">
+                      {selectedStudent
+                        .student
+                        .status !==
+                        "ARCHIVED" && (
+                        <button
+                          onClick={() =>
+                            openEditStudent(
+                              selectedStudent.student
+                            )
+                          }
+                          className="btn btn-outline btn-sm"
+                        >
                           <svg
                             className="w-4 h-4"
                             fill="none"
@@ -1780,264 +1228,1371 @@ export default function StudentsPage() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M3 7h3l2-2h8l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H3a2 2 0 01-2-2V9a2 2 0 012-2z"
-                            />
-                            <circle
-                              cx="12"
-                              cy="13"
-                              r="3"
-                              strokeWidth={2}
+                              d="M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
                             />
                           </svg>
+                          Edit
+                        </button>
+                      )}
+                    </div>
 
-                          Choose Photo
+                    {/* Personal Information */}
+                    <div>
+                      <h3 className="font-semibold text-slate-700 mb-3">
+                        Personal Information
+                      </h3>
 
-                          <input
-                            ref={
-                              fileInputRef
-                            }
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            className="hidden"
-                            onChange={
-                              handlePhotoChange
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <InfoItem
+                          label="Phone"
+                          value={
+                            selectedStudent
+                              .student
+                              .phone
+                          }
+                        />
+
+                        <InfoItem
+                          label="Gender"
+                          value={
+                            selectedStudent
+                              .student
+                              .gender
+                          }
+                        />
+
+                        <InfoItem
+                          label="Date of Birth"
+                          value={
+                            selectedStudent
+                              .student
+                              .dob
+                              ? formatDate(
+                                  selectedStudent
+                                    .student
+                                    .dob
+                                )
+                              : "—"
+                          }
+                        />
+
+                        <InfoItem
+                          label="Admission Date"
+                          value={formatDate(
+                            selectedStudent
+                              .student
+                              .admissionDate
+                          )}
+                        />
+
+                        <InfoItem
+                          label="Guardian"
+                          value={
+                            selectedStudent
+                              .student
+                              .guardianName
+                          }
+                        />
+
+                        <InfoItem
+                          label="Guardian Phone"
+                          value={
+                            selectedStudent
+                              .student
+                              .guardianPhone
+                          }
+                        />
+
+                        <div className="sm:col-span-2 lg:col-span-3">
+                          <InfoItem
+                            label="Address"
+                            value={
+                              selectedStudent
+                                .student
+                                .address
                             }
                           />
-                        </label>
+                        </div>
+                      </div>
+                    </div>
 
-                        {form.photoUrl && (
-                          <button
-                            type="button"
-                            onClick={
-                              removePhoto
+                    {/* Enrollment */}
+                    <div>
+                      <h3 className="font-semibold text-slate-700 mb-3">
+                        Batch / Course
+                      </h3>
+
+                      {selectedStudent
+                        .enrollments.length ===
+                      0 ? (
+                        <p className="text-sm text-slate-400">
+                          No batch enrollment
+                          found.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {selectedStudent.enrollments.map(
+                            (item) => (
+                              <div
+                                key={
+                                  item
+                                    .enrollment
+                                    .id
+                                }
+                                className="p-3 border rounded-xl"
+                              >
+                                <p className="font-medium text-slate-700">
+                                  {item.batch
+                                    ?.name ||
+                                    "Unknown Batch"}
+                                </p>
+
+                                <p className="text-sm text-slate-500">
+                                  Course:{" "}
+                                  {item
+                                    .course
+                                    ?.name ||
+                                    "—"}
+                                </p>
+
+                                <p className="text-xs text-slate-400 mt-1">
+                                  Enrolled:{" "}
+                                  {formatDate(
+                                    item
+                                      .enrollment
+                                      .enrollmentDate
+                                  )}
+                                </p>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Attendance */}
+                    <div>
+                      <h3 className="font-semibold text-slate-700 mb-3">
+                        Recent Attendance
+                      </h3>
+
+                      {selectedStudent
+                        .attendance.length ===
+                      0 ? (
+                        <p className="text-sm text-slate-400">
+                          No attendance records.
+                        </p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>
+                                  Date
+                                </th>
+                                <th>
+                                  Status
+                                </th>
+                                <th>
+                                  Note
+                                </th>
+                              </tr>
+                            </thead>
+
+                            <tbody>
+                              {selectedStudent.attendance.map(
+                                (a) => (
+                                  <tr
+                                    key={
+                                      a.id
+                                    }
+                                  >
+                                    <td>
+                                      {formatDate(
+                                        a.date
+                                      )}
+                                    </td>
+
+                                    <td>
+                                      <span className="badge badge-blue">
+                                        {
+                                          a.status
+                                        }
+                                      </span>
+                                    </td>
+
+                                    <td className="text-slate-500">
+                                      {a.note ||
+                                        "—"}
+                                    </td>
+                                  </tr>
+                                )
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Fees */}
+                    <div>
+                      <h3 className="font-semibold text-slate-700 mb-3">
+                        Fees
+                      </h3>
+
+                      {selectedStudent
+                        .fees.length ===
+                      0 ? (
+                        <p className="text-sm text-slate-400">
+                          No fee records.
+                        </p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>
+                                  Type
+                                </th>
+                                <th>
+                                  Amount
+                                </th>
+                                <th>
+                                  Due
+                                </th>
+                                <th>
+                                  Status
+                                </th>
+                              </tr>
+                            </thead>
+
+                            <tbody>
+                              {selectedStudent.fees.map(
+                                (fee) => (
+                                  <tr
+                                    key={
+                                      fee.id
+                                    }
+                                  >
+                                    <td>
+                                      {
+                                        fee.feeType
+                                      }
+                                    </td>
+
+                                    <td>
+                                      ৳{" "}
+                                      {
+                                        fee.amount
+                                      }
+                                    </td>
+
+                                    <td>
+                                      ৳{" "}
+                                      {
+                                        fee.dueAmount
+                                      }
+                                    </td>
+
+                                    <td>
+                                      <span className="badge badge-blue">
+                                        {
+                                          fee.status
+                                        }
+                                      </span>
+                                    </td>
+                                  </tr>
+                                )
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Payments */}
+                    <div>
+                      <h3 className="font-semibold text-slate-700 mb-3">
+                        Payment History
+                      </h3>
+
+                      {selectedStudent
+                        .payments.length ===
+                      0 ? (
+                        <p className="text-sm text-slate-400">
+                          No payment records.
+                        </p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>
+                                  Receipt
+                                </th>
+                                <th>
+                                  Amount
+                                </th>
+                                <th>
+                                  Method
+                                </th>
+                                <th>
+                                  Date
+                                </th>
+                              </tr>
+                            </thead>
+
+                            <tbody>
+                              {selectedStudent.payments.map(
+                                (payment) => (
+                                  <tr
+                                    key={
+                                      payment.id
+                                    }
+                                  >
+                                    <td>
+                                      {
+                                        payment.receiptNumber
+                                      }
+                                    </td>
+
+                                    <td>
+                                      ৳{" "}
+                                      {
+                                        payment.amount
+                                      }
+                                    </td>
+
+                                    <td>
+                                      {
+                                        payment.method
+                                      }
+                                    </td>
+
+                                    <td>
+                                      {formatDate(
+                                        payment.paidAt
+                                      )}
+                                    </td>
+                                  </tr>
+                                )
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="modal-footer">
+                    <button
+                      onClick={() =>
+                        setSelectedStudent(
+                          null
+                        )
+                      }
+                      className="btn btn-outline"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        {/* Student ID Card Modal */}
+        {(idCardLoading ||
+          idCardStudent) && (
+          <div
+            className="modal-overlay print-id-card-overlay"
+            onClick={(e) => {
+              if (
+                e.target ===
+                e.currentTarget
+              ) {
+                closeIdCard();
+              }
+            }}
+          >
+            <div className="modal-box max-w-6xl">
+              {idCardLoading ? (
+                <div className="flex justify-center py-16">
+                  <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : idCardStudent ? (
+                <>
+                  <div className="modal-header print:hidden">
+                    <div>
+                      <h2 className="modal-title">
+                        Student ID Card
+                      </h2>
+
+                      <p className="text-sm text-slate-400 mt-1">
+                        {
+                          idCardStudent
+                            .student
+                            .name
+                        }{" "}
+                        ·{" "}
+                        {
+                          idCardStudent
+                            .student
+                            .studentId
+                        }
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={
+                        closeIdCard
+                      }
+                      className="btn btn-ghost btn-sm"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="modal-body">
+                    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
+                      <div className="text-sm text-slate-500">
+                        Front &amp; back
+                        preview
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={
+                          printIdCard
+                        }
+                        className="btn btn-primary"
+                      >
+                        🖨 Print Student ID
+                        Card
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={
+                          closeIdCard
+                        }
+                        className="btn btn-outline"
+                      >
+                        Close
+                      </button>
+                    </div>
+
+                    <div className="id-card-print-area">
+                      <div className="id-card-print-grid">
+                        {(() => {
+                          const student =
+                            idCardStudent.student;
+
+                          const enrollment =
+                            idCardStudent.enrollments?.find(
+                              (item) =>
+                                item
+                                  .enrollment
+                                  .status ===
+                                "ACTIVE"
+                            ) ||
+                            idCardStudent
+                              .enrollments?.[0] ||
+                            null;
+
+                          const initials =
+                            student.name
+                              .split(
+                                /\s+/
+                              )
+                              .filter(
+                                Boolean
+                              )
+                              .map(
+                                (
+                                  part
+                                ) =>
+                                  part[0]
+                              )
+                              .join("")
+                              .slice(
+                                0,
+                                2
+                              )
+                              .toUpperCase();
+
+                          return (
+                            <>
+                              {/* FRONT */}
+                              <section className="id-card-screen-wrap">
+                                <span className="id-card-side-label">
+                                  FRONT
+                                </span>
+
+                                <section className="student-id-card">
+                                  <div className="id-card-topbar" />
+
+                                  <div className="id-card-main">
+                                    <div className="id-card-brand">
+                                      <img
+                                        src="/easylearn-logo.jpg"
+                                        alt="Easylearn Institute"
+                                        className="id-card-logo"
+                                      />
+
+                                      <div className="min-w-0">
+                                        <p className="id-card-institute">
+                                          EASY LEARN
+                                          INSTITUTE
+                                        </p>
+
+                                        <p className="id-card-subtitle">
+                                          STUDENT
+                                          IDENTIFICATION
+                                          CARD
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="id-card-front-body">
+                                      <div className="id-card-photo">
+                                        {student.photoUrl ? (
+                                          <img
+                                            src={
+                                              student.photoUrl
+                                            }
+                                            alt=""
+                                            className="h-full w-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="id-card-initials">
+                                            {
+                                              initials
+                                            }
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <div className="id-card-front-info">
+                                        <p className="id-card-label">
+                                          STUDENT NAME
+                                        </p>
+
+                                        <p className="id-card-name">
+                                          {
+                                            student.name
+                                          }
+                                        </p>
+
+                                        <div className="id-card-meta-grid">
+                                          <div>
+                                            <p className="id-card-label">
+                                              STUDENT ID
+                                            </p>
+
+                                            <p className="id-card-value">
+                                              {
+                                                student.studentId
+                                              }
+                                            </p>
+                                          </div>
+
+                                          <div>
+                                            <p className="id-card-label">
+                                              STATUS
+                                            </p>
+
+                                            <p className="id-card-value id-card-green">
+                                              {
+                                                student.status
+                                              }
+                                            </p>
+                                          </div>
+
+                                          <div>
+                                            <p className="id-card-label">
+                                              BATCH
+                                            </p>
+
+                                            <p className="id-card-value">
+                                              {
+                                                enrollment
+                                                  ?.batch
+                                                  ?.name ||
+                                                "—"
+                                              }
+                                            </p>
+                                          </div>
+
+                                          <div>
+                                            <p className="id-card-label">
+                                              COURSE
+                                            </p>
+
+                                            <p className="id-card-value">
+                                              {
+                                                enrollment
+                                                  ?.course
+                                                  ?.name ||
+                                                "—"
+                                              }
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="id-card-contact-row">
+                                      <div>
+                                        <span className="id-card-label">
+                                          PHONE
+                                        </span>
+
+                                        <strong>
+                                          {
+                                            student.phone ||
+                                            "—"
+                                          }
+                                        </strong>
+                                      </div>
+
+                                      <div>
+                                        <span className="id-card-label">
+                                          ADMISSION
+                                        </span>
+
+                                        <strong>
+                                          {formatDate(
+                                            student.admissionDate
+                                          )}
+                                        </strong>
+                                      </div>
+                                    </div>
+
+                                    <div className="id-card-sign-row">
+                                      <div className="id-card-sign">
+                                        Institute
+                                        Authority
+                                      </div>
+
+                                      <div className="id-card-valid">
+                                        <span className="id-card-label">
+                                          VALIDITY
+                                        </span>
+
+                                        <strong>
+                                          WHILE ACTIVE
+                                        </strong>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="id-card-footer">
+                                    <span>
+                                      Hazibag Dhla,
+                                      Near Tazuddin
+                                      Ahmed Medical
+                                      Collage
+                                      Hospital,
+                                      Joydebpur,
+                                      Gazipur
+                                    </span>
+
+                                    <b>
+                                      www.easylearninstitute.com
+                                    </b>
+                                  </div>
+                                </section>
+                              </section>
+
+                              {/* BACK */}
+                              <section className="id-card-screen-wrap">
+                                <span className="id-card-side-label">
+                                  BACK
+                                </span>
+
+                                <section className="student-id-card">
+                                  <div className="id-card-topbar" />
+
+                                  <div className="id-card-main id-card-back-main">
+                                    <div className="id-card-back-title">
+                                      <span>
+                                        STUDENT /
+                                        EMERGENCY
+                                        CONTACT
+                                      </span>
+
+                                      <span>
+                                        {
+                                          student.studentId
+                                        }
+                                      </span>
+                                    </div>
+
+                                    <div className="id-card-back-grid">
+                                      <div>
+                                        <p className="id-card-label">
+                                          GUARDIAN
+                                        </p>
+
+                                        <p className="id-card-value">
+                                          {
+                                            student.guardianName ||
+                                            "—"
+                                          }
+                                        </p>
+                                      </div>
+
+                                      <div>
+                                        <p className="id-card-label">
+                                          GUARDIAN PHONE
+                                        </p>
+
+                                        <p className="id-card-value">
+                                          {
+                                            student.guardianPhone ||
+                                            "—"
+                                          }
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="id-card-address">
+                                      <p className="id-card-label">
+                                        ADDRESS
+                                      </p>
+
+                                      <p>
+                                        {
+                                          student.address ||
+                                          "—"
+                                        }
+                                      </p>
+                                    </div>
+
+                                    <div className="id-card-back-grid">
+                                      <div>
+                                        <p className="id-card-label">
+                                          DATE OF
+                                          BIRTH
+                                        </p>
+
+                                        <p className="id-card-value">
+                                          {formatDate(
+                                            student.dob
+                                          )}
+                                        </p>
+                                      </div>
+
+                                      <div>
+                                        <p className="id-card-label">
+                                          GENDER
+                                        </p>
+
+                                        <p className="id-card-value">
+                                          {
+                                            student.gender ||
+                                            "—"
+                                          }
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="id-card-verify">
+                                      <p className="id-card-label">
+                                        VERIFICATION
+                                      </p>
+
+                                      <strong>
+                                        {
+                                          student.studentId
+                                        }
+                                      </strong>
+
+                                      <span>
+                                        Present this
+                                        card to the
+                                        institute
+                                        office for
+                                        verification.
+                                      </span>
+                                    </div>
+
+                                    <div className="id-card-note">
+                                      This card remains
+                                      the property of
+                                      Easylearn
+                                      Institute.
+                                      Carry this card
+                                      during institute
+                                      activities and
+                                      report any loss
+                                      to the institute
+                                      office.
+                                    </div>
+
+                                    <div className="id-card-signatures">
+                                      <span>
+                                        Class Teacher
+                                      </span>
+
+                                      <span>
+                                        Principal /
+                                        Director
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="id-card-footer">
+                                    <span>
+                                      Hazibag Dhla,
+                                      Near Tazuddin
+                                      Ahmed Medical
+                                      Collage
+                                      Hospital,
+                                      Joydebpur,
+                                      Gazipur
+                                    </span>
+
+                                    <b>
+                                      www.easylearninstitute.com
+                                    </b>
+                                  </div>
+                                </section>
+                              </section>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        {/* Add / Edit Student Modal */}
+        {showModal && (
+          <div
+            className="modal-overlay"
+            onClick={(e) => {
+              if (
+                e.target ===
+                e.currentTarget
+              ) {
+                closeStudentModal();
+              }
+            }}
+          >
+            <div className="modal-box max-w-2xl">
+              <div className="modal-header">
+                <div>
+                  <h2 className="modal-title">
+                    {editingStudentId
+                      ? "Edit Student"
+                      : "Add New Student"}
+                  </h2>
+
+                  <p className="text-xs text-slate-400 mt-1">
+                    {editingStudentId
+                      ? "Update student information and photo"
+                      : "Add student information and photo"}
+                  </p>
+                </div>
+
+                <button
+                  onClick={
+                    closeStudentModal
+                  }
+                  disabled={submitting}
+                  className="btn btn-ghost btn-sm"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form
+                onSubmit={handleSubmit}
+              >
+                <div className="modal-body">
+                  {error && (
+                    <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm mb-4">
+                      {error}
+                    </div>
+                  )}
+
+                  {/* Photo Upload */}
+                  <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
+                      <div className="w-28 h-28 rounded-2xl overflow-hidden border-2 border-white shadow-sm bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600 flex-shrink-0">
+                        {form.photoUrl ? (
+                          <img
+                            src={
+                              form.photoUrl
                             }
-                            className="btn btn-ghost btn-sm text-red-500 hover:text-red-700"
-                          >
-                            Remove Photo
-                          </button>
+                            alt="Student preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span>
+                            {form.name
+                              ? getInitials(
+                                  form.name
+                                )
+                              : "👤"}
+                          </span>
                         )}
                       </div>
+
+                      <div className="flex-1 w-full">
+                        <label className="form-label">
+                          Student Photo
+                        </label>
+
+                        <p className="text-xs text-slate-400 mb-3">
+                          JPG, PNG or WEBP •
+                          Maximum 2 MB
+                        </p>
+
+                        <div className="flex flex-wrap gap-2">
+                          <label className="btn btn-outline btn-sm cursor-pointer">
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 7h3l2-2h8l2 2h3a2 2 0 012 2v9a2 2 0 01-2 2H3a2 2 0 01-2-2V9a2 2 0 012-2z"
+                              />
+                              <circle
+                                cx="12"
+                                cy="13"
+                                r="3"
+                                strokeWidth={
+                                  2
+                                }
+                              />
+                            </svg>
+
+                            Choose Photo
+
+                            <input
+                              ref={
+                                fileInputRef
+                              }
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              className="hidden"
+                              onChange={
+                                handlePhotoChange
+                              }
+                            />
+                          </label>
+
+                          {form.photoUrl && (
+                            <button
+                              type="button"
+                              onClick={
+                                removePhoto
+                              }
+                              className="btn btn-ghost btn-sm text-red-500 hover:text-red-700"
+                            >
+                              Remove Photo
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Main Form */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="form-label">
+                        Full Name *
+                      </label>
+
+                      <input
+                        className="form-input"
+                        placeholder="Student name"
+                        value={
+                          form.name
+                        }
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            name:
+                              e.target
+                                .value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Phone
+                      </label>
+
+                      <input
+                        className="form-input"
+                        placeholder="01XXXXXXXXX"
+                        value={
+                          form.phone
+                        }
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            phone:
+                              e.target
+                                .value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Gender
+                      </label>
+
+                      <select
+                        className="form-select"
+                        value={
+                          form.gender
+                        }
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            gender:
+                              e.target
+                                .value,
+                          })
+                        }
+                      >
+                        <option value="">
+                          Select
+                        </option>
+
+                        <option value="MALE">
+                          Male
+                        </option>
+
+                        <option value="FEMALE">
+                          Female
+                        </option>
+
+                        <option value="OTHER">
+                          Other
+                        </option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Guardian Name
+                      </label>
+
+                      <input
+                        className="form-input"
+                        placeholder="Parent / Guardian"
+                        value={
+                          form.guardianName
+                        }
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            guardianName:
+                              e.target
+                                .value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Guardian Phone
+                      </label>
+
+                      <input
+                        className="form-input"
+                        placeholder="01XXXXXXXXX"
+                        value={
+                          form.guardianPhone
+                        }
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            guardianPhone:
+                              e.target
+                                .value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Date of Birth
+                      </label>
+
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={
+                          form.dob
+                        }
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            dob: e.target
+                              .value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Admission Date *
+                      </label>
+
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={
+                          form.admissionDate
+                        }
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            admissionDate:
+                              e.target
+                                .value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="form-label">
+                        Address
+                      </label>
+
+                      <input
+                        className="form-input"
+                        placeholder="Full address"
+                        value={
+                          form.address
+                        }
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            address:
+                              e.target
+                                .value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="form-label">
+                        Enroll in Batch
+                      </label>
+
+                      <select
+                        className="form-select"
+                        value={
+                          form.batchId
+                        }
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            batchId:
+                              e.target
+                                .value,
+                          })
+                        }
+                      >
+                        <option value="">
+                          No batch
+                        </option>
+
+                        {batches.map(
+                          (b) => (
+                            <option
+                              key={
+                                b.batch
+                                  .id
+                              }
+                              value={
+                                b.batch
+                                  .id
+                              }
+                            >
+                              {
+                                b.batch
+                                  .name
+                              }
+                            </option>
+                          )
+                        )}
+                      </select>
                     </div>
                   </div>
                 </div>
 
-                {/* Main Form */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="form-label">
-                      Full Name *
-                    </label>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    onClick={
+                      closeStudentModal
+                    }
+                    disabled={
+                      submitting
+                    }
+                    className="btn btn-outline"
+                  >
+                    Cancel
+                  </button>
 
-                    <input
-                      className="form-input"
-                      placeholder="Student name"
-                      value={form.name}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          name: e.target.value,
-                        })
+                  <button
+                    type="submit"
+                    disabled={
+                      submitting
+                    }
+                    className="btn btn-primary"
+                  >
+                    {submitting
+                      ? editingStudentId
+                        ? "Saving..."
+                        : "Adding..."
+                      : editingStudentId
+                        ? "Save Changes"
+                        : "Add Student"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Student Account Credentials */}
+        {createdAccount && (
+          <div
+            className="modal-overlay"
+            onClick={(e) => {
+              if (
+                e.target ===
+                e.currentTarget
+              ) {
+                setCreatedAccount(
+                  null
+                );
+              }
+            }}
+          >
+            <div className="modal-box max-w-md">
+              <div className="modal-header">
+                <div>
+                  <h2 className="modal-title">
+                    Student Account Created
+                  </h2>
+
+                  <p className="text-xs text-slate-400 mt-1">
+                    Save these login credentials
+                    before closing this window.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCreatedAccount(
+                      null
+                    )
+                  }
+                  className="btn btn-ghost btn-sm"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="modal-body">
+                <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4">
+                  <p className="text-sm font-semibold text-emerald-800">
+                    Account successfully created
+                  </p>
+
+                  <p className="text-xs text-emerald-700 mt-1">
+                    {createdAccount.studentName}
+                  </p>
+                </div>
+
+                <div className="mt-5 space-y-4">
+                  <div>
+                    <p className="text-xs text-slate-400">
+                      Student ID
+                    </p>
+
+                    <div className="mt-1 rounded-xl bg-slate-50 border p-3 font-semibold text-slate-800">
+                      {
+                        createdAccount.studentId
                       }
-                      required
-                    />
+                    </div>
                   </div>
 
                   <div>
-                    <label className="form-label">
-                      Phone
-                    </label>
+                    <p className="text-xs text-slate-400">
+                      Login Email
+                    </p>
 
-                    <input
-                      className="form-input"
-                      placeholder="01XXXXXXXXX"
-                      value={form.phone}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          phone:
-                            e.target.value,
-                        })
+                    <div className="mt-1 rounded-xl bg-slate-50 border p-3 font-semibold text-slate-800 break-all">
+                      {
+                        createdAccount.loginEmail
                       }
-                    />
+                    </div>
                   </div>
 
                   <div>
-                    <label className="form-label">
-                      Gender
-                    </label>
+                    <p className="text-xs text-slate-400">
+                      Temporary Password
+                    </p>
 
-                    <select
-                      className="form-select"
-                      value={form.gender}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          gender:
-                            e.target.value,
-                        })
+                    <div className="mt-1 rounded-xl bg-amber-50 border border-amber-200 p-3 font-bold text-slate-800 break-all">
+                      {
+                        createdAccount.temporaryPassword
                       }
-                    >
-                      <option value="">
-                        Select
-                      </option>
-
-                      <option value="MALE">
-                        Male
-                      </option>
-
-                      <option value="FEMALE">
-                        Female
-                      </option>
-
-                      <option value="OTHER">
-                        Other
-                      </option>
-                    </select>
+                    </div>
                   </div>
 
                   <div>
-                    <label className="form-label">
-                      Guardian Name
-                    </label>
+                    <p className="text-xs text-slate-400">
+                      Login URL
+                    </p>
 
-                    <input
-                      className="form-input"
-                      placeholder="Parent / Guardian"
-                      value={
-                        form.guardianName
-                      }
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          guardianName:
-                            e.target.value,
-                        })
-                      }
-                    />
+                    <div className="mt-1 rounded-xl bg-slate-50 border p-3 font-semibold text-slate-800">
+                      /
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="form-label">
-                      Guardian Phone
-                    </label>
-
-                    <input
-                      className="form-input"
-                      placeholder="01XXXXXXXXX"
-                      value={
-                        form.guardianPhone
-                      }
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          guardianPhone:
-                            e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <label className="form-label">
-                      Date of Birth
-                    </label>
-
-                    <input
-                      type="date"
-                      className="form-input"
-                      value={form.dob}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          dob: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <label className="form-label">
-                      Admission Date *
-                    </label>
-
-                    <input
-                      type="date"
-                      className="form-input"
-                      value={
-                        form.admissionDate
-                      }
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          admissionDate:
-                            e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="form-label">
-                      Address
-                    </label>
-
-                    <input
-                      className="form-input"
-                      placeholder="Full address"
-                      value={
-                        form.address
-                      }
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          address:
-                            e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="form-label">
-                      Enroll in Batch
-                    </label>
-
-                    <select
-                      className="form-select"
-                      value={
-                        form.batchId
-                      }
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          batchId:
-                            e.target.value,
-                        })
-                      }
-                    >
-                      <option value="">
-                        No batch
-                      </option>
-
-                      {batches.map(
-                        (b) => (
-                          <option
-                            key={
-                              b.batch.id
-                            }
-                            value={
-                              b.batch.id
-                            }
-                          >
-                            {
-                              b.batch
-                                .name
-                            }
-                          </option>
-                        )
-                      )}
-                    </select>
+                  <div className="rounded-xl bg-blue-50 border border-blue-100 p-3">
+                    <p className="text-xs text-blue-700">
+                      Please save or securely give these
+                      credentials to the student. The
+                      temporary password will not be shown
+                      again after closing this window.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -2045,40 +2600,44 @@ export default function StudentsPage() {
               <div className="modal-footer">
                 <button
                   type="button"
-                  onClick={
-                    closeStudentModal
-                  }
-                  disabled={submitting}
+                  onClick={() => {
+                    const text = [
+                      "Easylearn Institute - Student Login",
+                      "",
+                      `Student: ${createdAccount.studentName}`,
+                      `Student ID: ${createdAccount.studentId}`,
+                      `Login Email: ${createdAccount.loginEmail}`,
+                      `Temporary Password: ${createdAccount.temporaryPassword}`,
+                      "Login URL: /",
+                    ].join("\n");
+
+                    navigator.clipboard
+                      ?.writeText(text)
+                      .catch(() => {});
+                  }}
                   className="btn btn-outline"
                 >
-                  Cancel
+                  Copy Credentials
                 </button>
 
                 <button
-                  type="submit"
-                  disabled={
-                    submitting
+                  type="button"
+                  onClick={() =>
+                    setCreatedAccount(
+                      null
+                    )
                   }
                   className="btn btn-primary"
                 >
-                  {submitting
-                    ? editingStudentId
-                      ? "Saving..."
-                      : "Adding..."
-                    : editingStudentId
-                      ? "Save Changes"
-                      : "Add Student"}
+                  Done
                 </button>
               </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
 
       <style jsx global>{`
-        /* Screen preview: enlarge the real ID cards so they are readable on desktop.
-           Print media below resets these dimensions to exact CR80 size. */
         .print-id-card-overlay .modal-box {
           max-width: 1180px;
         }
@@ -2097,7 +2656,10 @@ export default function StudentsPage() {
 
         .id-card-print-grid {
           display: grid;
-          grid-template-columns: repeat(2, 362px);
+          grid-template-columns: repeat(
+            2,
+            362px
+          );
           gap: 16px;
           justify-content: center;
           align-items: start;
@@ -2115,7 +2677,13 @@ export default function StudentsPage() {
           border: 1px solid #dbe4e8;
           border-radius: 4mm;
           background: #ffffff;
-          box-shadow: 0 8px 24px rgba(15, 118, 110, 0.08);
+          box-shadow: 0 8px 24px
+            rgba(
+              15,
+              118,
+              110,
+              0.08
+            );
           color: #0f172a;
           display: flex;
           flex-direction: column;
@@ -2124,7 +2692,11 @@ export default function StudentsPage() {
         .id-card-topbar {
           height: 2.2mm;
           flex: 0 0 auto;
-          background: linear-gradient(90deg, #0f766e 0 78%, #f59e0b 78% 100%);
+          background: linear-gradient(
+            90deg,
+            #0f766e 0 78%,
+            #f59e0b 78% 100%
+          );
         }
 
         .id-card-main {
@@ -2348,7 +2920,13 @@ export default function StudentsPage() {
         .id-card-verify {
           margin-top: 1.8mm;
           padding: 1.6mm 2mm;
-          border: 0.3mm dashed rgba(15, 118, 110, 0.4);
+          border: 0.3mm dashed
+            rgba(
+              15,
+              118,
+              110,
+              0.4
+            );
           border-radius: 1.8mm;
           background: #f8fffd;
           text-align: center;
@@ -2521,12 +3099,19 @@ export default function StudentsPage() {
             page-break-inside: avoid !important;
           }
 
-          .id-card-print-grid > .id-card-screen-wrap:nth-child(n + 3) .student-id-card {
+          .id-card-print-grid
+            > .id-card-screen-wrap:nth-child(
+              n + 3
+            )
+            .student-id-card {
             break-before: page !important;
             page-break-before: always !important;
           }
 
-          .id-card-print-grid > .student-id-card:nth-child(n + 3) {
+          .id-card-print-grid
+            > .student-id-card:nth-child(
+              n + 3
+            ) {
             break-before: page !important;
             page-break-before: always !important;
           }

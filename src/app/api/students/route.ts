@@ -1,9 +1,12 @@
+import { randomBytes } from "crypto";
+import bcrypt from "bcryptjs";
 import { db } from "@/db";
 import {
   students,
   enrollments,
   batches,
   staff,
+  users,
 } from "@/db/schema";
 import {
   eq,
@@ -70,7 +73,60 @@ function validGender(value: unknown) {
   return null;
 }
 
-export async function GET(request: Request) {
+function generateTemporaryPassword(): string {
+  return `EL@${randomBytes(9).toString(
+    "base64url",
+  )}`;
+}
+
+async function usernameTaken(
+  email: string,
+) {
+  const [existing] = await db
+    .select({
+      id: users.id,
+    })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  return Boolean(existing);
+}
+
+async function generateStudentLoginIdentifier(
+  studentCode: string,
+) {
+  const base =
+    `${studentCode.toLowerCase()}@student.easylearn.local`;
+
+  if (!(await usernameTaken(base))) {
+    return base;
+  }
+
+  for (
+    let attempt = 0;
+    attempt < 20;
+    attempt += 1
+  ) {
+    const suffix =
+      randomBytes(3).toString("hex");
+
+    const email =
+      `${studentCode.toLowerCase()}.${suffix}@student.easylearn.local`;
+
+    if (!(await usernameTaken(email))) {
+      return email;
+    }
+  }
+
+  throw new Error(
+    "Could not generate a unique student login identifier.",
+  );
+}
+
+export async function GET(
+  request: Request,
+) {
   const session = await getSession();
 
   if (!session?.instituteId) {
@@ -80,26 +136,30 @@ export async function GET(request: Request) {
     );
   }
 
-  const permissionError = requireRoles(
-    session,
-    STUDENT_VIEW_ROLES,
-  );
+  const permissionError =
+    requireRoles(
+      session,
+      STUDENT_VIEW_ROLES,
+    );
 
   if (permissionError) {
     return permissionError;
   }
 
   try {
-    const instituteId = session.instituteId;
+    const instituteId =
+      session.instituteId;
 
     const { searchParams } =
       new URL(request.url);
 
     const search =
-      searchParams.get("search") || "";
+      searchParams.get("search") ||
+      "";
 
     const status =
-      searchParams.get("status") || "";
+      searchParams.get("status") ||
+      "";
 
     const batchId =
       cleanText(
@@ -109,7 +169,8 @@ export async function GET(request: Request) {
     const page = Math.max(
       1,
       Number.parseInt(
-        searchParams.get("page") || "1",
+        searchParams.get("page") ||
+          "1",
         10,
       ) || 1,
     );
@@ -119,13 +180,15 @@ export async function GET(request: Request) {
       Math.max(
         1,
         Number.parseInt(
-          searchParams.get("limit") || "20",
+          searchParams.get("limit") ||
+            "20",
           10,
         ) || 20,
       ),
     );
 
-    const offset = (page - 1) * limit;
+    const offset =
+      (page - 1) * limit;
 
     const conditions = [
       eq(
@@ -134,7 +197,10 @@ export async function GET(request: Request) {
       ),
     ];
 
-    if (status && status !== "ALL") {
+    if (
+      status &&
+      status !== "ALL"
+    ) {
       conditions.push(
         eq(
           students.status,
@@ -147,13 +213,23 @@ export async function GET(request: Request) {
     }
 
     if (search.trim()) {
-      const q = `%${search.trim()}%`;
+      const q =
+        `%${search.trim()}%`;
 
       conditions.push(
         or(
-          like(students.name, q),
-          like(students.studentId, q),
-          like(students.phone, q),
+          like(
+            students.name,
+            q,
+          ),
+          like(
+            students.studentId,
+            q,
+          ),
+          like(
+            students.phone,
+            q,
+          ),
         )!,
       );
     }
@@ -163,49 +239,60 @@ export async function GET(request: Request) {
      * Teacher can only request their own assigned batch.
      */
     if (batchId) {
-      const [batch] = await db
-        .select({
-          id: batches.id,
-          teacherId: batches.teacherId,
-        })
-        .from(batches)
-        .where(
-          and(
-            eq(batches.id, batchId),
-            eq(
-              batches.instituteId,
-              instituteId,
-            ),
-          ),
-        )
-        .limit(1);
-
-      if (!batch) {
-        return Response.json(
-          { error: "Invalid batch" },
-          { status: 400 },
-        );
-      }
-
-      if (session.role === "TEACHER") {
-        const [teacher] = await db
+      const [batch] =
+        await db
           .select({
-            id: staff.id,
+            id: batches.id,
+            teacherId:
+              batches.teacherId,
           })
-          .from(staff)
+          .from(batches)
           .where(
             and(
               eq(
-                staff.userId,
-                session.userId,
+                batches.id,
+                batchId,
               ),
               eq(
-                staff.instituteId,
+                batches.instituteId,
                 instituteId,
               ),
             ),
           )
           .limit(1);
+
+      if (!batch) {
+        return Response.json(
+          {
+            error: "Invalid batch",
+          },
+          { status: 400 },
+        );
+      }
+
+      if (
+        session.role ===
+        "TEACHER"
+      ) {
+        const [teacher] =
+          await db
+            .select({
+              id: staff.id,
+            })
+            .from(staff)
+            .where(
+              and(
+                eq(
+                  staff.userId,
+                  session.userId,
+                ),
+                eq(
+                  staff.instituteId,
+                  instituteId,
+                ),
+              ),
+            )
+            .limit(1);
 
         if (!teacher) {
           return Response.json(
@@ -217,9 +304,14 @@ export async function GET(request: Request) {
           );
         }
 
-        if (batch.teacherId !== teacher.id) {
+        if (
+          batch.teacherId !==
+          teacher.id
+        ) {
           return Response.json(
-            { error: "Forbidden" },
+            {
+              error: "Forbidden",
+            },
             { status: 403 },
           );
         }
@@ -243,27 +335,29 @@ export async function GET(request: Request) {
      * only students from batches assigned to that teacher.
      */
     if (
-      session.role === "TEACHER" &&
+      session.role ===
+        "TEACHER" &&
       !batchId
     ) {
-      const [teacher] = await db
-        .select({
-          id: staff.id,
-        })
-        .from(staff)
-        .where(
-          and(
-            eq(
-              staff.userId,
-              session.userId,
+      const [teacher] =
+        await db
+          .select({
+            id: staff.id,
+          })
+          .from(staff)
+          .where(
+            and(
+              eq(
+                staff.userId,
+                session.userId,
+              ),
+              eq(
+                staff.instituteId,
+                instituteId,
+              ),
             ),
-            eq(
-              staff.instituteId,
-              instituteId,
-            ),
-          ),
-        )
-        .limit(1);
+          )
+          .limit(1);
 
       if (!teacher) {
         return Response.json(
@@ -291,20 +385,31 @@ export async function GET(request: Request) {
       );
     }
 
-    const [{ total }] = await db
-      .select({
-        total: sql<number>`count(*)::int`,
-      })
-      .from(students)
-      .where(and(...conditions));
+    const [{ total }] =
+      await db
+        .select({
+          total:
+            sql<number>`count(*)::int`,
+        })
+        .from(students)
+        .where(
+          and(...conditions),
+        );
 
-    const rows = await db
-      .select()
-      .from(students)
-      .where(and(...conditions))
-      .orderBy(desc(students.createdAt))
-      .limit(limit)
-      .offset(offset);
+    const rows =
+      await db
+        .select()
+        .from(students)
+        .where(
+          and(...conditions),
+        )
+        .orderBy(
+          desc(
+            students.createdAt,
+          ),
+        )
+        .limit(limit)
+        .offset(offset);
 
     return Response.json({
       students: rows,
@@ -328,7 +433,9 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request,
+) {
   const session = await getSession();
 
   if (!session?.instituteId) {
@@ -338,40 +445,65 @@ export async function POST(request: Request) {
     );
   }
 
-  const permissionError = requireRoles(
-    session,
-    STUDENT_MANAGE_ROLES,
-  );
+  const permissionError =
+    requireRoles(
+      session,
+      STUDENT_MANAGE_ROLES,
+    );
 
   if (permissionError) {
     return permissionError;
   }
 
-  const instituteId = session.instituteId;
+  const instituteId =
+    session.instituteId;
 
   try {
-    const body = await request.json();
+    const body =
+      await request.json();
 
-    const name = cleanText(body.name);
-    const phone = cleanText(body.phone);
+    const name =
+      cleanText(body.name);
+
+    const phone =
+      cleanText(body.phone);
+
     const guardianName =
-      cleanText(body.guardianName);
+      cleanText(
+        body.guardianName,
+      );
+
     const guardianPhone =
-      cleanText(body.guardianPhone);
-    const address = cleanText(body.address);
-    const dob = cleanText(body.dob);
+      cleanText(
+        body.guardianPhone,
+      );
+
+    const address =
+      cleanText(body.address);
+
+    const dob =
+      cleanText(body.dob);
+
     const admissionDate =
-      cleanText(body.admissionDate);
+      cleanText(
+        body.admissionDate,
+      );
+
     const batchId =
       cleanText(body.batchId);
 
-    const gender = validGender(body.gender);
+    const gender =
+      validGender(body.gender);
 
-    const photoUrl = cleanPhotoUrl(
-      body.photoUrl,
-    );
+    const photoUrl =
+      cleanPhotoUrl(
+        body.photoUrl,
+      );
 
-    if (!name || !admissionDate) {
+    if (
+      !name ||
+      !admissionDate
+    ) {
       return Response.json(
         {
           error:
@@ -381,7 +513,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (body.photoUrl && !photoUrl) {
+    if (
+      body.photoUrl &&
+      !photoUrl
+    ) {
       return Response.json(
         {
           error:
@@ -392,25 +527,32 @@ export async function POST(request: Request) {
     }
 
     if (batchId) {
-      const [batch] = await db
-        .select({
-          id: batches.id,
-        })
-        .from(batches)
-        .where(
-          and(
-            eq(batches.id, batchId),
-            eq(
-              batches.instituteId,
-              instituteId,
+      const [batch] =
+        await db
+          .select({
+            id: batches.id,
+          })
+          .from(batches)
+          .where(
+            and(
+              eq(
+                batches.id,
+                batchId,
+              ),
+              eq(
+                batches.instituteId,
+                instituteId,
+              ),
             ),
-          ),
-        )
-        .limit(1);
+          )
+          .limit(1);
 
       if (!batch) {
         return Response.json(
-          { error: "Invalid batch" },
+          {
+            error:
+              "Invalid batch",
+          },
           { status: 400 },
         );
       }
@@ -419,53 +561,132 @@ export async function POST(request: Request) {
     const studentId =
       generateStudentId();
 
+    const loginEmail =
+      await generateStudentLoginIdentifier(
+        studentId,
+      );
+
+    const temporaryPassword =
+      generateTemporaryPassword();
+
+    const passwordHash =
+      await bcrypt.hash(
+        temporaryPassword,
+        12,
+      );
+
     const result =
-      await db.transaction(async (tx) => {
-        const [student] = await tx
-          .insert(students)
-          .values({
-            instituteId,
-            studentId,
-            name,
-            phone: phone || null,
-            guardianName:
-              guardianName || null,
-            guardianPhone:
-              guardianPhone || null,
-            address: address || null,
-            dob: dob || null,
-            gender,
-            admissionDate,
-            status: "ACTIVE",
-            photoUrl,
-          })
-          .returning();
+      await db.transaction(
+        async (tx) => {
+          /*
+           * 1. Create login account
+           */
+          const [user] =
+            await tx
+              .insert(users)
+              .values({
+                instituteId,
+                role: "STUDENT",
+                name,
+                phone:
+                  phone || null,
+                email: loginEmail,
+                passwordHash,
+                status: "ACTIVE",
+              })
+              .returning({
+                id: users.id,
+              });
 
-        if (!student) {
-          throw new Error(
-            "Failed to create student.",
-          );
-        }
+          if (!user) {
+            throw new Error(
+              "Failed to create student user account.",
+            );
+          }
 
-        if (batchId) {
-          await tx
-            .insert(enrollments)
-            .values({
-              instituteId,
-              studentId: student.id,
-              batchId,
-              enrollmentDate:
+          /*
+           * 2. Create student profile
+           */
+          const [student] =
+            await tx
+              .insert(students)
+              .values({
+                userId: user.id,
+                instituteId,
+                studentId,
+                name,
+                phone:
+                  phone || null,
+                guardianName:
+                  guardianName ||
+                  null,
+                guardianPhone:
+                  guardianPhone ||
+                  null,
+                address:
+                  address || null,
+                dob:
+                  dob || null,
+                gender,
                 admissionDate,
-              status: "ACTIVE",
-            });
-        }
+                status: "ACTIVE",
+                photoUrl,
+              })
+              .returning();
 
-        return student;
-      });
+          if (!student) {
+            throw new Error(
+              "Failed to create student.",
+            );
+          }
 
-    return Response.json({
-      student: result,
-    });
+          /*
+           * 3. Create batch enrollment
+           */
+          if (batchId) {
+            await tx
+              .insert(enrollments)
+              .values({
+                instituteId,
+                studentId:
+                  student.id,
+                batchId,
+                enrollmentDate:
+                  admissionDate,
+                status: "ACTIVE",
+              });
+          }
+
+          return {
+            student,
+            userId: user.id,
+          };
+        },
+      );
+
+    return Response.json(
+      {
+        student:
+          result.student,
+
+        account: {
+          userId:
+            result.userId,
+
+          role: "STUDENT",
+
+          username:
+            loginEmail,
+
+          loginEmail,
+
+          loginUrl: "/",
+
+          temporaryPassword,
+        },
+      },
+      { status: 201 },
+    );
   } catch (error) {
     console.error(
       "POST /api/students error:",
@@ -475,7 +696,9 @@ export async function POST(request: Request) {
     return Response.json(
       {
         error:
-          "Failed to add student",
+          error instanceof Error
+            ? error.message
+            : "Failed to create student and login account.",
       },
       { status: 500 },
     );
