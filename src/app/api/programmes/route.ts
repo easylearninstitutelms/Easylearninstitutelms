@@ -318,3 +318,123 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getSession();
+
+    if (!session?.instituteId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    if (
+      session.role !== "INSTITUTE_ADMIN" &&
+      session.role !== "SUPER_ADMIN"
+    ) {
+      return NextResponse.json(
+        {
+          error: "You do not have permission to delete programmes",
+        },
+        { status: 403 },
+      );
+    }
+
+    await ensureAcademicSchema();
+
+    const id = new URL(request.url).searchParams.get("id")?.trim();
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Programme ID is required" },
+        { status: 400 },
+      );
+    }
+
+    const programme = rowsOf(
+      await db.execute(sql`
+        SELECT id, name, programme_no AS "programmeNo"
+        FROM programmes
+        WHERE id = ${id}
+          AND institute_id = ${session.instituteId}
+        LIMIT 1
+      `),
+    )[0];
+
+    if (!programme) {
+      return NextResponse.json(
+        { error: "Programme not found" },
+        { status: 404 },
+      );
+    }
+
+    const linkedBatches = rowsOf(
+      await db.execute(sql`
+        SELECT id
+        FROM batches
+        WHERE programme_id = ${id}
+          AND institute_id = ${session.instituteId}
+        LIMIT 1
+      `),
+    );
+
+    if (linkedBatches.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Cannot delete this programme while batches are linked to it. Delete the linked batches first.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const linkedExams = rowsOf(
+      await db.execute(sql`
+        SELECT id
+        FROM exams
+        WHERE programme_id = ${id}
+          AND institute_id = ${session.instituteId}
+        LIMIT 1
+      `),
+    );
+
+    if (linkedExams.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Cannot delete this programme while exams are linked to it.",
+        },
+        { status: 409 },
+      );
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`
+        DELETE FROM programme_semesters
+        WHERE programme_id = ${id}
+          AND institute_id = ${session.instituteId}
+      `);
+
+      await tx.execute(sql`
+        DELETE FROM programmes
+        WHERE id = ${id}
+          AND institute_id = ${session.instituteId}
+      `);
+    });
+
+    return NextResponse.json({
+      success: true,
+      deletedProgrammeId: id,
+      deletedProgrammeNo: programme.programmeNo ?? null,
+    });
+  } catch (error) {
+    console.error("Programme DELETE error:", error);
+
+    return NextResponse.json(
+      { error: "Failed to delete programme" },
+      { status: 500 },
+    );
+  }
+}
