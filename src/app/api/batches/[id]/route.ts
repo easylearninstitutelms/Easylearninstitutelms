@@ -6,8 +6,14 @@ import {
   routines,
   courses,
   staff,
+  attendance,
+  homework,
+  assignments,
+  exams,
+  examSubjects,
+  results,
 } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import {
   getSession,
   requireRoles,
@@ -294,12 +300,9 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const [updated] = await db
-      .update(batches)
-      .set({
-        status: "ARCHIVED",
-        updatedAt: new Date(),
-      })
+    const [existingBatch] = await db
+      .select({ id: batches.id })
+      .from(batches)
       .where(
         and(
           eq(batches.id, id),
@@ -309,17 +312,135 @@ export async function DELETE(
           ),
         ),
       )
-      .returning();
+      .limit(1);
 
-    if (!updated) {
+    if (!existingBatch) {
       return Response.json(
         { error: "Batch not found" },
         { status: 404 },
       );
     }
 
+    await db.transaction(async (tx) => {
+      const batchExamRows = await tx
+        .select({ id: exams.id })
+        .from(exams)
+        .where(
+          and(
+            eq(exams.batchId, id),
+            eq(
+              exams.instituteId,
+              session.instituteId,
+            ),
+          ),
+        );
+
+      const examIds = batchExamRows.map(
+        (row) => row.id,
+      );
+
+      if (examIds.length > 0) {
+        await tx
+          .delete(results)
+          .where(
+            inArray(
+              results.examId,
+              examIds,
+            ),
+          );
+
+        await tx
+          .delete(examSubjects)
+          .where(
+            inArray(
+              examSubjects.examId,
+              examIds,
+            ),
+          );
+
+        await tx
+          .delete(exams)
+          .where(
+            inArray(exams.id, examIds),
+          );
+      }
+
+      await tx
+        .delete(homework)
+        .where(
+          and(
+            eq(homework.batchId, id),
+            eq(
+              homework.instituteId,
+              session.instituteId,
+            ),
+          ),
+        );
+
+      await tx
+        .delete(assignments)
+        .where(
+          and(
+            eq(assignments.batchId, id),
+            eq(
+              assignments.instituteId,
+              session.instituteId,
+            ),
+          ),
+        );
+
+      await tx
+        .delete(routines)
+        .where(
+          and(
+            eq(routines.batchId, id),
+            eq(
+              routines.instituteId,
+              session.instituteId,
+            ),
+          ),
+        );
+
+      await tx
+        .delete(attendance)
+        .where(
+          and(
+            eq(attendance.batchId, id),
+            eq(
+              attendance.instituteId,
+              session.instituteId,
+            ),
+          ),
+        );
+
+      await tx
+        .delete(enrollments)
+        .where(
+          and(
+            eq(enrollments.batchId, id),
+            eq(
+              enrollments.instituteId,
+              session.instituteId,
+            ),
+          ),
+        );
+
+      await tx
+        .delete(batches)
+        .where(
+          and(
+            eq(batches.id, id),
+            eq(
+              batches.instituteId,
+              session.instituteId,
+            ),
+          ),
+        );
+    });
+
     return Response.json({
-      batch: updated,
+      success: true,
+      deletedBatchId: id,
     });
   } catch (error) {
     console.error(
@@ -328,7 +449,12 @@ export async function DELETE(
     );
 
     return Response.json(
-      { error: "Failed to archive batch" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete batch",
+      },
       { status: 500 },
     );
   }
