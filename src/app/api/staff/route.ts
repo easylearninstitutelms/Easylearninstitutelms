@@ -3,7 +3,10 @@ import bcrypt from "bcryptjs";
 import { and, desc, eq, like, or } from "drizzle-orm";
 import { db } from "@/db";
 import { staff, users } from "@/db/schema";
-import { getSession } from "@/lib/session";
+import {
+  getSession,
+  requireRoles,
+} from "@/lib/session";
 
 const ALLOWED_ACCOUNT_ROLES = [
   "TEACHER",
@@ -14,6 +17,12 @@ const ALLOWED_ACCOUNT_ROLES = [
 ] as const;
 
 type AccountRole = (typeof ALLOWED_ACCOUNT_ROLES)[number];
+
+const STAFF_MANAGEMENT_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "MANAGER",
+];
 
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -45,7 +54,7 @@ async function usernameTaken(email: string) {
 
 async function generateLoginIdentifier(
   name: string,
-  providedEmail: string
+  providedEmail: string,
 ) {
   if (providedEmail) {
     return providedEmail.toLowerCase();
@@ -72,8 +81,17 @@ export async function GET(request: Request) {
   if (!session || !session.instituteId) {
     return Response.json(
       { error: "Unauthorized" },
-      { status: 401 }
+      { status: 401 },
     );
+  }
+
+  const permissionError = requireRoles(
+    session,
+    STAFF_MANAGEMENT_ROLES,
+  );
+
+  if (permissionError) {
+    return permissionError;
   }
 
   const instituteId = session.instituteId;
@@ -90,8 +108,8 @@ export async function GET(request: Request) {
     conditions.push(
       eq(
         staff.status,
-        status as "ACTIVE" | "INACTIVE" | "ARCHIVED"
-      )
+        status as "ACTIVE" | "INACTIVE" | "ARCHIVED",
+      ),
     );
   }
 
@@ -101,8 +119,8 @@ export async function GET(request: Request) {
         like(staff.name, `%${search}%`),
         like(staff.phone, `%${search}%`),
         like(staff.email, `%${search}%`),
-        like(staff.designation, `%${search}%`)
-      )!
+        like(staff.designation, `%${search}%`),
+      )!,
     );
   }
 
@@ -121,21 +139,20 @@ export async function POST(request: Request) {
   if (!session || !session.instituteId) {
     return Response.json(
       { error: "Unauthorized" },
-      { status: 401 }
+      { status: 401 },
     );
+  }
+
+  const permissionError = requireRoles(
+    session,
+    STAFF_MANAGEMENT_ROLES,
+  );
+
+  if (permissionError) {
+    return permissionError;
   }
 
   const instituteId = session.instituteId;
-
-  if (
-    session.role !== "INSTITUTE_ADMIN" &&
-    session.role !== "SUPER_ADMIN"
-  ) {
-    return Response.json(
-      { error: "Forbidden" },
-      { status: 403 }
-    );
-  }
 
   try {
     const body = await request.json();
@@ -146,36 +163,39 @@ export async function POST(request: Request) {
     const designation = cleanText(body.designation);
     const joiningDate = cleanText(body.joiningDate);
     const salary = cleanText(body.salary);
-    const accountRole = cleanText(body.accountRole) as AccountRole;
+    const accountRole = cleanText(
+      body.accountRole,
+    ) as AccountRole;
 
     if (!name) {
       return Response.json(
         { error: "Name is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const role: AccountRole = ALLOWED_ACCOUNT_ROLES.includes(
-      accountRole
-    )
-      ? accountRole
-      : designation.toLowerCase().includes("teacher")
-        ? "TEACHER"
-        : "STAFF";
+    const role: AccountRole =
+      ALLOWED_ACCOUNT_ROLES.includes(accountRole)
+        ? accountRole
+        : designation.toLowerCase().includes("teacher")
+          ? "TEACHER"
+          : "STAFF";
 
     if (
       providedEmail &&
       !/^\S+@\S+\.\S+$/.test(providedEmail)
     ) {
       return Response.json(
-        { error: "Please enter a valid email address." },
-        { status: 400 }
+        {
+          error: "Please enter a valid email address.",
+        },
+        { status: 400 },
       );
     }
 
     const loginEmail = await generateLoginIdentifier(
       name,
-      providedEmail
+      providedEmail,
     );
 
     if (await usernameTaken(loginEmail)) {
@@ -184,15 +204,16 @@ export async function POST(request: Request) {
           error:
             "A user account already exists with this login.",
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
-    const temporaryPassword = generateTemporaryPassword();
+    const temporaryPassword =
+      generateTemporaryPassword();
 
     const passwordHash = await bcrypt.hash(
       temporaryPassword,
-      12
+      12,
     );
 
     const result = await db.transaction(async (tx) => {
@@ -213,7 +234,7 @@ export async function POST(request: Request) {
 
       if (!user) {
         throw new Error(
-          "Failed to create user account."
+          "Failed to create user account.",
         );
       }
 
@@ -234,7 +255,7 @@ export async function POST(request: Request) {
 
       if (!member) {
         throw new Error(
-          "Failed to create staff member."
+          "Failed to create staff member.",
         );
       }
 
@@ -256,12 +277,12 @@ export async function POST(request: Request) {
           temporaryPassword,
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error(
       "POST /api/staff error:",
-      error
+      error,
     );
 
     return Response.json(
@@ -269,7 +290,7 @@ export async function POST(request: Request) {
         error:
           "Failed to create staff member and user account.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
