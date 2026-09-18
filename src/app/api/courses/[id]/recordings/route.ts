@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { sql } from "drizzle-orm";
 import { getSession, requireRoles } from "@/lib/session";
 import { ensureAcademicSchema } from "@/lib/academic";
-const MANAGE=["SUPER_ADMIN","INSTITUTE_ADMIN","MANAGER","TEACHER"];const rows=(r:any)=>r?.rows||(Array.isArray(r)?r:[]);
+const MANAGE=["SUPER_ADMIN","INSTITUTE_ADMIN","MANAGER","ADMIN","INSTITUTE","TEACHER"];const rows=(r:any)=>r?.rows||(Array.isArray(r)?r:[]);
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){
  const session=await getSession();if(!session?.instituteId)return NextResponse.json({error:"Unauthorized"},{status:401});const pe=requireRoles(session,MANAGE);if(pe)return pe;await ensureAcademicSchema();
  const {id}=await params;const b=await request.json();const classId=String(b.classId||""),title=String(b.title||"").trim(),url=String(b.videoUrl||"").trim();
