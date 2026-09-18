@@ -167,6 +167,7 @@ const navItems: NavItem[] = [
       ...ALL_ROLES,
       "STAFF",
       "MANAGER",
+      "TEACHER",
     ],
     icon: (
       <NavIcon>
