@@ -270,56 +270,51 @@ export default function ProgrammeSyllabusPage() {
                 <div className="divide-y divide-slate-100">
                   {items.length === 0 ? (
                     <div className="p-6 text-sm text-slate-500">No classes yet. Click + Class to add one.</div>
-                  ) : items.sort((a, b) => a.classNo - b.classNo).map(c => {
-                    const meta = statusMeta[c.status] || statusMeta.UPCOMING;
-                    return (
-                      <div key={c.id} className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex min-w-0 gap-3">
-                          <div className={`flex h-10 w-14 shrink-0 items-center justify-center rounded-xl border text-xs font-black ${meta.cls}`}>Class {c.classNo}</div>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="font-bold text-slate-800">{c.title}</h3>
-                              <div className="flex flex-wrap gap-2">
-                              <button type="button" onClick={() => void openVideo(c)} className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100">🎥 Add Video</button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const title = prompt("Class title:", c.title);
-                                  if (title === null) return;
-                                  const description = prompt("Class description:", c.description || "");
-                                  if (description === null) return;
-                                  if (!title.trim()) { alert("Class title is required."); return; }
-                                  void updateClass(c, { title: title.trim(), description: description.trim() || null });
-                                }}
-                                disabled={saving}
-                                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50 disabled:opacity-50"
-                              >
-                                Edit
-                              </button>
-                            </div>
-                            {c.description && <p className="mt-1 text-xs text-slate-500">{c.description}</p>}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                          <input type="date" value={c.scheduledDate || ""} onChange={e => void updateClass(c, { scheduledDate: e.target.value || null })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs" />
-                          <input type="time" value={c.startTime || ""} onChange={e => void updateClass(c, { startTime: e.target.value || null })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs" />
-                          <input type="time" value={c.endTime || ""} onChange={e => void updateClass(c, { endTime: e.target.value || null })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs" />
-                          {(["UPCOMING", "TODAY", "COMPLETED", "CANCELLED"] as const).map(status => (
+                  ) : items.slice().sort((a, b) => a.classNo - b.classNo).map(c => (
+                    <div key={c.id} className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex min-w-0 gap-3">
+                        <div className={`flex h-10 w-14 shrink-0 items-center justify-center rounded-xl border text-xs font-black ${(statusMeta[c.status] || statusMeta.UPCOMING).cls}`}>Class {c.classNo}</div>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-bold text-slate-800">{c.title}</h3>
+                            <button type="button" onClick={() => void openVideo(c)} className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100">🎥 Add Video</button>
                             <button
-                              key={status}
                               type="button"
-                              onClick={() => void updateClass(c, { status })}
+                              onClick={() => {
+                                const title = prompt("Class title:", c.title);
+                                if (title === null) return;
+                                const description = prompt("Class description:", c.description || "");
+                                if (description === null) return;
+                                if (!title.trim()) { alert("Class title is required."); return; }
+                                void updateClass(c, { title: title.trim(), description: description.trim() || null });
+                              }}
                               disabled={saving}
-                              className={`rounded-lg border px-3 py-2 text-xs font-bold ${c.status === status ? statusMeta[status].cls : "border-slate-200 bg-white text-slate-600"}`}
+                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50 disabled:opacity-50"
                             >
-                              {statusMeta[status].label}
+                              Edit
                             </button>
-                          ))}
+                          </div>
+                          {c.description && <p className="mt-1 text-xs text-slate-500">{c.description}</p>}
                         </div>
                       </div>
-                    );
-                  })}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input type="date" value={c.scheduledDate || ""} onChange={e => void updateClass(c, { scheduledDate: e.target.value || null })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs" />
+                        <input type="time" value={c.startTime || ""} onChange={e => void updateClass(c, { startTime: e.target.value || null })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs" />
+                        <input type="time" value={c.endTime || ""} onChange={e => void updateClass(c, { endTime: e.target.value || null })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs" />
+                        {(["UPCOMING", "TODAY", "COMPLETED", "CANCELLED"] as const).map(status => (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={() => void updateClass(c, { status })}
+                            disabled={saving}
+                            className={`rounded-lg border px-3 py-2 text-xs font-bold ${c.status === status ? statusMeta[status].cls : "border-slate-200 bg-white text-slate-600"}`}
+                          >
+                            {statusMeta[status].label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </section>
             ))}
