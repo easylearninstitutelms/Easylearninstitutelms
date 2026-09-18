@@ -157,15 +157,14 @@ export default function ProgrammeSyllabusPage() {
 
   async function openVideo(c: SyllabusClass) {
     try {
-      const r = await fetch("/api/teacher/classes", { cache: "no-store" });
+      const r = await fetch(`/api/teacher/class-recordings?classId=${c.id}`, { cache: "no-store" });
       const d = await r.json();
-      if (!r.ok) throw new Error(d?.error || "Class recordings could not be loaded.");
-      const matches = (d.classes || []).filter((x: TeacherClass) => x.classId === c.id);
-      const first = matches.find((x: TeacherClass) => x.recordingId) || matches[0];
+      if (!r.ok) throw new Error(d?.error || "Class recording could not be loaded.");
+      const recording = d.recording;
       setVideoClass(c);
-      setVideoTitle(first?.recordingTitle || `Class ${c.classNo} Recording`);
-      setVideoUrl(first?.recordingUrl || "");
-      setVideoDuration(first?.recordingDuration || "");
+      setVideoTitle(recording?.title || `Class ${c.classNo} Recording`);
+      setVideoUrl(recording?.videoUrl || "");
+      setVideoDuration(recording?.duration || "");
     } catch (e) {
       alert(e instanceof Error ? e.message : "Failed to load class recording.");
     }
