@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { sql } from "drizzle-orm";
 import { getSession, requireRoles } from "@/lib/session";
 import { ensureAcademicSchema } from "@/lib/academic";
-const ROLES=["SUPER_ADMIN","INSTITUTE_ADMIN","MANAGER","TEACHER"];
+const ROLES=["SUPER_ADMIN","INSTITUTE_ADMIN","MANAGER","ADMIN","INSTITUTE","TEACHER"];
 const rows=(r:any)=>r?.rows||(Array.isArray(r)?r:[]);
 export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){
  const session=await getSession();if(!session?.instituteId)return NextResponse.json({error:"Unauthorized"},{status:401});
