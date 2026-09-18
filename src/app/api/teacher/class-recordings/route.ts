@@ -16,7 +16,7 @@ async function teacherIdOf(session: any) {
   `));
   return rows[0]?.id || null;
 }
-const MANAGE = ["SUPER_ADMIN", "INSTITUTE_ADMIN", "MANAGER", "TEACHER"];
+const MANAGE = ["SUPER_ADMIN", "INSTITUTE_ADMIN", "MANAGER", "ADMIN", "INSTITUTE", "TEACHER"];
 
 export async function POST(request: Request) {
   try {
