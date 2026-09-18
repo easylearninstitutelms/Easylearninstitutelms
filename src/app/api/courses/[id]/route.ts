@@ -10,6 +10,7 @@ const COURSE_MANAGE_ROLES = [
   "SUPER_ADMIN",
   "INSTITUTE_ADMIN",
   "MANAGER",
+  "TEACHER",
 ];
 
 export async function PATCH(
