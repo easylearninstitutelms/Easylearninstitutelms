@@ -389,7 +389,7 @@ export default function StaffPage() {
                     onClick={() => handleArchive(s.id)}
                     className="mt-3 text-xs text-red-500 hover:text-red-700 transition"
                   >
-                    Archive
+                    Delete
                   </button>
                 )}
               </div>
