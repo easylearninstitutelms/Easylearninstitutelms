@@ -118,6 +118,27 @@ interface PaymentItem {
   paidAt: string;
 }
 
+interface StudentClass {
+  enrollment_id: string;
+  batch_id: string;
+  batch_name: string;
+  programme_id?: string | null;
+  programme_name?: string | null;
+  batch_semester_id?: string | null;
+  semester_no?: number | null;
+  semester_name?: string | null;
+  class_id: string;
+  class_no: number;
+  title: string;
+  description?: string | null;
+  scheduled_date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  syllabus_status: string;
+  session_status: string;
+  taken_at?: string | null;
+}
+
 interface StudentPortalData {
   student: StudentData;
 
@@ -143,7 +164,7 @@ interface StudentPortalData {
     };
   };
 
-  payments: PaymentItem[];
+  payments: PaymentItem[];\n\n  classes?: StudentClass[];
 }
 
 function currency(
@@ -451,7 +472,7 @@ export default function StudentPage() {
             },
             {
               key: "attendance",
-              label: "Attendance",
+              key: "classes",\n              label: "My Classes",\n            },\n            {\n              key: "attendance",\n              label: "Attendance",
             },
             {
               key: "homework",
@@ -492,7 +513,86 @@ export default function StudentPage() {
           })}
         </div>
 
-        {/* Overview */}
+
+
+        {/* My Classes */}
+        {activeTab === "classes" && (
+          <div className="mt-6 space-y-6">
+            {classesLoading ? (
+              <div className="card text-center py-12 text-sm text-slate-500">Loading your classes...</div>
+            ) : classes.length === 0 ? (
+              <div className="card"><EmptyState message="No syllabus classes found for your enrolled active batch." /></div>
+            ) : (
+              Object.values(
+                classes.reduce<Record<string, StudentClass[]>>((groups, item) => {
+                  const key = item.batch_id;
+                  (groups[key] ||= []).push(item);
+                  return groups;
+                }, {}),
+              ).map((batchClasses) => {
+                const first = batchClasses[0];
+                const grouped = batchClasses.reduce<Record<string, StudentClass[]>>((groups, item) => {
+                  const key = item.semester_name || "Semester";
+                  (groups[key] ||= []).push(item);
+                  return groups;
+                }, {});
+                return (
+                  <div key={first.batch_id} className="card">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h2 className="font-bold text-slate-800">{first.programme_name || "Programme"}</h2>
+                        <p className="text-xs text-blue-600 font-semibold mt-1">Batch: {first.batch_name}</p>
+                      </div>
+                      <span className="badge badge-blue">{batchClasses.length} Classes</span>
+                    </div>
+                    <div className="mt-5 space-y-5">
+                      {Object.entries(grouped).map(([semester, semesterClasses]) => (
+                        <div key={semester}>
+                          <h3 className="font-bold text-slate-700 mb-3">{semester}</h3>
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                            {semesterClasses.map((item) => {
+                              const status = item.session_status === "COMPLETED"
+                                ? "COMPLETED"
+                                : item.scheduled_date && item.scheduled_date < new Date().toISOString().slice(0, 10)
+                                  ? "PENDING"
+                                  : item.scheduled_date === new Date().toISOString().slice(0, 10)
+                                    ? "TODAY"
+                                    : "UPCOMING";
+                              const style = status === "COMPLETED"
+                                ? "border-emerald-200 bg-emerald-50"
+                                : status === "TODAY"
+                                  ? "border-amber-200 bg-amber-50"
+                                  : status === "PENDING"
+                                    ? "border-slate-200 bg-slate-50"
+                                    : "border-blue-200 bg-blue-50";
+                              return (
+                                <div key={item.class_id} className={`rounded-2xl border p-4 ${style}`}>
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <p className="text-xs font-bold text-slate-500">Class {item.class_no}</p>
+                                      <h4 className="mt-1 font-bold text-slate-800">{item.title}</h4>
+                                    </div>
+                                    <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-bold">{status}</span>
+                                  </div>
+                                  {item.description && <p className="mt-2 text-xs text-slate-500">{item.description}</p>}
+                                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                                    <span>📅 {item.scheduled_date ? formatDate(item.scheduled_date) : "Date not set"}</span>
+                                    {item.start_time && <span>🕐 {item.start_time.slice(0,5)}{item.end_time ? ` - ${item.end_time.slice(0,5)}` : ""}</span>}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+\n        {/* Overview */}
         {activeTab ===
           "overview" && (
           <div className="mt-6 space-y-6">
