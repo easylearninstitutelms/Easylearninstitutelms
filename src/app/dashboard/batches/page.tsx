@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getStatusColor, formatCurrency, formatDate } from "@/lib/utils";
 
 type Programme = { id: string; programmeNo: number | null; name: string; code: string | null; semesters: { id: string; semesterNo: number; name: string }[] };
-type BatchRow = { id: string; name: string; room: string | null; startDate: string | null; endDate: string | null; fee: string | null; status: string; batchNo: number | null; programmeId: string | null; programmeName: string | null; programmeCode: string | null; programmeNo: number | null; semesterId: string | null; semesterNo: number | null; semesterName: string | null; courseName: string | null; teacherName: string | null; studentCount: number };
+type BatchRow = { id: string; name: string; room: string | null; startDate: string | null; endDate: string | null; fee: string | null; status: string; batchNo: number | null; programmeId: string | null; programmeName: string | null; programmeCode: string | null; programmeNo: number | null; semesterId: string | null; courseId: string | null; semesterNo: number | null; semesterName: string | null; courseName: string | null; teacherName: string | null; studentCount: number };
 
 const blankForm = { batchNo: "", name: "", programmeId: "", semesterId: "", courseId: "", teacherId: "", room: "", startDate: "", endDate: "", fee: "" };
 
@@ -68,7 +68,7 @@ export default function BatchesPage() {
       name: row.name || "",
       programmeId: row.programmeId || "",
       semesterId: row.semesterId || "",
-      courseId: "",
+      courseId: row.courseId || "",
       teacherId: "",
       room: row.room || "",
       startDate: row.startDate || "",
