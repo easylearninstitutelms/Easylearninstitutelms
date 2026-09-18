@@ -162,6 +162,20 @@ tr:hover td {
   @apply flex justify-end gap-3 p-5 border-t border-slate-100;
 }
 
+/* Course creation modal */
+.course-modal-box {
+  @apply max-w-[1400px] h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col;
+}
+.course-modal-box form {
+  @apply flex min-h-0 flex-1 flex-col;
+}
+.course-modal-box .modal-body {
+  @apply min-h-0 flex-1 overflow-y-auto;
+}
+.course-modal-box .modal-footer {
+  @apply shrink-0;
+}
+
 /* Status chips */
 .status-chip {
   @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold;
