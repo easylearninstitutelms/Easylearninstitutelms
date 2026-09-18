@@ -115,6 +115,7 @@ export async function GET(request: Request) {
         status as "ACTIVE" | "INACTIVE" | "ARCHIVED",
       ),
     );
+  }
 
   if (search) {
     conditions.push(
