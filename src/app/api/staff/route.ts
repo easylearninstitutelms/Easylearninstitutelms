@@ -1,12 +1,12 @@
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
-import { and, desc, eq, like, or } from "drizzle-orm";
+import { and, desc, eq, isNull, like, or } from "drizzle-orm";
 import { db } from "@/db";
 import { staff, users } from "@/db/schema";
 import {
   getSession,
   requireRoles,
-} from "@/lib/session";
+} from "@/lib/session";\nimport { ensureStaffSchema } from "@/lib/staff";
 
 const ALLOWED_ACCOUNT_ROLES = [
   "TEACHER",
