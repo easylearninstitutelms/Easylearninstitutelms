@@ -667,6 +667,88 @@ export default function StudentPage() {
           </div>
         )}
 
+        {/* Recorded Classes */}
+        {activeTab === "recordings" && (
+          <div className="mt-6 space-y-6">
+            <div className="card">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h2 className="font-bold text-slate-800">Recorded Classes</h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Video classes available for your enrolled course and batch
+                  </p>
+                </div>
+                <span className="badge badge-blue">{recordings.length} videos</span>
+              </div>
+
+              {recordingsLoading ? (
+                <div className="py-12 text-center text-sm text-slate-500">
+                  Loading recorded classes...
+                </div>
+              ) : recordings.length === 0 ? (
+                <EmptyState message="No recorded classes are available for your active enrollment yet." />
+              ) : (
+                <div className="space-y-6">
+                  {Object.entries(
+                    recordings.reduce<Record<string, StudentRecording[]>>((groups, item) => {
+                      const key = item.batchName || "My Course";
+                      (groups[key] ||= []).push(item);
+                      return groups;
+                    }, {}),
+                  ).map(([batchName, batchRecordings]) => (
+                    <div key={batchName}>
+                      <div className="mb-3">
+                        <h3 className="font-bold text-slate-700">{batchName}</h3>
+                        <p className="text-xs text-blue-600 font-semibold mt-1">
+                          {batchRecordings[0]?.programmeName || "Course"}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        {batchRecordings.map((item) => (
+                          <div
+                            key={`${item.recordingType}-${item.id}`}
+                            className="rounded-2xl border border-blue-200 bg-blue-50 p-4"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-blue-700">
+                                  Class {item.classNo} · {item.semesterName || "Course"}
+                                </p>
+                                <h4 className="mt-1 font-bold text-slate-800">
+                                  {item.recordingTitle || item.classTitle}
+                                </h4>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {item.classTitle}
+                                </p>
+                                {item.duration && (
+                                  <p className="mt-2 text-xs text-slate-400">
+                                    Duration: {item.duration}
+                                  </p>
+                                )}
+                              </div>
+                              <span className="shrink-0 text-lg">🎥</span>
+                            </div>
+                            <div className="mt-4">
+                              <a
+                                href={item.videoUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-primary btn-sm"
+                              >
+                                ▶ Watch Video
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Overview */}
         {activeTab ===
           "overview" && (
