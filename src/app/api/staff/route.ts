@@ -115,9 +115,6 @@ export async function GET(request: Request) {
         status as "ACTIVE" | "INACTIVE" | "ARCHIVED",
       ),
     );
-  } else if (!status) {
-    conditions.push(eq(staff.status, "ACTIVE"));
-  }
 
   if (search) {
     conditions.push(
