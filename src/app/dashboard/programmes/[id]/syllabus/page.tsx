@@ -299,7 +299,6 @@ export default function ProgrammeSyllabusPage() {
                             </div>
                             {c.description && <p className="mt-1 text-xs text-slate-500">{c.description}</p>}
                           </div>
-                        </div>
 
                         <div className="flex flex-wrap items-center gap-2">
                           <input type="date" value={c.scheduledDate || ""} onChange={e => void updateClass(c, { scheduledDate: e.target.value || null })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs" />
