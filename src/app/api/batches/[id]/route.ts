@@ -181,97 +181,118 @@ export async function PATCH(
   const session = await getSession();
 
   if (!session?.instituteId) {
-    return Response.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const permissionError = requireRoles(
-    session,
-    BATCH_MANAGE_ROLES,
-  );
-
-  if (permissionError) {
-    return permissionError;
+  if (!BATCH_VIEW_ROLES.includes(session.role)) {
+    return Response.json({ error: "You do not have permission to edit batches" }, { status: 403 });
   }
 
   try {
     const { id } = await params;
     const body = await request.json();
 
-    const allowedFields = {
-      name:
-        typeof body.name === "string"
-          ? body.name.trim()
-          : undefined,
-      courseId:
-        body.courseId !== undefined
-          ? body.courseId
-          : undefined,
-      teacherId:
-        body.teacherId !== undefined
-          ? body.teacherId
-          : undefined,
-      room:
-        body.room !== undefined
-          ? body.room
-          : undefined,
-      startDate:
-        body.startDate !== undefined
-          ? body.startDate
-          : undefined,
-      endDate:
-        body.endDate !== undefined
-          ? body.endDate
-          : undefined,
-      fee:
-        body.fee !== undefined
-          ? body.fee
-          : undefined,
-      status:
-        body.status !== undefined
-          ? body.status
-          : undefined,
-    };
+    const conditions = [
+      eq(batches.id, id),
+      eq(batches.instituteId, session.instituteId),
+    ];
+
+    if (session.role === "TEACHER") {
+      const [teacher] = await db
+        .select({ id: staff.id })
+        .from(staff)
+        .where(
+          and(
+            eq(staff.userId, session.userId),
+            eq(staff.instituteId, session.instituteId),
+          ),
+        )
+        .limit(1);
+
+      if (!teacher) {
+        return Response.json({ error: "Teacher profile is not linked to this account." }, { status: 403 });
+      }
+
+      conditions.push(eq(batches.teacherId, teacher.id));
+    }
+
+    const [existing] = await db
+      .select({ id: batches.id })
+      .from(batches)
+      .where(and(...conditions))
+      .limit(1);
+
+    if (!existing) {
+      return Response.json({ error: "Batch not found or you are not assigned to it." }, { status: 404 });
+    }
+
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (!name) {
+      return Response.json({ error: "Batch name is required" }, { status: 400 });
+    }
+
+    const semesterId = body.semesterId || null;
+    const courseId = body.courseId || null;
+    const room = body.room === undefined ? undefined : (String(body.room || "").trim() || null);
+    const startDate = body.startDate === undefined ? undefined : (body.startDate || null);
+    const endDate = body.endDate === undefined ? undefined : (body.endDate || null);
+    const fee = body.fee === undefined ? undefined : (body.fee === "" || body.fee == null ? null : String(body.fee));
+
+    const current = await db.execute(sql`
+      SELECT programme_id AS "programmeId"
+      FROM batches
+      WHERE id = ${id} AND institute_id = ${session.instituteId}
+      LIMIT 1
+    `);
+    const currentRows = current && typeof current === "object" && "rows" in current ? (current as { rows: Array<Record<string, unknown>> }).rows : [];
+    const programmeId = currentRows[0]?.programmeId;
+
+    if (semesterId) {
+      const semester = await db.execute(sql`
+        SELECT id
+        FROM programme_semesters
+        WHERE id = ${semesterId}
+          AND programme_id = ${programmeId}
+          AND institute_id = ${session.instituteId}
+        LIMIT 1
+      `);
+      const rows = semester && typeof semester === "object" && "rows" in semester ? (semester as { rows: Array<Record<string, unknown>> }).rows : [];
+      if (!rows[0]) return Response.json({ error: "Invalid semester for this programme" }, { status: 400 });
+    }
+
+    if (courseId) {
+      const course = await db.execute(sql`
+        SELECT id FROM courses
+        WHERE id = ${courseId} AND institute_id = ${session.instituteId}
+        LIMIT 1
+      `);
+      const rows = course && typeof course === "object" && "rows" in course ? (course as { rows: Array<Record<string, unknown>> }).rows : [];
+      if (!rows[0]) return Response.json({ error: "Invalid course" }, { status: 400 });
+    }
 
     const [updated] = await db
       .update(batches)
       .set({
-        ...allowedFields,
+        name,
+        semesterId,
+        ...(courseId !== undefined ? { courseId } : {}),
+        ...(room !== undefined ? { room } : {}),
+        ...(startDate !== undefined ? { startDate } : {}),
+        ...(endDate !== undefined ? { endDate } : {}),
+        ...(fee !== undefined ? { fee } : {}),
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(batches.id, id),
-          eq(
-            batches.instituteId,
-            session.instituteId,
-          ),
-        ),
-      )
+      .where(and(...conditions))
       .returning();
 
     if (!updated) {
-      return Response.json(
-        { error: "Batch not found" },
-        { status: 404 },
-      );
+      return Response.json({ error: "Batch not found" }, { status: 404 });
     }
 
-    return Response.json({
-      batch: updated,
-    });
+    return Response.json({ success: true, batch: updated });
   } catch (error) {
-    console.error(
-      "Batch PATCH error:",
-      error,
-    );
-
-    return Response.json(
-      { error: "Failed to update batch" },
-      { status: 500 },
-    );
+    console.error("Batch PATCH error:", error);
+    return Response.json({ error: "Failed to update batch" }, { status: 500 });
   }
 }
 
