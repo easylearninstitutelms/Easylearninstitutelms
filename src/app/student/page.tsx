@@ -143,6 +143,19 @@ interface StudentClass {
   recording_duration?: string | null;
 }
 
+interface StudentRecording {
+  id: string;
+  recordingType: "PROGRAMME" | "COURSE";
+  batchName?: string | null;
+  programmeName?: string | null;
+  semesterName?: string | null;
+  classNo: number;
+  classTitle: string;
+  recordingTitle: string;
+  videoUrl: string;
+  duration?: string | null;
+}
+
 interface StudentPortalData {
   student: StudentData;
 
@@ -236,7 +249,9 @@ export default function StudentPage() {
 
   const [classes, setClasses] = useState<StudentClass[]>([]);
   const [classesLoading, setClassesLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "classes" | "attendance" | "homework" | "results" | "fees">("overview");
+  const [recordings, setRecordings] = useState<StudentRecording[]>([]);
+  const [recordingsLoading, setRecordingsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "classes" | "recordings" | "attendance" | "homework" | "results" | "fees">("overview");
 
   const loadClasses = useCallback(async () => {
     setClassesLoading(true);
@@ -257,6 +272,19 @@ export default function StudentPage() {
     } finally {
       setClassesLoading(false);
     }
+  }, []);
+
+  const loadRecordings = useCallback(async () => {
+    setRecordingsLoading(true);
+    try {
+      const res = await fetch("/api/student/recordings", { cache: "no-store" });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || "Failed to load recordings.");
+      setRecordings(body.recordings || []);
+    } catch (err) {
+      console.error("Failed to load recordings:", err);
+      setRecordings([]);
+    } finally { setRecordingsLoading(false); }
   }, []);
   const loadPortal =
     useCallback(async () => {
@@ -310,10 +338,9 @@ export default function StudentPage() {
   }, [loadPortal]);
 
   useEffect(() => {
-    if (activeTab === "classes") {
-      loadClasses();
-    }
-  }, [activeTab, loadClasses]);
+    if (activeTab === "classes") loadClasses();
+    if (activeTab === "recordings") loadRecordings();
+  }, [activeTab, loadClasses, loadRecordings]);
 
   if (loading) {
     return (
@@ -500,6 +527,10 @@ export default function StudentPage() {
             {
       key: "classes",
               label: "My Classes",
+            },
+            {
+              key: "recordings",
+              label: "Recorded Classes",
             },
             {
               key: "attendance",
