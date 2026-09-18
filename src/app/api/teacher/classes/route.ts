@@ -53,7 +53,11 @@ export async function GET() {
         c.end_time AS "endTime",
         c.status AS "syllabusStatus",
         COALESCE(sess.status, 'PENDING') AS "sessionStatus",
-        sess.taken_at AS "takenAt"
+        sess.taken_at AS "takenAt",
+        rec.id AS "recordingId",
+        rec.title AS "recordingTitle",
+        rec.video_url AS "recordingUrl",
+        rec.duration AS "recordingDuration"
       FROM batches b
       INNER JOIN programmes p ON p.id = b.programme_id
       INNER JOIN programme_semesters ps ON ps.id = b.semester_id
@@ -64,6 +68,10 @@ export async function GET() {
         ON sess.syllabus_class_id = c.id
        AND sess.batch_id = b.id
        AND sess.teacher_id = ${teacherId}
+      LEFT JOIN programme_class_recordings rec
+        ON rec.syllabus_class_id = c.id
+       AND rec.batch_id = b.id
+       AND rec.teacher_id = ${teacherId}
       WHERE b.institute_id = ${session.instituteId}
         AND b.teacher_id = ${teacherId}
         AND b.status = 'ACTIVE'
