@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
 type Semester = { id: string; semesterNo: number; name: string };
+type TeacherClass = { batchId:string; batchName:string; batchNo:number|null; classId:string; classNo:number; title:string; sessionStatus:string; recordingId:string|null; recordingTitle:string|null; recordingUrl:string|null; recordingDuration:string|null; };
 type SyllabusClass = {
   id: string;
   classNo: number;
@@ -48,6 +49,13 @@ export default function ProgrammeSyllabusPage() {
   const [error, setError] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState(emptyClass);
+  const [videoClass, setVideoClass] = useState<SyllabusClass | null>(null);
+  const [teacherClasses, setTeacherClasses] = useState<TeacherClass[]>([]);
+  const [videoBatchId, setVideoBatchId] = useState("");
+  const [videoTitle, setVideoTitle] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoDuration, setVideoDuration] = useState("");
+  const [videoSaving, setVideoSaving] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -148,6 +156,34 @@ export default function ProgrammeSyllabusPage() {
     }
   }
 
+
+  async function openVideo(c: SyllabusClass) {
+    try {
+      const r = await fetch("/api/teacher/classes", { cache: "no-store" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || "Teacher class list could not be loaded.");
+      const matches = (d.classes || []).filter((x: TeacherClass) => x.classId === c.id);
+      setTeacherClasses(matches);
+      const first = matches.find((x: TeacherClass) => x.sessionStatus === "COMPLETED") || matches[0];
+      setVideoClass(c);
+      setVideoBatchId(first?.batchId || "");
+      setVideoTitle(first?.recordingTitle || `Class ${c.classNo} Recording`);
+      setVideoUrl(first?.recordingUrl || "");
+      setVideoDuration(first?.recordingDuration || "");
+    } catch (e) { alert(e instanceof Error ? e.message : "Failed to load class batches."); }
+  }
+
+  async function saveProgrammeVideo(e: React.FormEvent) {
+    e.preventDefault(); if (!videoClass || !videoBatchId) return;
+    setVideoSaving(true);
+    try {
+      const r = await fetch("/api/teacher/class-recordings", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({classId:videoClass.id,batchId:videoBatchId,title:videoTitle.trim(),videoUrl:videoUrl.trim(),duration:videoDuration.trim()}) });
+      const d = await r.json(); if (!r.ok) throw new Error(d?.error || "Failed to save recording.");
+      setVideoClass(null); await load();
+    } catch(e) { alert(e instanceof Error ? e.message : "Failed to save recording."); }
+    finally { setVideoSaving(false); }
+  }
+
   const grouped = useMemo(() => {
     const bySemester = new Map<number, { semester: Semester; items: SyllabusClass[] }>();
     for (const semester of semesters) {
@@ -243,6 +279,8 @@ export default function ProgrammeSyllabusPage() {
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <h3 className="font-bold text-slate-800">{c.title}</h3>
+                              <div className="flex flex-wrap gap-2">
+                              <button type="button" onClick={() => void openVideo(c)} className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100">🎥 Add Video</button>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -288,6 +326,23 @@ export default function ProgrammeSyllabusPage() {
           </div>
         )}
       </div>
+
+      {videoClass && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget && !videoSaving) setVideoClass(null); }}>
+          <div className="modal-box max-w-xl">
+            <div className="modal-header"><div><h2 className="modal-title">Add Class Recording</h2><p className="text-xs text-slate-400">Class {videoClass.classNo}: {videoClass.title}</p></div><button onClick={() => !videoSaving && setVideoClass(null)} className="btn btn-ghost btn-sm">✕</button></div>
+            <form onSubmit={saveProgrammeVideo}>
+              <div className="modal-body space-y-3">
+                <div><label className="form-label">Batch *</label><select className="form-select" value={videoBatchId} onChange={e => { const b=teacherClasses.find(x=>x.batchId===e.target.value); setVideoBatchId(e.target.value); setVideoTitle(b?.recordingTitle || `Class ${videoClass.classNo} Recording`); setVideoUrl(b?.recordingUrl || ""); setVideoDuration(b?.recordingDuration || ""); }} required><option value="">Select completed batch</option>{teacherClasses.map(b=><option key={b.batchId} value={b.batchId}>Batch {b.batchNo ?? "—"} · {b.batchName} · {b.sessionStatus}</option>)}</select></div>
+                <div><label className="form-label">Video Title *</label><input className="form-input" value={videoTitle} onChange={e=>setVideoTitle(e.target.value)} required/></div>
+                <div><label className="form-label">Video URL *</label><input type="url" className="form-input" value={videoUrl} onChange={e=>setVideoUrl(e.target.value)} placeholder="https://..." required/><p className="mt-1 text-xs text-slate-400">YouTube, Vimeo or direct MP4 URL.</p></div>
+                <div><label className="form-label">Duration</label><input className="form-input" value={videoDuration} onChange={e=>setVideoDuration(e.target.value)} placeholder="45 minutes"/></div>
+              </div>
+              <div className="modal-footer"><button type="button" onClick={()=>!videoSaving&&setVideoClass(null)} className="btn btn-outline">Cancel</button><button type="submit" disabled={videoSaving||!videoBatchId} className="btn btn-primary">{videoSaving?"Saving...":"Save Video"}</button></div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {showAdd && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget && !saving) setShowAdd(false); }}>
