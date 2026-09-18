@@ -157,7 +157,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const session = await getSession();
     if (!session?.instituteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (session.role !== "INSTITUTE_ADMIN" && session.role !== "SUPER_ADMIN" && session.role !== "MANAGER") {
+    if (session.role !== "INSTITUTE_ADMIN" && session.role !== "SUPER_ADMIN" && session.role !== "MANAGER" && session.role !== "TEACHER") {
       return NextResponse.json({ error: "You do not have permission to manage syllabus" }, { status: 403 });
     }
     await ensureAcademicSchema();
