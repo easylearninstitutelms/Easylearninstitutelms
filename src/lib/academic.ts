@@ -121,6 +121,21 @@ export function ensureAcademicSchema() {
       CREATE INDEX IF NOT EXISTS programme_recordings_institute_idx ON programme_class_recordings(institute_id);
       CREATE INDEX IF NOT EXISTS programme_recordings_batch_idx ON programme_class_recordings(batch_id);
       CREATE INDEX IF NOT EXISTS programme_recordings_teacher_idx ON programme_class_recordings(teacher_id);
+
+      CREATE TABLE IF NOT EXISTS course_class_recordings (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        institute_id uuid NOT NULL,
+        course_class_id uuid NOT NULL REFERENCES course_syllabus_classes(id) ON DELETE CASCADE,
+        title varchar(255) NOT NULL,
+        video_url text NOT NULL,
+        duration varchar(50),
+        created_at timestamp NOT NULL DEFAULT now(),
+        updated_at timestamp NOT NULL DEFAULT now(),
+        UNIQUE (course_class_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS course_recordings_institute_idx ON course_class_recordings(institute_id);
+      CREATE INDEX IF NOT EXISTS course_recordings_class_idx ON course_class_recordings(course_class_id);
     `).then(() => undefined);
   }
 
