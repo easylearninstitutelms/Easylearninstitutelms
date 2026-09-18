@@ -83,6 +83,16 @@ export async function GET() {
         p.status,
         p.created_at,
         p.updated_at,
+        (
+          SELECT COUNT(DISTINCT e.student_id)::int
+          FROM enrollments e
+          INNER JOIN batches b
+            ON b.id = e.batch_id
+          WHERE e.institute_id = p.institute_id
+            AND e.status = 'ACTIVE'
+            AND b.programme_id = p.id
+            AND b.institute_id = p.institute_id
+        ) AS "studentCount",
         COALESCE(
           json_agg(
             json_build_object(
