@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         startTime: typeof item.startTime === "string" && item.startTime ? item.startTime : null,
         endTime: typeof item.endTime === "string" && item.endTime ? item.endTime : null,
       }))
-      .filter(item => item.title);
+      .filter((item: { title: string }) => item.title);
 
     const result = await db.transaction(async tx => {
       const [course] = await tx.insert(courses).values({
