@@ -50,7 +50,6 @@ export default function ProgrammeSyllabusPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState(emptyClass);
   const [videoClass, setVideoClass] = useState<SyllabusClass | null>(null);
-  const [teacherClasses, setTeacherClasses] = useState<TeacherClass[]>([]);
   const [videoTitle, setVideoTitle] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [videoDuration, setVideoDuration] = useState("");
@@ -162,7 +161,6 @@ export default function ProgrammeSyllabusPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d?.error || "Class recordings could not be loaded.");
       const matches = (d.classes || []).filter((x: TeacherClass) => x.classId === c.id);
-      setTeacherClasses(matches);
       const first = matches.find((x: TeacherClass) => x.recordingId) || matches[0];
       setVideoClass(c);
       setVideoTitle(first?.recordingTitle || `Class ${c.classNo} Recording`);
