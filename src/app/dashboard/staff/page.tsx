@@ -206,7 +206,7 @@ export default function StaffPage() {
         return;
       }
 
-      await fetchStaff();
+      setStaffList((current) => current.filter((member) => member.id !== id));
     } catch (err) {
       console.error("Archive error:", err);
       alert("Failed to archive staff.");
@@ -227,7 +227,7 @@ export default function StaffPage() {
         return;
       }
 
-      await fetchStaff();
+      setStaffList((current) => current.filter((member) => member.id !== id));
     } catch (err) {
       console.error("Bin delete error:", err);
       alert("Failed to move staff to Bin.");
