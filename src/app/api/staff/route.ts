@@ -97,12 +97,15 @@ export async function GET(request: Request) {
 
   const instituteId = session.instituteId;
 
+  await ensureStaffSchema();
+
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || "";
   const status = searchParams.get("status") || "";
 
   const conditions = [
     eq(staff.instituteId, instituteId),
+    isNull(staff.deletedAt),
   ];
 
   if (status && status !== "ALL") {
@@ -156,6 +159,8 @@ export async function POST(request: Request) {
   }
 
   const instituteId = session.instituteId;
+
+  await ensureStaffSchema();
 
   try {
     const body = await request.json();
