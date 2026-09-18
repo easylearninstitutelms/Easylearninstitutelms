@@ -137,6 +137,10 @@ interface StudentClass {
   syllabus_status: string;
   session_status: string;
   taken_at?: string | null;
+  recording_id?: string | null;
+  recording_title?: string | null;
+  recording_url?: string | null;
+  recording_duration?: string | null;
 }
 
 interface StudentPortalData {
@@ -602,6 +606,18 @@ export default function StudentPage() {
                                     <span className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-bold">{status}</span>
                                   </div>
                                   {item.description && <p className="mt-2 text-xs text-slate-500">{item.description}</p>}
+                                  {item.recording_id && item.recording_url && (
+                                    <div className="mt-4 rounded-xl border border-blue-200 bg-white p-3">
+                                      <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div>
+                                          <p className="text-xs font-bold text-blue-700">🎥 Class Recording</p>
+                                          <p className="text-sm font-semibold text-slate-700">{item.recording_title || "Recorded Class"}</p>
+                                          {item.recording_duration && <p className="text-xs text-slate-400">{item.recording_duration}</p>}
+                                        </div>
+                                        <a href={item.recording_url} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">▶ Watch Video</a>
+                                      </div>
+                                    </div>
+                                  )}
                                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
                                     <span>📅 {item.scheduled_date ? formatDate(item.scheduled_date) : "Date not set"}</span>
                                     {item.start_time && <span>🕐 {item.start_time.slice(0,5)}{item.end_time ? ` - ${item.end_time.slice(0,5)}` : ""}</span>}
