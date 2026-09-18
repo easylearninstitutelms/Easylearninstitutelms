@@ -164,7 +164,9 @@ interface StudentPortalData {
     };
   };
 
-  payments: PaymentItem[];\n\n  classes?: StudentClass[];
+  payments: PaymentItem[];
+
+  classes?: StudentClass[];
 }
 
 function currency(
@@ -228,15 +230,30 @@ export default function StudentPage() {
   const [error, setError] =
     useState("");
 
-  const [activeTab, setActiveTab] =
-    useState<
-      | "overview"
-      | "attendance"
-      | "homework"
-      | "results"
-      | "fees"
-    >("overview");
+  const [classes, setClasses] = useState<StudentClass[]>([]);
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "classes" | "attendance" | "homework" | "results" | "fees">("overview");
 
+  const loadClasses = useCallback(async () => {
+    setClassesLoading(true);
+    try {
+      const res = await fetch("/api/student/classes", {
+        cache: "no-store",
+      });
+      const body = await res.json();
+
+      if (!res.ok) {
+        throw new Error(body?.error || "Failed to load student classes.");
+      }
+
+      setClasses(body.classes || []);
+    } catch (err) {
+      console.error("Failed to load student classes:", err);
+      setClasses([]);
+    } finally {
+      setClassesLoading(false);
+    }
+  }, []);
   const loadPortal =
     useCallback(async () => {
       setLoading(true);
@@ -287,6 +304,12 @@ export default function StudentPage() {
   useEffect(() => {
     loadPortal();
   }, [loadPortal]);
+
+  useEffect(() => {
+    if (activeTab === "classes") {
+      loadClasses();
+    }
+  }, [activeTab, loadClasses]);
 
   if (loading) {
     return (
@@ -471,8 +494,12 @@ export default function StudentPage() {
               label: "Overview",
             },
             {
+      key: "classes",
+              label: "My Classes",
+            },
+            {
               key: "attendance",
-              key: "classes",\n              label: "My Classes",\n            },\n            {\n              key: "attendance",\n              label: "Attendance",
+              label: "Attendance",
             },
             {
               key: "homework",
@@ -592,7 +619,8 @@ export default function StudentPage() {
             )}
           </div>
         )}
-\n        {/* Overview */}
+
+        {/* Overview */}
         {activeTab ===
           "overview" && (
           <div className="mt-6 space-y-6">
@@ -1552,3 +1580,9 @@ function EmptyState({
     </div>
   );
 }
+
+
+
+
+
+
