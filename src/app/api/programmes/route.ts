@@ -145,7 +145,7 @@ export async function POST(req: Request) {
           startTime: typeof item.startTime === "string" && item.startTime ? item.startTime : null,
           endTime: typeof item.endTime === "string" && item.endTime ? item.endTime : null,
         }))
-        .filter(item => item.title);
+        .filter((item: { title: string }) => item.title);
       syllabusBySemester.set(semesterNo, cleaned);
     }
 
