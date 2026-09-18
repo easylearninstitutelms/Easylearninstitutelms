@@ -6,7 +6,8 @@ import { staff, users } from "@/db/schema";
 import {
   getSession,
   requireRoles,
-} from "@/lib/session";\nimport { ensureStaffSchema } from "@/lib/staff";
+} from "@/lib/session";
+import { ensureStaffSchema } from "@/lib/staff";
 
 const ALLOWED_ACCOUNT_ROLES = [
   "TEACHER",
