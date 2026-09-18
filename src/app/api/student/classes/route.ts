@@ -14,13 +14,15 @@ export async function GET() {
         ps.semester_no, ps.name AS semester_name, sc.id AS class_id, sc.class_no,
         sc.title, sc.description, sc.scheduled_date, sc.start_time, sc.end_time,
         sc.status AS syllabus_status, COALESCE(ss.status, 'PENDING') AS session_status,
-        ss.taken_at
+        ss.taken_at, rec.id AS recording_id, rec.title AS recording_title,
+        rec.video_url AS recording_url, rec.duration AS recording_duration
       FROM enrollments e
       JOIN batches b ON b.id = e.batch_id
       LEFT JOIN programmes p ON p.id = b.programme_id
       LEFT JOIN programme_semesters ps ON ps.id = b.semester_id
       LEFT JOIN programme_syllabus_classes sc ON sc.programme_id = b.programme_id AND sc.semester_id = b.semester_id
       LEFT JOIN programme_syllabus_class_sessions ss ON ss.syllabus_class_id = sc.id AND ss.batch_id = b.id
+      LEFT JOIN programme_class_recordings rec ON rec.syllabus_class_id = sc.id AND rec.batch_id = b.id
       WHERE e.student_id = (SELECT id FROM students WHERE user_id = ${session.userId} AND institute_id = ${session.instituteId} LIMIT 1)
         AND e.institute_id = ${session.instituteId} AND e.status IN ('ACTIVE', 'INACTIVE') AND b.status = 'ACTIVE'
       ORDER BY b.id, ps.semester_no NULLS LAST, sc.class_no NULLS LAST
