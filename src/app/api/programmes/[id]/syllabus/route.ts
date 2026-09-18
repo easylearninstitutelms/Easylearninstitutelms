@@ -151,3 +151,38 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Failed to save syllabus" }, { status: 500 });
   }
 }
+
+
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await getSession();
+    if (!session?.instituteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role !== "INSTITUTE_ADMIN" && session.role !== "SUPER_ADMIN" && session.role !== "MANAGER") {
+      return NextResponse.json({ error: "You do not have permission to manage syllabus" }, { status: 403 });
+    }
+    await ensureAcademicSchema();
+    const { id } = await params;
+    const body = await request.json();
+    const classId = String(body.classId || "");
+    if (!classId) return NextResponse.json({ error: "Class ID is required." }, { status: 400 });
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    const status = ["UPCOMING","TODAY","COMPLETED","CANCELLED"].includes(body.status) ? body.status : "UPCOMING";
+    const updated = await db.execute(sql`
+      UPDATE programme_syllabus_classes
+      SET title = COALESCE(NULLIF(${title}, ''), title),
+          description = ${body.description || null},
+          scheduled_date = ${body.scheduledDate || null},
+          start_time = ${body.startTime || null},
+          end_time = ${body.endTime || null},
+          status = ${status},
+          updated_at = now()
+      WHERE id = ${classId} AND programme_id = ${id} AND institute_id = ${session.instituteId}
+      RETURNING id
+    `);
+    if (!rowsOf(updated)[0]) return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Syllabus PATCH error:", error);
+    return NextResponse.json({ error: "Failed to update class" }, { status: 500 });
+  }
+}
