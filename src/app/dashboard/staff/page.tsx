@@ -412,23 +412,22 @@ export default function StaffPage() {
                   </div>
                 </div>
 
-                {s.status !== "ARCHIVED" && (
-                  <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex gap-2">
+                  {s.status !== "ARCHIVED" && (
                     <button
                       onClick={() => handleArchive(s.id)}
                       className="btn btn-outline btn-sm flex-1"
                     >
                       Archive
                     </button>
-                    <button
-                      onClick={() => handleDelete(s.id)}
-                      className="btn btn-sm flex-1 text-red-600 border border-red-200 hover:bg-red-50"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                  <button
+                    onClick={() => handleDelete(s.id)}
+                    className="btn btn-sm flex-1 text-red-600 border border-red-200 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>            </div>
             ))
           )}
         </div>
