@@ -190,7 +190,7 @@ export default function StaffPage() {
   }
 
   async function handleArchive(id: string) {
-    if (!confirm("Archive this staff member?")) return;
+    if (!confirm("Delete this staff member? It will be archived and removed from the active staff list.")) return;
 
     try {
       const res = await fetch(`/api/staff/${id}`, {
@@ -200,13 +200,13 @@ export default function StaffPage() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
 
-        alert(data.error || "Failed to archive staff.");
+        alert(data.error || "Failed to delete staff.");
         return;
       }
 
       fetchStaff();
     } catch (err) {
-      console.error("Archive error:", err);
+      console.error("Delete error:", err);
       alert("Failed to archive staff.");
     }
   }
