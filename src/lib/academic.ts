@@ -128,6 +128,21 @@ export function ensureAcademicSchema() {
       ALTER TABLE programme_class_recordings
         ALTER COLUMN teacher_id DROP NOT NULL;
 
+      CREATE TABLE IF NOT EXISTS programme_syllabus_recordings (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        institute_id uuid NOT NULL,
+        syllabus_class_id uuid NOT NULL REFERENCES programme_syllabus_classes(id) ON DELETE CASCADE,
+        title varchar(255) NOT NULL,
+        video_url text NOT NULL,
+        duration varchar(50),
+        created_at timestamp NOT NULL DEFAULT now(),
+        updated_at timestamp NOT NULL DEFAULT now(),
+        UNIQUE (syllabus_class_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS programme_syllabus_recordings_institute_idx ON programme_syllabus_recordings(institute_id);
+      CREATE INDEX IF NOT EXISTS programme_syllabus_recordings_class_idx ON programme_syllabus_recordings(syllabus_class_id);
+
       CREATE TABLE IF NOT EXISTS course_class_recordings (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         institute_id uuid NOT NULL,
