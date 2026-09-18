@@ -443,10 +443,16 @@ export const staff = pgTable(
     updatedAt: timestamp("updated_at")
       .notNull()
       .defaultNow(),
+
+    deletedAt: timestamp("deleted_at"),
   },
   (t) => [
     index("staff_institute_idx").on(
       t.instituteId
+    ),
+    index("staff_deleted_idx").on(
+      t.instituteId,
+      t.deletedAt
     ),
   ]
 );
