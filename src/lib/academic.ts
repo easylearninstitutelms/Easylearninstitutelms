@@ -68,6 +68,25 @@ export function ensureAcademicSchema() {
       CREATE INDEX IF NOT EXISTS programme_syllabus_programme_idx ON programme_syllabus_classes(programme_id);
       CREATE INDEX IF NOT EXISTS programme_syllabus_semester_idx ON programme_syllabus_classes(semester_id);
 
+      CREATE TABLE IF NOT EXISTS course_syllabus_classes (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        institute_id uuid NOT NULL,
+        course_id uuid NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+        class_no integer NOT NULL,
+        title varchar(255) NOT NULL,
+        description text,
+        scheduled_date date,
+        start_time time,
+        end_time time,
+        status varchar(20) NOT NULL DEFAULT 'UPCOMING',
+        created_at timestamp NOT NULL DEFAULT now(),
+        updated_at timestamp NOT NULL DEFAULT now(),
+        UNIQUE (course_id, class_no)
+      );
+
+      CREATE INDEX IF NOT EXISTS course_syllabus_institute_idx ON course_syllabus_classes(institute_id);
+      CREATE INDEX IF NOT EXISTS course_syllabus_course_idx ON course_syllabus_classes(course_id);
+
       CREATE TABLE IF NOT EXISTS programme_syllabus_class_sessions (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         institute_id uuid NOT NULL,
