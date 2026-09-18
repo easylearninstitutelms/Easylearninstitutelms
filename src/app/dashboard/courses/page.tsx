@@ -161,8 +161,8 @@ export default function CoursesPage() {
 
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !submitting && setShowModal(false)}>
-          <div className="modal-box max-w-5xl max-h-[94vh] overflow-y-auto">
-            <div className="modal-header sticky top-0 z-10 bg-white">
+          <div className="modal-box course-modal-box">
+            <div className="modal-header">
               <div>
                 <h2 className="modal-title">Add Course</h2>
                 <p className="text-xs text-slate-400">Course create করার সময়ই class / syllabus যোগ করুন।</p>
@@ -222,7 +222,7 @@ export default function CoursesPage() {
                 </div>
               </div>
 
-              <div className="modal-footer sticky bottom-0 bg-white">
+              <div className="modal-footer">
                 <button type="button" onClick={() => !submitting && setShowModal(false)} className="btn btn-outline">Cancel</button>
                 <button type="submit" disabled={submitting} className="btn btn-primary">{submitting ? "Creating..." : `Create Course + ${filledClasses} Classes`}</button>
               </div>
