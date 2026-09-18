@@ -13,7 +13,7 @@ import {
   examSubjects,
   results,
 } from "@/db/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import {
   getSession,
   requireRoles,
