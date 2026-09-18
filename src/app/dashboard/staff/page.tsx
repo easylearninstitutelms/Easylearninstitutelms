@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   getStatusColor,
   getInitials,
@@ -190,24 +191,46 @@ export default function StaffPage() {
   }
 
   async function handleArchive(id: string) {
-    if (!confirm("Delete this staff member? It will be archived and removed from the active staff list.")) return;
+    if (!confirm("Archive this staff member? They will be removed from the active Staff list.")) return;
+
+    try {
+      const res = await fetch(`/api/staff/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ARCHIVED" }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Failed to archive staff.");
+        return;
+      }
+
+      await fetchStaff();
+    } catch (err) {
+      console.error("Archive error:", err);
+      alert("Failed to archive staff.");
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Move this staff member to Bin? You can restore them later from Staff Bin.")) return;
 
     try {
       const res = await fetch(`/api/staff/${id}`, {
         method: "DELETE",
       });
 
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-
-        alert(data.error || "Failed to delete staff.");
+        alert(data.error || "Failed to move staff to Bin.");
         return;
       }
 
-      fetchStaff();
+      await fetchStaff();
     } catch (err) {
-      console.error("Delete error:", err);
-      alert("Failed to archive staff.");
+      console.error("Bin delete error:", err);
+      alert("Failed to move staff to Bin.");
     }
   }
 
@@ -222,13 +245,17 @@ export default function StaffPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setError("");
-            setShowModal(true);
-          }}
-          className="btn btn-primary"
-        >
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/staff/bin" className="btn btn-outline">
+            🗑️ Bin
+          </Link>
+          <button
+            onClick={() => {
+              setError("");
+              setShowModal(true);
+            }}
+            className="btn btn-primary"
+          >
           <svg
             className="w-4 h-4"
             fill="none"
@@ -244,7 +271,8 @@ export default function StaffPage() {
           </svg>
 
           Add Staff
-        </button>
+          </button>
+        </div>
       </div>
 
       <div className="relative">
@@ -385,12 +413,20 @@ export default function StaffPage() {
                 </div>
 
                 {s.status !== "ARCHIVED" && (
-                  <button
-                    onClick={() => handleArchive(s.id)}
-                    className="mt-3 text-xs text-red-500 hover:text-red-700 transition"
-                  >
-                    Delete
-                  </button>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => handleArchive(s.id)}
+                      className="btn btn-outline btn-sm flex-1"
+                    >
+                      Archive
+                    </button>
+                    <button
+                      onClick={() => handleDelete(s.id)}
+                      className="btn btn-sm flex-1 text-red-600 border border-red-200 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 )}
               </div>
             ))
