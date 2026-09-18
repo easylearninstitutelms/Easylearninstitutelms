@@ -122,6 +122,12 @@ export function ensureAcademicSchema() {
       CREATE INDEX IF NOT EXISTS programme_recordings_batch_idx ON programme_class_recordings(batch_id);
       CREATE INDEX IF NOT EXISTS programme_recordings_teacher_idx ON programme_class_recordings(teacher_id);
 
+      -- Programme syllabus recordings belong to the class, not to a specific teacher.
+      -- Keep teacher_id for legacy/teacher-created recordings, but allow institute/admin
+      -- users to publish a programme recording without assigning a teacher.
+      ALTER TABLE programme_class_recordings
+        ALTER COLUMN teacher_id DROP NOT NULL;
+
       CREATE TABLE IF NOT EXISTS course_class_recordings (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         institute_id uuid NOT NULL,
