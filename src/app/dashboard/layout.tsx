@@ -133,6 +133,29 @@ const navItems: NavItem[] = [
   },
 
   {
+    href: "/dashboard/staff/bin",
+    label: "Staff Bin",
+    allowedRoles: STAFF_ADMIN_ROLES,
+    icon: (
+      <NavIcon>
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 6h18M8 6V4h8v2m-9 0l1 14h8l1-14M10 10v7m4-7v7"
+          />
+        </svg>
+      </NavIcon>
+    ),
+  },
+
+  {
     href: "/dashboard/courses",
     label: "Courses",
     allowedRoles: [
