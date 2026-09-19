@@ -190,7 +190,7 @@ export default function AttendancePage() {
       const [batchRes, attRes] = await Promise.all([
         fetch(`/api/batches/${selectedBatch}`),
         fetch(
-          `/api/attendance?batchId=${selectedBatch}&date=${selectedDate}`
+          `/api/attendance?batchId=${selectedBatch}&classId=${activeClassId}&date=${selectedDate}`
         ),
       ]);
 
@@ -240,6 +240,8 @@ export default function AttendancePage() {
         batchId: selectedBatch,
         date: selectedDate,
         status: marks[s.student!.id] || "PRESENT",
+        classId: activeClassId,
+        classType: selectedMode,
       }));
 
     await fetch("/api/attendance", {
