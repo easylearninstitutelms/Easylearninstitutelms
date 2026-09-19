@@ -3,8 +3,26 @@
 import { useState, useEffect, useCallback } from "react";
 import { getAttendanceColor } from "@/lib/utils";
 
+interface ProgrammeOption {
+  id: string;
+  name: string;
+  code?: string | null;
+}
+
+interface CourseOption {
+  id: string;
+  name: string;
+}
+
 interface BatchOption {
-  batch: { id: string; name: string };
+  batch: {
+    id: string;
+    name: string;
+    programmeId?: string | null;
+    programmeName?: string | null;
+    courseId?: string | null;
+    courseName?: string | null;
+  };
   studentCount: number;
 }
 
