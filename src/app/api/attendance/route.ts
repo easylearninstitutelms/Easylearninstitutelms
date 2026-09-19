@@ -579,6 +579,7 @@ export async function POST(
   }
 
   try {
+    await ensureAcademicCoreSchema();
     const body =
       await request.json();
 
@@ -800,6 +801,7 @@ export async function POST(
             attendance.studentId,
             attendance.batchId,
             attendance.date,
+            attendance.classId,
           ],
           set: {
             status:
