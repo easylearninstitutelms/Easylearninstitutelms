@@ -8,6 +8,16 @@ import { ensureAcademicSchema } from "@/lib/academic";
 const COURSE_VIEW_ROLES = ["SUPER_ADMIN", "INSTITUTE_ADMIN", "MANAGER", "TEACHER"];
 const COURSE_MANAGE_ROLES = ["SUPER_ADMIN", "INSTITUTE_ADMIN", "MANAGER", "TEACHER", "DIGITAL_MARKETER"];
 
+function rowsOf(result: unknown): Record<string, unknown>[] {
+  if (result && typeof result === "object" && "rows" in result && Array.isArray((result as any).rows)) return (result as any).rows;
+  return Array.isArray(result) ? result as Record<string, unknown>[] : [];
+}
+
+async function nextCourseNo(instituteId: string) {
+  const result = await db.execute(sql`SELECT COALESCE(MAX(course_no), 210) + 1 AS next_no FROM courses WHERE institute_id = ${instituteId}`);
+  return Number(rowsOf(result)[0]?.next_no || 211);
+}
+
 export async function GET() {
   const session = await getSession();
 
@@ -44,6 +54,7 @@ export async function GET() {
       courses: rows.map(course => ({
         ...course,
         classCount: countMap.get(course.id) || 0,
+        studentCount: Number(rowsOf(await db.execute(sql`SELECT COUNT(DISTINCT e.student_id)::int AS count FROM enrollments e LEFT JOIN batches b ON b.id=e.batch_id WHERE e.institute_id=${session.instituteId} AND e.status='ACTIVE' AND (e.course_id=${course.id} OR b.course_id=${course.id})`))[0]?.count || 0),
       })),
     });
   } catch (error) {
@@ -66,6 +77,8 @@ export async function POST(request: Request) {
     await ensureAcademicSchema();
     const body = await request.json();
     const { name, description, duration, fee } = body;
+    const requestedNo = Number(body.courseNo);
+    const courseNo = Number.isInteger(requestedNo) && requestedNo >= 211 ? requestedNo : await nextCourseNo(session.instituteId);
 
     if (!name || !String(name).trim()) {
       return Response.json({ error: "Name is required" }, { status: 400 });
@@ -84,14 +97,13 @@ export async function POST(request: Request) {
       .filter((item: { title: string }) => item.title);
 
     const result = await db.transaction(async tx => {
-      const [course] = await tx.insert(courses).values({
-        instituteId: session.instituteId!,
-        name: String(name).trim(),
-        description: description || null,
-        duration: duration || null,
-        fee: fee || null,
-        status: "ACTIVE",
-      }).returning();
+      const inserted = rowsOf(await tx.execute(sql`
+        INSERT INTO courses (institute_id, name, description, duration, fee, course_no, status)
+        VALUES (${session.instituteId}, ${String(name).trim()}, ${description || null}, ${duration || null}, ${fee || null}, ${courseNo}, 'ACTIVE')
+        RETURNING *
+      `));
+      const course = inserted[0] as any;
+      if (!course) throw new Error("Course was not created");
 
       for (const item of classes) {
         await tx.execute(sql`
@@ -106,7 +118,7 @@ export async function POST(request: Request) {
       return course;
     });
 
-    return Response.json({ course: result, classCount: classes.length });
+    return Response.json({ course: result, courseNo, classCount: classes.length });
   } catch (error) {
     console.error("Courses POST error:", error);
     return Response.json({ error: "Failed to create course" }, { status: 500 });
