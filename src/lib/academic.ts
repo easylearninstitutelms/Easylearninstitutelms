@@ -515,6 +515,33 @@ export function ensureAcademicSchema() {
  */
 let academicCoreReady: Promise<void> | null = null;
 
+let examSchemaReady: Promise<void> | null = null;
+
+export function ensureExamSchema() {
+  if (!examSchemaReady) {
+    examSchemaReady = (async () => {
+      await ensureAcademicCoreSchema();
+      await ensureCourseSchema();
+      await db.execute(sql`
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS batch_id uuid;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS programme_id uuid;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS semester_id uuid;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS course_id uuid;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS course_class_id uuid;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS name varchar(255);
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS exam_date date;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now();
+
+        ALTER TABLE exam_subjects ADD COLUMN IF NOT EXISTS institute_id uuid;
+        ALTER TABLE exam_subjects ADD COLUMN IF NOT EXISTS exam_id uuid;
+        ALTER TABLE exam_subjects ADD COLUMN IF NOT EXISTS subject_name varchar(255);
+        ALTER TABLE exam_subjects ADD COLUMN IF NOT EXISTS total_marks integer;
+      `);
+    })().then(() => undefined);
+  }
+  return examSchemaReady;
+}
+
 export function ensureAcademicCoreSchema() {
   if (!academicCoreReady) {
     academicCoreReady = (async () => {
