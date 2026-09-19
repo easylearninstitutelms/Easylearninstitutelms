@@ -529,6 +529,7 @@ export function ensureExamSchema() {
         ALTER TABLE exams ADD COLUMN IF NOT EXISTS semester_id uuid;
         ALTER TABLE exams ADD COLUMN IF NOT EXISTS course_id uuid;
         ALTER TABLE exams ADD COLUMN IF NOT EXISTS course_class_id uuid;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS programme_class_id uuid;
         ALTER TABLE exams ADD COLUMN IF NOT EXISTS name varchar(255);
         ALTER TABLE exams ADD COLUMN IF NOT EXISTS exam_date date;
         ALTER TABLE exams ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now();
