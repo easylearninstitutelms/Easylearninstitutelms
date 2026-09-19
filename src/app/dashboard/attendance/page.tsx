@@ -496,6 +496,7 @@ export default function AttendancePage() {
                 <p>No students enrolled in this batch</p>
               </div>
             ) : (
+              <>
               <div className="mb-4 flex items-center justify-between rounded-xl bg-blue-50 p-3">
                 <div>
                   <p className="text-sm font-semibold text-blue-800">Class selected</p>
@@ -622,6 +623,7 @@ export default function AttendancePage() {
                   );
                 })}
               </div>
+              </>
             )}
           </div>
         </>
