@@ -29,7 +29,7 @@ interface AttendanceRecord {
 }
 
 export default function AttendancePage() {
-  const [batches, setBatches] = useState<BatchOption[]>([]);
+  const [batches, setBatches] = useState<BatchOption[]>([]);\n  const [programmes, setProgrammes] = useState<ProgrammeOption[]>([]);\n  const [courses, setCourses] = useState<CourseOption[]>([]);\n  const [selectedProgramme, setSelectedProgramme] = useState("");\n  const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedBatch, setSelectedBatch] = useState("");
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -41,13 +41,25 @@ export default function AttendancePage() {
   const [marks, setMarks] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(false);\n\n  const filteredBatches = batches.filter((item) => {\n    const matchesProgramme = !selectedProgramme || item.batch.programmeId === selectedProgramme;\n    const matchesCourse = !selectedCourse || item.batch.courseId === selectedCourse;\n    return matchesProgramme && matchesCourse;\n  });
 
   useEffect(() => {
-    fetch("/api/batches")
-      .then((r) => r.json())
-      .then((d) => setBatches(d.batches || []));
+    Promise.all([
+      fetch("/api/batches").then((r) => r.json()),
+      fetch("/api/programmes").then((r) => r.json()),
+      fetch("/api/courses").then((r) => r.json()),
+    ]).then(([batchData, programmeData, courseData]) => {
+      setBatches(batchData.batches || []);
+      setProgrammes(programmeData.programmes || []);
+      setCourses(courseData.courses || []);
+    });
   }, []);
+
+  useEffect(() => {
+    if (selectedBatch && !filteredBatches.some((item) => item.batch.id === selectedBatch)) {
+      setSelectedBatch("");
+    }
+  }, [selectedProgramme, selectedCourse, filteredBatches, selectedBatch]);
 
   const loadBatchData = useCallback(async () => {
     if (!selectedBatch) return;
@@ -177,23 +189,58 @@ export default function AttendancePage() {
 
       {/* Controls */}
       <div className="card">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="form-label">Select Programme</label>
+            <select
+              className="form-select"
+              value={selectedProgramme}
+              onChange={(e) => setSelectedProgramme(e.target.value)}
+            >
+              <option value="">All programmes</option>
+              {programmes.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.code ? `${p.code} — ${p.name}` : p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="form-label">Select Course</label>
+            <select
+              className="form-select"
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+            >
+              <option value="">All courses</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="form-label">Select Batch</label>
-
             <select
               className="form-select"
               value={selectedBatch}
               onChange={(e) => setSelectedBatch(e.target.value)}
             >
               <option value="">Choose a batch...</option>
-
-              {batches.map((b) => (
+              {filteredBatches.map((b) => (
                 <option key={b.batch.id} value={b.batch.id}>
                   {b.batch.name}
+                  {b.batch.programmeName ? ` — ${b.batch.programmeName}` : ""}
+                  {b.batch.courseName ? ` — ${b.batch.courseName}` : ""}
                 </option>
               ))}
             </select>
+            {selectedProgramme || selectedCourse ? (
+              <p className="text-xs text-slate-400 mt-1">
+                {filteredBatches.length} matching batch{filteredBatches.length === 1 ? "" : "es"}
+              </p>
+            ) : null}
           </div>
 
           <div>
