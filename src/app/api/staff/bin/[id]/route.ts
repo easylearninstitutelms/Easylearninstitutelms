@@ -17,11 +17,12 @@ export async function DELETE(
 
   await ensureStaffSchema();
   const { id } = await params;
+  const instituteId = instituteId!;
 
   const [member] = await db.select().from(staff)
     .where(and(
       eq(staff.id, id),
-      eq(staff.instituteId, session.instituteId),
+      eq(staff.instituteId, instituteId),
       )
     )
     .limit(1);
@@ -35,27 +36,27 @@ export async function DELETE(
       // Clear nullable teacher references before removing the staff profile.
       await tx.update(batches)
         .set({ teacherId: null })
-        .where(and(eq(batches.teacherId, id), eq(batches.instituteId, session.instituteId)));
+        .where(and(eq(batches.teacherId, id), eq(batches.instituteId, instituteId)));
 
       await tx.update(routines)
         .set({ teacherId: null })
-        .where(and(eq(routines.teacherId, id), eq(routines.instituteId, session.instituteId)));
+        .where(and(eq(routines.teacherId, id), eq(routines.instituteId, instituteId)));
 
       await tx.update(homework)
         .set({ teacherId: null })
-        .where(and(eq(homework.teacherId, id), eq(homework.instituteId, session.instituteId)));
+        .where(and(eq(homework.teacherId, id), eq(homework.instituteId, instituteId)));
 
       await tx.update(assignments)
         .set({ teacherId: null })
-        .where(and(eq(assignments.teacherId, id), eq(assignments.instituteId, session.instituteId)));
+        .where(and(eq(assignments.teacherId, id), eq(assignments.instituteId, instituteId)));
 
       await tx.delete(salaries)
-        .where(and(eq(salaries.staffId, id), eq(salaries.instituteId, session.instituteId)));
+        .where(and(eq(salaries.staffId, id), eq(salaries.instituteId, instituteId)));
 
       await tx.delete(staff)
         .where(and(
           eq(staff.id, id),
-          eq(staff.instituteId, session.instituteId),
+          eq(staff.instituteId, instituteId),
         ));
 
       if (member.userId) {
@@ -63,7 +64,7 @@ export async function DELETE(
           .set({ status: "INACTIVE", updatedAt: new Date() })
           .where(and(
             eq(users.id, member.userId),
-            eq(users.instituteId, session.instituteId),
+            eq(users.instituteId, instituteId),
           ));
       }
     });
@@ -96,7 +97,7 @@ export async function PATCH(
   const [member] = await db.select().from(staff)
     .where(and(
       eq(staff.id, id),
-      eq(staff.instituteId, session.instituteId),
+      eq(staff.instituteId, instituteId),
     ))
     .limit(1);
 
@@ -106,13 +107,13 @@ export async function PATCH(
 
   const [updated] = await db.update(staff)
     .set({ deletedAt: null, status: "ACTIVE", updatedAt: new Date() })
-    .where(and(eq(staff.id, id), eq(staff.instituteId, session.instituteId)))
+    .where(and(eq(staff.id, id), eq(staff.instituteId, instituteId)))
     .returning();
 
   if (member.userId) {
     await db.update(users)
       .set({ status: "ACTIVE", updatedAt: new Date() })
-      .where(and(eq(users.id, member.userId), eq(users.instituteId, session.instituteId)));
+      .where(and(eq(users.id, member.userId), eq(users.instituteId, instituteId)));
   }
 
   return Response.json({ success: true, staff: updated });
