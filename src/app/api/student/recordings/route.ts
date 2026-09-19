@@ -42,7 +42,6 @@ export async function GET(){
      AND (e.course_id=co.id OR (b.status='ACTIVE' AND b.course_id=co.id))
    ORDER BY "recordingType","classNo"
   `;
-;
   return NextResponse.json({recordings:rowsOf(result)});
  }catch(error){
   console.error("Student recordings GET error:",error);
