@@ -50,6 +50,8 @@ interface EnrolledStudent {
     studentId: string;
   } | null;
   enrollment: { id: string };
+  batchId: string;
+  batchName?: string | null;
 }
 
 interface AttendanceRecord {
@@ -96,27 +98,13 @@ export default function AttendancePage() {
 
   const filteredCourses = selectedMode === "PROGRAMME" ? courses : courses;
 
-  const filteredBatches = batches.filter((item) => {
-    const b = item.batch;
-    const matchesProgramme = selectedMode === "COURSE"
-      ? true
-      : !selectedProgramme || b.programmeId === selectedProgramme;
-    const matchesSemester = selectedMode === "PROGRAMME"
-      ? !selectedSemester || b.semesterId === selectedSemester
-      : true;
-    const matchesCourse = selectedMode === "COURSE"
-      ? !selectedCourse || b.courseId === selectedCourse
-      : true;
-    return matchesProgramme && matchesSemester && matchesCourse;
-  });
+
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/batches").then((r) => r.json()),
       fetch("/api/programmes").then((r) => r.json()),
       fetch("/api/courses").then((r) => r.json()),
-    ]).then(([batchData, programmeData, courseData]) => {
-      setBatches(batchData.batches || []);
+    ]).then(([programmeData, courseData]) => {
       setProgrammes(programmeData.programmes || []);
       setCourses(courseData.courses || []);
     });
@@ -176,59 +164,62 @@ export default function AttendancePage() {
     (item) => !selectedSemester || item.semesterId === selectedSemester
   );
 
-  useEffect(() => {
-    if (selectedBatch && !filteredBatches.some((item) => item.batch.id === selectedBatch)) {
-      setSelectedBatch("");
-    }
-  }, [selectedProgramme, selectedSemester, selectedCourse, selectedMode, filteredBatches, selectedBatch]);
 
-  const loadBatchData = useCallback(async () => {
-    if (!selectedBatch) return;
+
+  const loadStudentData = useCallback(async () => {
+    if (!activeClassId) {
+      setEnrolledStudents([]);
+      setSelectedStudents([]);
+      return;
+    }
 
     setLoading(true);
-
     try {
-      const [batchRes, attRes] = await Promise.all([
-        fetch(`/api/batches/${selectedBatch}`),
-        fetch(
-          `/api/attendance?batchId=${selectedBatch}&classId=${activeClassId}&date=${selectedDate}`
-        ),
-      ]);
-
-      const batchData = await batchRes.json();
-      const attData = await attRes.json();
-
-      const students: EnrolledStudent[] = batchData.students || [];
-      setEnrolledStudents(students);
-
-      const existingAtt: AttendanceRecord[] = attData.attendance || [];
-      setExisting(existingAtt);
-
-      setSelectedStudents(students.filter((s) => s.student).map((s) => s.student!.id));
-
-      const initialMarks: Record<string, string> = {};
-
-      students.forEach((s) => {
-        if (!s.student) return;
-
-        const found = existingAtt.find(
-          (a) => a.attendance.studentId === s.student!.id
-        );
-
-        initialMarks[s.student.id] = found
-          ? found.attendance.status
-          : "PRESENT";
+      const params = new URLSearchParams({
+        classId: activeClassId,
+        date: selectedDate,
       });
 
+      if (selectedMode === "PROGRAMME" && selectedProgramme) {
+        params.set("programmeId", selectedProgramme);
+        if (selectedSemester) params.set("semesterId", selectedSemester);
+      }
+
+      if (selectedMode === "COURSE" && selectedCourse) {
+        params.set("courseId", selectedCourse);
+      }
+
+      const res = await fetch(`/api/attendance/students?${params.toString()}`);
+      const data = await res.json();
+      const students: EnrolledStudent[] = (data.students || []).map((s: any) => ({
+        student: {
+          id: s.studentId,
+          name: s.name,
+          studentId: s.studentNo,
+        },
+        enrollment: { id: `${s.batchId}-${s.studentId}` },
+        batchId: s.batchId,
+        batchName: s.batchName,
+      }));
+
+      setEnrolledStudents(students);
+      setSelectedStudents([]);
+
+      const initialMarks: Record<string, string> = {};
+      (data.students || []).forEach((s: any) => {
+        initialMarks[s.studentId] = s.attendanceStatus || "PRESENT";
+      });
       setMarks(initialMarks);
     } finally {
       setLoading(false);
     }
-  }, [selectedBatch, selectedDate, activeClassId]);
+  }, [selectedMode, selectedProgramme, selectedSemester, selectedCourse, selectedDate, activeClassId]);
 
   useEffect(() => {
-    loadBatchData();
-  }, [loadBatchData]);
+    loadStudentData();
+  }, [loadStudentData]);
+
+
 
   async function handleSave() {
     setSaving(true);
@@ -238,7 +229,7 @@ export default function AttendancePage() {
       .filter((s) => s.student && selectedStudents.includes(s.student.id))
       .map((s) => ({
         studentId: s.student!.id,
-        batchId: selectedBatch,
+        batchId: s.batchId,
         date: selectedDate,
         status: marks[s.student!.id] || "PRESENT",
         classId: activeClassId,
@@ -363,15 +354,25 @@ export default function AttendancePage() {
               </div>
 
               <div>
-                <label className="form-label">4. Select Batch</label>
-                <select className="form-select" value={selectedBatch} disabled={!selectedProgrammeClass} onChange={(e) => setSelectedBatch(e.target.value)}>
-                  <option value="">Choose batch...</option>
-                  {filteredBatches.map((b) => (
-                    <option key={b.batch.id} value={b.batch.id}>
-                      {b.batch.name}{b.batch.courseName ? ` — ${b.batch.courseName}` : ""}
-                    </option>
-                  ))}
+                <label className="form-label">4. Select Student</label>
+                <select
+                  multiple
+                  className="form-select min-h-32"
+                  disabled={!selectedProgrammeClass}
+                  value={selectedStudents}
+                  onChange={(e) => setSelectedStudents(Array.from(e.target.selectedOptions, (o) => o.value))}
+                >
+                  {enrolledStudents.length === 0 ? (
+                    <option disabled>No students found for this programme/semester</option>
+                  ) : (
+                    enrolledStudents.map((item) => item.student && (
+                      <option key={item.student.id} value={item.student.id}>
+                        {item.student.studentId} — {item.student.name}{item.batchName ? ` — ${item.batchName}` : ""}
+                      </option>
+                    ))
+                  )}
                 </select>
+                <p className="text-xs text-slate-400 mt-1">Hold Ctrl to select multiple students.</p>
               </div>
             </>
           ) : (
@@ -404,15 +405,25 @@ export default function AttendancePage() {
               </div>
 
               <div>
-                <label className="form-label">3. Select Batch</label>
-                <select className="form-select" value={selectedBatch} disabled={!selectedCourseClass} onChange={(e) => setSelectedBatch(e.target.value)}>
-                  <option value="">Choose batch...</option>
-                  {filteredBatches.map((b) => (
-                    <option key={b.batch.id} value={b.batch.id}>
-                      {b.batch.name}{b.batch.programmeName ? ` — ${b.batch.programmeName}` : ""}
-                    </option>
-                  ))}
+                <label className="form-label">3. Select Student</label>
+                <select
+                  multiple
+                  className="form-select min-h-32"
+                  disabled={!selectedCourseClass}
+                  value={selectedStudents}
+                  onChange={(e) => setSelectedStudents(Array.from(e.target.selectedOptions, (o) => o.value))}
+                >
+                  {enrolledStudents.length === 0 ? (
+                    <option disabled>No students found for this course</option>
+                  ) : (
+                    enrolledStudents.map((item) => item.student && (
+                      <option key={item.student.id} value={item.student.id}>
+                        {item.student.studentId} — {item.student.name}{item.batchName ? ` — ${item.batchName}` : ""}
+                      </option>
+                    ))
+                  )}
                 </select>
+                <p className="text-xs text-slate-400 mt-1">Hold Ctrl to select multiple students.</p>
               </div>
             </>
           )}
@@ -423,7 +434,7 @@ export default function AttendancePage() {
           </div>
         </div>
       </div>
-      {selectedBatch && activeClassId && (
+      {activeClassId && (
         <>
           {/* Summary */}
           <div className="grid grid-cols-4 gap-3">
@@ -506,16 +517,7 @@ export default function AttendancePage() {
                     Class {activeClass?.classNo ?? ""} — {activeClass?.title ?? ""}
                   </p>
                 </div>
-                <label className="text-xs font-medium text-blue-700 flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedStudents.length === enrolledStudents.filter((s) => s.student).length && enrolledStudents.length > 0}
-                    onChange={(e) => setSelectedStudents(e.target.checked
-                      ? enrolledStudents.filter((s) => s.student).map((s) => s.student!.id)
-                      : [])}
-                  />
-                  Select all students
-                </label>
+                <span className="text-xs font-medium text-blue-700">{selectedStudents.length} student(s) selected</span>
               </div>
               <div className="space-y-2">
                 {/* Quick mark all buttons */}
@@ -635,7 +637,7 @@ export default function AttendancePage() {
           <div className="text-5xl mb-4">✅</div>
 
           <p className="text-slate-500 font-medium">
-            Select {selectedMode === "PROGRAMME" ? "programme → semester → class → batch" : "course → class → batch"} to take attendance
+            Select {selectedMode === "PROGRAMME" ? "programme → semester → class → student" : "course → class → student"} to take attendance
           </p>
 
           <p className="text-sm text-slate-400 mt-1">
