@@ -49,6 +49,7 @@ type Exam = {
   createdAt: string;
   programmeId?: string | null;
   semesterId?: string | null;
+  programmeClassId?: string | null;
   courseId?: string | null;
   courseClassId?: string | null;
 };
@@ -314,6 +315,10 @@ function normalizeExamRows(
             semesterId:
               typeof exam.semesterId === "string"
                 ? exam.semesterId
+                : null,
+            programmeClassId:
+              typeof exam.programmeClassId === "string"
+                ? exam.programmeClassId
                 : null,
             courseId:
               typeof exam.courseId === "string"
