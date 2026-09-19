@@ -636,6 +636,57 @@ export async function PATCH(
       }
     }
 
+    if (Object.prototype.hasOwnProperty.call(body, "courseId") || Object.prototype.hasOwnProperty.call(body, "programmeId")) {
+      const courseId = cleanText(body.courseId);
+      const programmeId = cleanText(body.programmeId);
+
+      if ((courseId && programmeId) || (!courseId && !programmeId)) {
+        return Response.json({ error: "Please select exactly one Course or Programme." }, { status: 400 });
+      }
+
+      if (courseId) {
+        const [course] = await db.execute(sql`
+          SELECT id FROM courses
+          WHERE id=${courseId} AND institute_id=${instituteId} AND status='ACTIVE'
+          LIMIT 1
+        `).then((r:any) => (r.rows || []));
+        if (!course) return Response.json({ error: "Invalid course" }, { status: 400 });
+      }
+
+      if (programmeId) {
+        const [programme] = await db.execute(sql`
+          SELECT id FROM programmes
+          WHERE id=${programmeId} AND institute_id=${instituteId} AND status='ACTIVE'
+          LIMIT 1
+        `).then((r:any) => (r.rows || []));
+        if (!programme) return Response.json({ error: "Invalid programme" }, { status: 400 });
+      }
+
+      const activeEnrollment = await db
+        .select({ id: enrollments.id })
+        .from(enrollments)
+        .where(and(
+          eq(enrollments.studentId, id),
+          eq(enrollments.instituteId, instituteId),
+          eq(enrollments.status, "ACTIVE"),
+        ))
+        .limit(1);
+
+      if (activeEnrollment[0]) {
+        await db.execute(sql`
+          UPDATE enrollments
+          SET batch_id=NULL, course_id=${courseId || null}, programme_id=${programmeId || null},
+              enrollment_date=${admissionDate}, status='ACTIVE'
+          WHERE id=${activeEnrollment[0].id}
+        `);
+      } else {
+        await db.execute(sql`
+          INSERT INTO enrollments (institute_id, student_id, batch_id, course_id, programme_id, enrollment_date, status)
+          VALUES (${instituteId}, ${id}, NULL, ${courseId || null}, ${programmeId || null}, ${admissionDate}, 'ACTIVE')
+        `);
+      }
+    }
+
     return Response.json({
       student: updated,
     });
