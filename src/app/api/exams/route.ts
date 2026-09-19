@@ -57,6 +57,7 @@ export async function GET(request: Request) {
     const courseId = searchParams.get("courseId")?.trim() || "";
     const courseClassId =
       searchParams.get("courseClassId")?.trim() || "";
+    const programmeClassId = searchParams.get("programmeClassId")?.trim() || "";
 
     const conditions = [
       eq(exams.instituteId, instituteId),
@@ -72,6 +73,9 @@ export async function GET(request: Request) {
 
     if (semesterId) {
       conditions.push(eq(exams.semesterId, semesterId));
+    }
+    if (programmeClassId) {
+      conditions.push(sql`e.programme_class_id = ${programmeClassId}` as any);
     }
 
     const examRows = await db
@@ -286,6 +290,7 @@ export async function GET(request: Request) {
               course?.courseId ?? null,
             courseClassId:
               course?.courseClassId ?? null,
+            programmeClassId: (row.exam as any).programmeClassId ?? null,
           },
           mode,
           batchName:
@@ -377,6 +382,7 @@ export async function POST(
       typeof body?.courseClassId === "string"
         ? body.courseClassId.trim()
         : "";
+    const programmeClassId = typeof body?.programmeClassId === "string" ? body.programmeClassId.trim() : "";
 
     const name =
       typeof body?.name === "string"
@@ -618,7 +624,10 @@ export async function POST(
         );
       }
 
-      const semesterRows =
+      const classRows = await db.execute(sql`SELECT id, title, class_no FROM programme_syllabus_classes WHERE id = ${programmeClassId} AND programme_id = ${programmeId} AND semester_id = ${semesterId} AND institute_id = ${instituteId} LIMIT 1`);
+       if (!rows(classRows)[0]) return jsonError("Selected programme class was not found.", 404);
+
+       const semesterRows =
         await db
           .select({
             id: programmeSemesters.id,
