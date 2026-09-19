@@ -108,6 +108,9 @@ export async function GET(request: Request) {
     isNull(staff.deletedAt),
   ];
 
+  // The main Staff page shows only active staff by default.
+  // Archived/inactive staff stay out of the active list unless
+  // a specific status filter is requested.
   if (status && status !== "ALL") {
     conditions.push(
       eq(
@@ -115,6 +118,8 @@ export async function GET(request: Request) {
         status as "ACTIVE" | "INACTIVE" | "ARCHIVED",
       ),
     );
+  } else {
+    conditions.push(eq(staff.status, "ACTIVE"));
   }
 
   if (search) {
