@@ -2477,11 +2477,11 @@ export default function ExamsPage() {
               </div>
               <div className="flex rounded-lg border border-purple-200 bg-white p-1">
                 <button type="button" onClick={() => { setMarksheetMode("COURSE"); setMarksheetCourseId(""); setMarksheetCourseClassId(""); setMarksheetStudentId(null); setShowMarksheet(false); }}
-                  className={\u0024{marksheetMode === "COURSE" ? "rounded-md bg-purple-600 px-3 py-2 text-xs font-semibold text-white" : "rounded-md px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-purple-50"}}>
+                  className={marksheetMode === "COURSE" ? "rounded-md bg-purple-600 px-3 py-2 text-xs font-semibold text-white" : "rounded-md px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-purple-50"}>
                   Course-wise
                 </button>
                 <button type="button" onClick={() => { setMarksheetMode("PROGRAMME"); setMarksheetProgrammeId(""); setMarksheetSemesterId(""); setMarksheetStudentId(null); setShowMarksheet(false); }}
-                  className={\u0024{marksheetMode === "PROGRAMME" ? "rounded-md bg-[#0f766e] px-3 py-2 text-xs font-semibold text-white" : "rounded-md px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-teal-50"}}>
+                  className={marksheetMode === "PROGRAMME" ? "rounded-md bg-[#0f766e] px-3 py-2 text-xs font-semibold text-white" : "rounded-md px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-teal-50"}>
                   Programme Semester-wise
                 </button>
               </div>
