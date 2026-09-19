@@ -4,7 +4,6 @@ import {
   enrollments,
   batches,
   courses,
-  programmes,
   attendance,
   fees,
   payments,
@@ -14,6 +13,7 @@ import {
   eq,
   and,
   desc,
+  sql,
 } from "drizzle-orm";
 import {
   getSession,
@@ -52,9 +52,7 @@ function cleanText(value: unknown): string {
 function sanitizePhoto(value: unknown) {
   const valueText = cleanText(value);
 
-  if (!valueText) {
-    return null;
-  }
+  if (!valueText) return null;
 
   if (valueText.length > MAX_PHOTO_CHARS) {
     return undefined;
@@ -109,9 +107,7 @@ async function teacherCanAccessStudent(
     userId,
   );
 
-  if (!teacherId) {
-    return false;
-  }
+  if (!teacherId) return false;
 
   const [access] = await db
     .select({
@@ -159,9 +155,7 @@ export async function GET(
   {
     params,
   }: {
-    params: Promise<{
-      id: string;
-    }>;
+    params: Promise<{ id: string }>;
   },
 ) {
   const session = await getSession();
@@ -223,13 +217,12 @@ export async function GET(
       );
     }
 
-    const studentEnrollments =
+    const existingEnrollments =
       await db
         .select({
           enrollment: enrollments,
           batch: batches,
           course: courses,
-          programme: programmes,
         })
         .from(enrollments)
         .leftJoin(
@@ -246,13 +239,6 @@ export async function GET(
             courses.id,
           ),
         )
-        .leftJoin(
-          programmes,
-          eq(
-            enrollments.programmeId,
-            programmes.id,
-          ),
-        )
         .where(
           and(
             eq(
@@ -265,6 +251,114 @@ export async function GET(
             ),
           ),
         );
+
+    const directEnrollmentResult =
+      await db.execute(sql`
+        SELECT
+          e.id AS enrollment_id,
+          e.course_id,
+          e.programme_id,
+
+          c.id AS direct_course_id,
+          c.name AS direct_course_name,
+          c.description AS direct_course_description,
+          c.duration AS direct_course_duration,
+          c.fee AS direct_course_fee,
+
+          p.id AS direct_programme_id,
+          p.name AS direct_programme_name,
+          p.code AS direct_programme_code,
+          p.description AS direct_programme_description,
+          p.duration AS direct_programme_duration
+
+        FROM enrollments e
+
+        LEFT JOIN courses c
+          ON c.id = e.course_id
+
+        LEFT JOIN programmes p
+          ON p.id = e.programme_id
+
+        WHERE e.student_id = ${id}
+          AND e.institute_id = ${instituteId}
+      `);
+
+    const directRows: any[] =
+      Array.isArray(
+        (directEnrollmentResult as any)?.rows,
+      )
+        ? (directEnrollmentResult as any).rows
+        : [];
+
+    const directMap = new Map<
+      string,
+      any
+    >(
+      directRows.map(
+        (row: any) => [
+          String(row.enrollment_id),
+          row,
+        ],
+      ),
+    );
+
+    const studentEnrollments =
+      existingEnrollments.map(
+        (item) => {
+          const direct: any =
+            directMap.get(
+              String(
+                item.enrollment.id,
+              ),
+            );
+
+          const directCourse =
+            direct?.direct_course_id
+              ? {
+                  id:
+                    direct.direct_course_id,
+                  name:
+                    direct.direct_course_name,
+                  description:
+                    direct.direct_course_description,
+                  duration:
+                    direct.direct_course_duration,
+                  fee:
+                    direct.direct_course_fee,
+                }
+              : null;
+
+          const directProgramme =
+            direct?.direct_programme_id
+              ? {
+                  id:
+                    direct.direct_programme_id,
+                  name:
+                    direct.direct_programme_name,
+                  code:
+                    direct.direct_programme_code,
+                  description:
+                    direct.direct_programme_description,
+                  duration:
+                    direct.direct_programme_duration,
+                }
+              : null;
+
+          return {
+            enrollment:
+              item.enrollment,
+            batch:
+              item.batch,
+            course:
+              directCourse ||
+              item.course ||
+              null,
+            programme:
+              directProgramme ||
+              null,
+          };
+        },
+      );
 
     const recentAttendance =
       await db
@@ -334,7 +428,8 @@ export async function GET(
       attendance:
         recentAttendance,
       fees: studentFees,
-      payments: studentPayments,
+      payments:
+        studentPayments,
     });
   } catch (error) {
     console.error(
@@ -357,9 +452,7 @@ export async function PATCH(
   {
     params,
   }: {
-    params: Promise<{
-      id: string;
-    }>;
+    params: Promise<{ id: string }>;
   },
 ) {
   const session = await getSession();
@@ -636,53 +729,156 @@ export async function PATCH(
       }
     }
 
-    if (Object.prototype.hasOwnProperty.call(body, "courseId") || Object.prototype.hasOwnProperty.call(body, "programmeId")) {
-      const courseId = cleanText(body.courseId);
-      const programmeId = cleanText(body.programmeId);
+    if (
+      Object.prototype.hasOwnProperty.call(
+        body,
+        "courseId",
+      ) ||
+      Object.prototype.hasOwnProperty.call(
+        body,
+        "programmeId",
+      )
+    ) {
+      const courseId =
+        cleanText(
+          body.courseId,
+        );
 
-      if ((courseId && programmeId) || (!courseId && !programmeId)) {
-        return Response.json({ error: "Please select exactly one Course or Programme." }, { status: 400 });
+      const programmeId =
+        cleanText(
+          body.programmeId,
+        );
+
+      if (
+        (courseId &&
+          programmeId) ||
+        (!courseId &&
+          !programmeId)
+      ) {
+        return Response.json(
+          {
+            error:
+              "Please select exactly one Course or Programme.",
+          },
+          { status: 400 },
+        );
       }
 
       if (courseId) {
-        const [course] = await db.execute(sql`
-          SELECT id FROM courses
-          WHERE id=${courseId} AND institute_id=${instituteId} AND status='ACTIVE'
-          LIMIT 1
-        `).then((r:any) => (r.rows || []));
-        if (!course) return Response.json({ error: "Invalid course" }, { status: 400 });
+        const courseResult =
+          await db.execute(sql`
+            SELECT id
+            FROM courses
+            WHERE id = ${courseId}
+              AND institute_id = ${instituteId}
+              AND status = 'ACTIVE'
+            LIMIT 1
+          `);
+
+        const courseRows: any[] =
+          Array.isArray(
+            (courseResult as any)?.rows,
+          )
+            ? (courseResult as any).rows
+            : [];
+
+        if (!courseRows[0]) {
+          return Response.json(
+            {
+              error:
+                "Invalid course",
+            },
+            { status: 400 },
+          );
+        }
       }
 
       if (programmeId) {
-        const [programme] = await db.execute(sql`
-          SELECT id FROM programmes
-          WHERE id=${programmeId} AND institute_id=${instituteId} AND status='ACTIVE'
-          LIMIT 1
-        `).then((r:any) => (r.rows || []));
-        if (!programme) return Response.json({ error: "Invalid programme" }, { status: 400 });
+        const programmeResult =
+          await db.execute(sql`
+            SELECT id
+            FROM programmes
+            WHERE id = ${programmeId}
+              AND institute_id = ${instituteId}
+              AND status = 'ACTIVE'
+            LIMIT 1
+          `);
+
+        const programmeRows: any[] =
+          Array.isArray(
+            (programmeResult as any)?.rows,
+          )
+            ? (programmeResult as any).rows
+            : [];
+
+        if (!programmeRows[0]) {
+          return Response.json(
+            {
+              error:
+                "Invalid programme",
+            },
+            { status: 400 },
+          );
+        }
       }
 
-      const activeEnrollment = await db
-        .select({ id: enrollments.id })
-        .from(enrollments)
-        .where(and(
-          eq(enrollments.studentId, id),
-          eq(enrollments.instituteId, instituteId),
-          eq(enrollments.status, "ACTIVE"),
-        ))
-        .limit(1);
+      const activeEnrollment =
+        await db
+          .select({
+            id: enrollments.id,
+          })
+          .from(enrollments)
+          .where(
+            and(
+              eq(
+                enrollments.studentId,
+                id,
+              ),
+              eq(
+                enrollments.instituteId,
+                instituteId,
+              ),
+              eq(
+                enrollments.status,
+                "ACTIVE",
+              ),
+            ),
+          )
+          .limit(1);
 
-      if (activeEnrollment[0]) {
+      if (
+        activeEnrollment[0]
+      ) {
         await db.execute(sql`
           UPDATE enrollments
-          SET batch_id=NULL, course_id=${courseId || null}, programme_id=${programmeId || null},
-              enrollment_date=${admissionDate}, status='ACTIVE'
-          WHERE id=${activeEnrollment[0].id}
+          SET
+            batch_id = NULL,
+            course_id = ${courseId || null},
+            programme_id = ${programmeId || null},
+            enrollment_date = ${admissionDate},
+            status = 'ACTIVE'
+          WHERE id = ${activeEnrollment[0].id}
         `);
       } else {
         await db.execute(sql`
-          INSERT INTO enrollments (institute_id, student_id, batch_id, course_id, programme_id, enrollment_date, status)
-          VALUES (${instituteId}, ${id}, NULL, ${courseId || null}, ${programmeId || null}, ${admissionDate}, 'ACTIVE')
+          INSERT INTO enrollments (
+            institute_id,
+            student_id,
+            batch_id,
+            course_id,
+            programme_id,
+            enrollment_date,
+            status
+          )
+          VALUES (
+            ${instituteId},
+            ${id},
+            NULL,
+            ${courseId || null},
+            ${programmeId || null},
+            ${admissionDate},
+            'ACTIVE'
+          )
         `);
       }
     }
@@ -711,9 +907,7 @@ export async function DELETE(
   {
     params,
   }: {
-    params: Promise<{
-      id: string;
-    }>;
+    params: Promise<{ id: string }>;
   },
 ) {
   const session = await getSession();
@@ -735,8 +929,6 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const instituteId =
-    session.instituteId;
 
   const [updated] =
     await db
@@ -751,7 +943,7 @@ export async function DELETE(
           eq(students.id, id),
           eq(
             students.instituteId,
-            instituteId,
+            session.instituteId,
           ),
         ),
       )

@@ -560,12 +560,10 @@ export default function StudentsPage() {
         enrollmentType: directEnrollmentType,
 
         courseId:
-          activeEnrollment?.enrollment?.courseId ||
           activeEnrollment?.course?.id ||
           "",
 
         programmeId:
-          activeEnrollment?.enrollment?.programmeId ||
           activeEnrollment?.programme?.id ||
           "",
 
