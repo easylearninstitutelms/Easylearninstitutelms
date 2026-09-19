@@ -524,6 +524,7 @@ export function ensureExamSchema() {
       await ensureCourseSchema();
       await db.execute(sql`
         ALTER TABLE exams ADD COLUMN IF NOT EXISTS batch_id uuid;
+        ALTER TABLE exams ALTER COLUMN batch_id DROP NOT NULL;
         ALTER TABLE exams ADD COLUMN IF NOT EXISTS programme_id uuid;
         ALTER TABLE exams ADD COLUMN IF NOT EXISTS semester_id uuid;
         ALTER TABLE exams ADD COLUMN IF NOT EXISTS course_id uuid;
