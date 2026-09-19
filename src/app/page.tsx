@@ -74,6 +74,11 @@ export default function LoginPage() {
       return;
     }
 
+    if (role === "DIGITAL_MARKETER") {
+      router.push("/dashboard/digital-marketer");
+      return;
+    }
+
     router.push("/dashboard");
   }
 
