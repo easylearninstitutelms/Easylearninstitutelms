@@ -9,7 +9,7 @@ import {
 import { and, desc, eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { getSession } from "@/lib/session";
-import { ensureAcademicSchema } from "@/lib/academic";
+import { ensureExamSchema } from "@/lib/academic";
 
 type ExamMode = "BATCH" | "PROGRAMME" | "COURSE";
 
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
       return jsonError("Unauthorized", 401);
     }
 
-    await ensureAcademicSchema();
+    await ensureExamSchema();
 
     const instituteId = session.instituteId;
     const { searchParams } = new URL(request.url);
@@ -339,7 +339,7 @@ export async function POST(
       );
     }
 
-    await ensureAcademicSchema();
+    await ensureExamSchema();
 
     const instituteId =
       session.instituteId;
