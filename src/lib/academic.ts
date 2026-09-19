@@ -595,6 +595,9 @@ export function ensureAcademicCoreSchema() {
 
         ALTER TABLE attendance ADD COLUMN IF NOT EXISTS class_id uuid;
         ALTER TABLE attendance ADD COLUMN IF NOT EXISTS class_type varchar(20);
+        ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_student_batch_date;
+        CREATE UNIQUE INDEX IF NOT EXISTS attendance_student_batch_date_class_idx
+          ON attendance(student_id, batch_id, date, class_id);
         CREATE INDEX IF NOT EXISTS attendance_class_idx
           ON attendance(class_id);\
       `);
