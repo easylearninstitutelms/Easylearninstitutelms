@@ -8,6 +8,7 @@ import {
   requireRoles,
 } from "@/lib/session";
 import { ensureStaffSchema } from "@/lib/staff";
+import { ensureMarketingSchema } from "@/lib/marketing";
 
 const ALLOWED_ACCOUNT_ROLES = [
   "TEACHER",
@@ -166,6 +167,7 @@ export async function POST(request: Request) {
   const instituteId = session.instituteId;
 
   await ensureStaffSchema();
+  await ensureMarketingSchema();
 
   try {
     const body = await request.json();
