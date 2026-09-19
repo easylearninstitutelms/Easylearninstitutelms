@@ -52,6 +52,10 @@ const DIGITAL_MARKETER_ROLES = [
   "DIGITAL_MARKETER",
 ];
 
+const DIGITAL_MARKETER_FULL_ACCESS_ROLES = [
+  "DIGITAL_MARKETER",
+];
+
 const STUDENT_MANAGEMENT_ROLES = [
   "SUPER_ADMIN",
   "INSTITUTE_ADMIN",
@@ -59,6 +63,7 @@ const STUDENT_MANAGEMENT_ROLES = [
   "MANAGER",
   "TEACHER",
   "RECEPTIONIST",
+  "DIGITAL_MARKETER",
 ];
 
 const navItems: NavItem[] = [
@@ -72,6 +77,7 @@ const navItems: NavItem[] = [
       "ACCOUNTANT",
       "STAFF",
       "MANAGER",
+      ...DIGITAL_MARKETER_FULL_ACCESS_ROLES,
     ],
     icon: (
       <NavIcon>
@@ -180,6 +186,7 @@ const navItems: NavItem[] = [
       "TEACHER",
       "STAFF",
       "MANAGER",
+      ...DIGITAL_MARKETER_FULL_ACCESS_ROLES,
     ],
     icon: (
       <NavIcon>
@@ -208,6 +215,7 @@ const navItems: NavItem[] = [
       "STAFF",
       "MANAGER",
       "TEACHER",
+      ...DIGITAL_MARKETER_FULL_ACCESS_ROLES,
     ],
     icon: (
       <NavIcon>
