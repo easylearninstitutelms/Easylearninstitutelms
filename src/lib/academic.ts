@@ -40,6 +40,14 @@ export function ensureAcademicSchema() {
       ALTER TABLE batches ADD COLUMN IF NOT EXISTS programme_id uuid;
       ALTER TABLE batches ADD COLUMN IF NOT EXISTS semester_id uuid;
       ALTER TABLE batches ADD COLUMN IF NOT EXISTS batch_no integer;
+
+      ALTER TABLE courses ADD COLUMN IF NOT EXISTS course_no integer;
+      CREATE UNIQUE INDEX IF NOT EXISTS courses_institute_no_idx ON courses(institute_id, course_no) WHERE course_no IS NOT NULL;
+
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS course_id uuid;
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS programme_id uuid;
+      CREATE INDEX IF NOT EXISTS enrollments_course_idx ON enrollments(course_id);
+      CREATE INDEX IF NOT EXISTS enrollments_programme_idx ON enrollments(programme_id);
       CREATE INDEX IF NOT EXISTS batches_programme_semester_idx ON batches(programme_id, semester_id);
       CREATE UNIQUE INDEX IF NOT EXISTS batches_institute_no_idx ON batches(institute_id, batch_no) WHERE batch_no IS NOT NULL;
 
