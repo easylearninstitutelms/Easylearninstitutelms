@@ -320,141 +320,106 @@ export default function AttendancePage() {
             </div>
           </div>
 
-          {selectedMode === "PROGRAMME" ? <div>
-            <label className="form-label">1. Select Programme</label>
-            <select
-              className="form-select"
-              value={selectedProgramme}
-              onChange={(e) => setSelectedProgramme(e.target.value)}
-            >
-              <option value="">Choose programme...</option>
-              {programmes.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code ? `${p.code} — ${p.name}` : p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {selectedMode === "PROGRAMME" ? (
+            <>
+              <div>
+                <label className="form-label">1. Select Programme</label>
+                <select className="form-select" value={selectedProgramme} onChange={(e) => setSelectedProgramme(e.target.value)}>
+                  <option value="">Choose programme...</option>
+                  {programmes.map((p) => (
+                    <option key={p.id} value={p.id}>{p.code ? `${p.code} — ${p.name}` : p.name}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className="form-label">2. Select Semester</label>
-            <select
-              className="form-select"
-              value={selectedSemester}
-              disabled={!selectedProgramme}
-              onChange={(e) => {
-                setSelectedSemester(e.target.value);
-                setSelectedProgrammeClass("");
-                setSelectedBatch("");
-              }}
-            >
-              <option value="">Choose semester...</option>
-              {semesters.map((s) => (
-                <option key={s.id} value={s.id}>Semester {s.semesterNo} — {s.name}</option>
-              ))}
-            </select>
-          </div>
+              <div>
+                <label className="form-label">2. Select Semester</label>
+                <select className="form-select" value={selectedSemester} disabled={!selectedProgramme} onChange={(e) => {
+                  setSelectedSemester(e.target.value);
+                  setSelectedProgrammeClass("");
+                  setSelectedBatch("");
+                }}>
+                  <option value="">Choose semester...</option>
+                  {semesters.map((s) => (
+                    <option key={s.id} value={s.id}>Semester {s.semesterNo} — {s.name}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className="form-label">3. Select Class</label>
-            <select
-              className="form-select"
-              value={selectedProgrammeClass}
-              disabled={!selectedSemester}
-              onChange={(e) => {
-                setSelectedProgrammeClass(e.target.value);
-                setSelectedBatch("");
-              }}
-            >
-              <option value="">Choose class...</option>
-              {visibleProgrammeClasses.map((c) => (
-                <option key={c.id} value={c.id}>Class {c.classNo} — {c.title}</option>
-              ))}
-            </select>
-          </div>
+              <div>
+                <label className="form-label">3. Select Class</label>
+                <select className="form-select" value={selectedProgrammeClass} disabled={!selectedSemester} onChange={(e) => {
+                  setSelectedProgrammeClass(e.target.value);
+                  setSelectedBatch("");
+                }}>
+                  <option value="">Choose class...</option>
+                  {visibleProgrammeClasses.map((item) => (
+                    <option key={item.id} value={item.id}>Class {item.classNo} — {item.title}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className="form-label">4. Select Batch</label>
-            <select
-              className="form-select"
-              value={selectedBatch}
-              onChange={(e) => setSelectedBatch(e.target.value)}
-            >
-              <option value="">Choose a batch...</option>
-              {filteredBatches.map((b) => (
-                <option key={b.batch.id} value={b.batch.id}>
-                  {b.batch.name}
-                  {b.batch.programmeName ? ` — ${b.batch.programmeName}` : ""}
-                  {b.batch.courseName ? ` — ${b.batch.courseName}` : ""}
-                </option>
-              ))}
-            </select>
-            {selectedProgramme || selectedCourse ? (
-              <p className="text-xs text-slate-400 mt-1">
-                {filteredBatches.length} matching batch{filteredBatches.length === 1 ? "" : "es"}
-              </p>
-            ) : null}
-          </div>
+              <div>
+                <label className="form-label">4. Select Batch</label>
+                <select className="form-select" value={selectedBatch} disabled={!selectedProgrammeClass} onChange={(e) => setSelectedBatch(e.target.value)}>
+                  <option value="">Choose batch...</option>
+                  {filteredBatches.map((b) => (
+                    <option key={b.batch.id} value={b.batch.id}>
+                      {b.batch.name}{b.batch.courseName ? ` — ${b.batch.courseName}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="form-label">1. Select Course</label>
+                <select className="form-select" value={selectedCourse} onChange={(e) => {
+                  setSelectedCourse(e.target.value);
+                  setSelectedCourseClass("");
+                  setSelectedBatch("");
+                }}>
+                  <option value="">Choose course...</option>
+                  {filteredCourses.map((course) => (
+                    <option key={course.id} value={course.id}>{course.name}</option>
+                  ))}
+                </select>
+              </div>
 
-          </div> : <div>
-            <label className="form-label">1. Select Course</label>
-            <select
-              className="form-select"
-              value={selectedCourse}
-              onChange={(e) => {
-                setSelectedCourse(e.target.value);
-                setSelectedCourseClass("");
-                setSelectedBatch("");
-              }}
-            >
-              <option value="">Choose course...</option>
-              {filteredCourses.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>}
+              <div>
+                <label className="form-label">2. Select Class</label>
+                <select className="form-select" value={selectedCourseClass} disabled={!selectedCourse} onChange={(e) => {
+                  setSelectedCourseClass(e.target.value);
+                  setSelectedBatch("");
+                }}>
+                  <option value="">Choose class...</option>
+                  {courseClasses.map((item) => (
+                    <option key={item.id} value={item.id}>Class {item.classNo} — {item.title}</option>
+                  ))}
+                </select>
+              </div>
 
-          {selectedMode === "COURSE" && <div>
-            <label className="form-label">2. Select Class</label>
-            <select
-              className="form-select"
-              value={selectedCourseClass}
-              disabled={!selectedCourse}
-              onChange={(e) => {
-                setSelectedCourseClass(e.target.value);
-                setSelectedBatch("");
-              }}
-            >
-              <option value="">Choose class...</option>
-              {courseClasses.map((c) => (
-                <option key={c.id} value={c.id}>Class {c.classNo} — {c.title}</option>
-              ))}
-            </select>
-          </div>}
-
-          {selectedMode === "COURSE" && <div>
-            <label className="form-label">3. Select Batch</label>
-
-            <input
-              type="date"
-              className="form-input"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
-          </div>
+              <div>
+                <label className="form-label">3. Select Batch</label>
+                <select className="form-select" value={selectedBatch} disabled={!selectedCourseClass} onChange={(e) => setSelectedBatch(e.target.value)}>
+                  <option value="">Choose batch...</option>
+                  {filteredBatches.map((b) => (
+                    <option key={b.batch.id} value={b.batch.id}>
+                      {b.batch.name}{b.batch.programmeName ? ` — ${b.batch.programmeName}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
 
           <div>
             <label className="form-label">{selectedMode === "PROGRAMME" ? "5. Date" : "4. Date"}</label>
-            <input
-              type="date"
-              className="form-input"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
+            <input type="date" className="form-input" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
           </div>
         </div>
       </div>
-
       {selectedBatch && activeClassId && (
         <>
           {/* Summary */}
@@ -512,7 +477,7 @@ export default function AttendancePage() {
 
                 <button
                   onClick={handleSave}
-                  disabled={saving || enrolledStudents.length === 0}
+                  disabled={saving || selectedStudents.length === 0}
                   className="btn btn-primary"
                 >
                   {saving ? "Saving..." : "Save Attendance"}
