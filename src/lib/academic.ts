@@ -197,11 +197,8 @@ export function ensureAcademicSchema() {
         CREATE INDEX IF NOT EXISTS programme_syllabus_programme_idx
           ON programme_syllabus_classes(programme_id);
 
-        CREATE INDEX IF NOT EXISTS programme_syllabus_semester_idx
-          ON programme_syllabus_classes(semester_id);
-
-        /* Repair legacy programme syllabus tables created before the
-           programme/semester class model was introduced. */
+        /* Repair legacy programme syllabus tables before creating indexes
+           that depend on columns added by this migration. */
         ALTER TABLE programme_syllabus_classes
           ADD COLUMN IF NOT EXISTS semester_id uuid;
         ALTER TABLE programme_syllabus_classes
@@ -215,11 +212,25 @@ export function ensureAcademicSchema() {
         ALTER TABLE programme_syllabus_classes
           ADD COLUMN IF NOT EXISTS status varchar(20) NOT NULL DEFAULT 'UPCOMING';
         ALTER TABLE programme_syllabus_classes
+          ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now();
+        ALTER TABLE programme_syllabus_classes
           ADD COLUMN IF NOT EXISTS updated_at timestamp NOT NULL DEFAULT now();
 
-        UPDATE programme_syllabus_classes
-        SET class_no = COALESCE(class_no, order_no, 1)
-        WHERE class_no IS NULL;
+        /* Backfill legacy rows without assuming an old order_no column. */
+        WITH ranked AS (
+          SELECT
+            id,
+            ROW_NUMBER() OVER (
+              PARTITION BY programme_id, semester_id
+              ORDER BY class_no NULLS LAST, created_at NULLS LAST, id
+            ) AS rn
+          FROM programme_syllabus_classes
+        )
+        UPDATE programme_syllabus_classes p
+        SET class_no = r.rn
+        FROM ranked r
+        WHERE p.id = r.id
+          AND p.class_no IS NULL;
 
         CREATE INDEX IF NOT EXISTS programme_syllabus_semester_idx
           ON programme_syllabus_classes(semester_id);
