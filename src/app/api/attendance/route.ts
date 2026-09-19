@@ -120,6 +120,7 @@ export async function GET(
   }
 
   try {
+    await ensureAcademicCoreSchema();
     const instituteId =
       session.instituteId;
 
@@ -139,6 +140,11 @@ export async function GET(
     const studentId =
       searchParams.get(
         "studentId",
+      );
+
+    const classId =
+      searchParams.get(
+        "classId",
       );
 
     const month =
@@ -475,6 +481,12 @@ export async function GET(
       );
     }
 
+    if (classId) {
+      conditions.push(
+        eq(attendance.classId, classId),
+      );
+    }
+
     if (date) {
       conditions.push(
         eq(
@@ -639,13 +651,14 @@ export async function POST(
       if (
         !record?.studentId ||
         !record?.batchId ||
+        !record?.classId ||
         !record?.date ||
         !record?.status
       ) {
         return Response.json(
           {
             error:
-              "studentId, batchId, date and status are required",
+              "studentId, batchId, classId, date and status are required",
           },
           { status: 400 },
         );
@@ -752,6 +765,8 @@ export async function POST(
         (record: {
           studentId: string;
           batchId: string;
+          classId: string;
+          classType?: string;
           date: string;
           status: string;
           note?: string;
@@ -771,6 +786,8 @@ export async function POST(
           note:
             record.note ||
             null,
+          classId: record.classId,
+          classType: record.classType || null,
         }),
       );
 
