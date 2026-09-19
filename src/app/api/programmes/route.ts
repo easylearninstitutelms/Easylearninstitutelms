@@ -35,7 +35,7 @@ async function nextProgrammeNo(instituteId: string) {
   return Number(rows[0]?.next_no || 211);
 }
 
-const MANAGE_ROLES = ["INSTITUTE_ADMIN", "SUPER_ADMIN", "MANAGER", "TEACHER"];
+const MANAGE_ROLES = ["INSTITUTE_ADMIN", "SUPER_ADMIN", "MANAGER", "TEACHER", "DIGITAL_MARKETER"];
 
 export async function GET() {
   try {
