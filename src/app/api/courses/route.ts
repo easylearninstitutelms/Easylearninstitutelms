@@ -6,7 +6,7 @@ import { getSession, requireRoles } from "@/lib/session";
 import { ensureAcademicSchema } from "@/lib/academic";
 
 const COURSE_VIEW_ROLES = ["SUPER_ADMIN", "INSTITUTE_ADMIN", "MANAGER", "TEACHER"];
-const COURSE_MANAGE_ROLES = ["SUPER_ADMIN", "INSTITUTE_ADMIN", "MANAGER", "TEACHER"];
+const COURSE_MANAGE_ROLES = ["SUPER_ADMIN", "INSTITUTE_ADMIN", "MANAGER", "TEACHER", "DIGITAL_MARKETER"];
 
 export async function GET() {
   const session = await getSession();
