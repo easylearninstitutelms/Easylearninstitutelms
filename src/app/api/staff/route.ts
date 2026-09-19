@@ -15,6 +15,7 @@ const ALLOWED_ACCOUNT_ROLES = [
   "MANAGER",
   "RECEPTIONIST",
   "STAFF",
+  "DIGITAL_MARKETER",
 ] as const;
 
 type AccountRole = (typeof ALLOWED_ACCOUNT_ROLES)[number];
