@@ -14,6 +14,22 @@ interface CourseOption {
   name: string;
 }
 
+interface SemesterOption {
+  id: string;
+  semesterNo: number;
+  name: string;
+}
+
+interface ClassOption {
+  id: string;
+  classNo: number;
+  title: string;
+  semesterId?: string | null;
+  semesterNo?: number | null;
+  semesterName?: string | null;
+  scheduledDate?: string | null;
+}
+
 interface BatchOption {
   batch: {
     id: string;
@@ -50,9 +66,17 @@ export default function AttendancePage() {
   const [batches, setBatches] = useState<BatchOption[]>([]);
   const [programmes, setProgrammes] = useState<ProgrammeOption[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [semesters, setSemesters] = useState<SemesterOption[]>([]);
+  const [programmeClasses, setProgrammeClasses] = useState<ClassOption[]>([]);
+  const [courseClasses, setCourseClasses] = useState<ClassOption[]>([]);
+  const [selectedMode, setSelectedMode] = useState<"PROGRAMME" | "COURSE">("PROGRAMME");
   const [selectedProgramme, setSelectedProgramme] = useState("");
+  const [selectedSemester, setSelectedSemester] = useState("");
+  const [selectedProgrammeClass, setSelectedProgrammeClass] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
+  const [selectedCourseClass, setSelectedCourseClass] = useState("");
   const [selectedBatch, setSelectedBatch] = useState("");
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -65,10 +89,24 @@ export default function AttendancePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const activeClassId = selectedMode === "PROGRAMME" ? selectedProgrammeClass : selectedCourseClass;
+  const activeClass = (selectedMode === "PROGRAMME" ? programmeClasses : courseClasses)
+    .find((item) => item.id === activeClassId);
+
+  const filteredCourses = selectedMode === "PROGRAMME" ? courses : courses;
+
   const filteredBatches = batches.filter((item) => {
-    const matchesProgramme = !selectedProgramme || item.batch.programmeId === selectedProgramme;
-    const matchesCourse = !selectedCourse || item.batch.courseId === selectedCourse;
-    return matchesProgramme && matchesCourse;
+    const b = item.batch;
+    const matchesProgramme = selectedMode === "COURSE"
+      ? true
+      : !selectedProgramme || b.programmeId === selectedProgramme;
+    const matchesSemester = selectedMode === "PROGRAMME"
+      ? !selectedSemester || b.semesterId === selectedSemester
+      : true;
+    const matchesCourse = selectedMode === "COURSE"
+      ? !selectedCourse || b.courseId === selectedCourse
+      : true;
+    return matchesProgramme && matchesSemester && matchesCourse;
   });
 
   useEffect(() => {
@@ -84,10 +122,64 @@ export default function AttendancePage() {
   }, []);
 
   useEffect(() => {
+    if (!selectedProgramme) {
+      setSemesters([]);
+      setSelectedSemester("");
+      setProgrammeClasses([]);
+      setSelectedProgrammeClass("");
+      return;
+    }
+    fetch(`/api/attendance/options?programmeId=${selectedProgramme}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setSemesters(data.semesters || []);
+        setProgrammeClasses(data.classes || []);
+      })
+      .catch(() => {
+        setSemesters([]);
+        setProgrammeClasses([]);
+      });
+  }, [selectedProgramme]);
+
+  useEffect(() => {
+    if (!selectedCourse) {
+      setCourseClasses([]);
+      setSelectedCourseClass("");
+      return;
+    }
+    fetch(`/api/attendance/options?courseId=${selectedCourse}`)
+      .then((r) => r.json())
+      .then((data) => setCourseClasses(data.classes || []))
+      .catch(() => setCourseClasses([]));
+  }, [selectedCourse]);
+
+  useEffect(() => {
+    if (selectedMode === "PROGRAMME") {
+      setSelectedCourse("");
+      setSelectedCourseClass("");
+    } else {
+      setSelectedProgramme("");
+      setSelectedSemester("");
+      setSelectedProgrammeClass("");
+    }
+  }, [selectedMode]);
+
+  useEffect(() => {
+    if (selectedMode === "PROGRAMME" && selectedSemester) {
+      const valid = programmeClasses.some((item) => item.semesterId === selectedSemester);
+      if (!valid) setSelectedProgrammeClass("");
+    }
+  }, [selectedMode, selectedSemester, programmeClasses]);
+
+  const visibleProgrammeClasses = programmeClasses.filter(
+    (item) => !selectedSemester || item.semesterId === selectedSemester
+  );
+
+  useEffect(() => {
     if (selectedBatch && !filteredBatches.some((item) => item.batch.id === selectedBatch)) {
       setSelectedBatch("");
     }
-  }, [selectedProgramme, selectedCourse, filteredBatches, selectedBatch]);
+  }, [selectedProgramme, selectedSemester, selectedCourse, selectedMode, filteredBatches, selectedBatch]);
 
   const loadBatchData = useCallback(async () => {
     if (!selectedBatch) return;
@@ -110,6 +202,8 @@ export default function AttendancePage() {
 
       const existingAtt: AttendanceRecord[] = attData.attendance || [];
       setExisting(existingAtt);
+
+      setSelectedStudents(students.filter((s) => s.student).map((s) => s.student!.id));
 
       const initialMarks: Record<string, string> = {};
 
@@ -140,7 +234,7 @@ export default function AttendancePage() {
     setSaved(false);
 
     const records = enrolledStudents
-      .filter((s) => s.student)
+      .filter((s) => s.student && selectedStudents.includes(s.student.id))
       .map((s) => ({
         studentId: s.student!.id,
         batchId: selectedBatch,
@@ -217,15 +311,23 @@ export default function AttendancePage() {
 
       {/* Controls */}
       <div className="card">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="form-label">Select Programme</label>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="lg:col-span-4">
+            <label className="form-label">Attendance Type</label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setSelectedMode("PROGRAMME")} className={`btn ${selectedMode === "PROGRAMME" ? "btn-primary" : "btn-outline"}`}>Programme</button>
+              <button type="button" onClick={() => setSelectedMode("COURSE")} className={`btn ${selectedMode === "COURSE" ? "btn-primary" : "btn-outline"}`}>Course</button>
+            </div>
+          </div>
+
+          {selectedMode === "PROGRAMME" ? <div>
+            <label className="form-label">1. Select Programme</label>
             <select
               className="form-select"
               value={selectedProgramme}
               onChange={(e) => setSelectedProgramme(e.target.value)}
             >
-              <option value="">All programmes</option>
+              <option value="">Choose programme...</option>
               {programmes.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.code ? `${p.code} — ${p.name}` : p.name}
@@ -235,21 +337,44 @@ export default function AttendancePage() {
           </div>
 
           <div>
-            <label className="form-label">Select Course</label>
+            <label className="form-label">2. Select Semester</label>
             <select
               className="form-select"
-              value={selectedCourse}
-              onChange={(e) => setSelectedCourse(e.target.value)}
+              value={selectedSemester}
+              disabled={!selectedProgramme}
+              onChange={(e) => {
+                setSelectedSemester(e.target.value);
+                setSelectedProgrammeClass("");
+                setSelectedBatch("");
+              }}
             >
-              <option value="">All courses</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+              <option value="">Choose semester...</option>
+              {semesters.map((s) => (
+                <option key={s.id} value={s.id}>Semester {s.semesterNo} — {s.name}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="form-label">Select Batch</label>
+            <label className="form-label">3. Select Class</label>
+            <select
+              className="form-select"
+              value={selectedProgrammeClass}
+              disabled={!selectedSemester}
+              onChange={(e) => {
+                setSelectedProgrammeClass(e.target.value);
+                setSelectedBatch("");
+              }}
+            >
+              <option value="">Choose class...</option>
+              {visibleProgrammeClasses.map((c) => (
+                <option key={c.id} value={c.id}>Class {c.classNo} — {c.title}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="form-label">4. Select Batch</label>
             <select
               className="form-select"
               value={selectedBatch}
@@ -271,9 +396,55 @@ export default function AttendancePage() {
             ) : null}
           </div>
 
-          <div>
-            <label className="form-label">Date</label>
+          </div> : <div>
+            <label className="form-label">1. Select Course</label>
+            <select
+              className="form-select"
+              value={selectedCourse}
+              onChange={(e) => {
+                setSelectedCourse(e.target.value);
+                setSelectedCourseClass("");
+                setSelectedBatch("");
+              }}
+            >
+              <option value="">Choose course...</option>
+              {filteredCourses.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>}
 
+          {selectedMode === "COURSE" && <div>
+            <label className="form-label">2. Select Class</label>
+            <select
+              className="form-select"
+              value={selectedCourseClass}
+              disabled={!selectedCourse}
+              onChange={(e) => {
+                setSelectedCourseClass(e.target.value);
+                setSelectedBatch("");
+              }}
+            >
+              <option value="">Choose class...</option>
+              {courseClasses.map((c) => (
+                <option key={c.id} value={c.id}>Class {c.classNo} — {c.title}</option>
+              ))}
+            </select>
+          </div>}
+
+          {selectedMode === "COURSE" && <div>
+            <label className="form-label">3. Select Batch</label>
+
+            <input
+              type="date"
+              className="form-input"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="form-label">{selectedMode === "PROGRAMME" ? "5. Date" : "4. Date"}</label>
             <input
               type="date"
               className="form-input"
@@ -284,7 +455,7 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {selectedBatch && (
+      {selectedBatch && activeClassId && (
         <>
           {/* Summary */}
           <div className="grid grid-cols-4 gap-3">
@@ -358,6 +529,26 @@ export default function AttendancePage() {
                 <p>No students enrolled in this batch</p>
               </div>
             ) : (
+              <div className="mb-4 flex items-center justify-between rounded-xl bg-blue-50 p-3">
+                <div>
+                  <p className="text-sm font-semibold text-blue-800">Class selected</p>
+                  <p className="text-xs text-blue-600">
+                    {selectedMode === "PROGRAMME" ? `Semester ${activeClass?.semesterNo ?? ""} — ` : ""}
+                    Class {activeClass?.classNo ?? ""} — {activeClass?.title ?? ""}
+                  </p>
+                </div>
+                <label className="text-xs font-medium text-blue-700 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedStudents.length === enrolledStudents.filter((s) => s.student).length && enrolledStudents.length > 0}
+                    onChange={(e) => setSelectedStudents(e.target.checked
+                      ? enrolledStudents.filter((s) => s.student).map((s) => s.student!.id)
+                      : [])}
+                  />
+                  Select all students
+                </label>
+              </div>
+
               <div className="space-y-2">
                 {/* Quick mark all buttons */}
                 <div className="flex gap-2 mb-4 p-3 bg-slate-50 rounded-xl">
@@ -398,6 +589,15 @@ export default function AttendancePage() {
                       className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0"
                     >
                       <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedStudents.includes(s.id)}
+                          onChange={(e) =>
+                            setSelectedStudents((prev) =>
+                              e.target.checked ? [...prev, s.id] : prev.filter((id) => id !== s.id)
+                            )
+                          }
+                        />
                         <span className="text-xs text-slate-400 w-6">
                           {idx + 1}
                         </span>
@@ -461,16 +661,16 @@ export default function AttendancePage() {
         </>
       )}
 
-      {!selectedBatch && (
+      {(!selectedBatch || !activeClassId) && (
         <div className="card text-center py-16">
           <div className="text-5xl mb-4">✅</div>
 
           <p className="text-slate-500 font-medium">
-            Select a batch to take attendance
+            Select {selectedMode === "PROGRAMME" ? "programme → semester → class → batch" : "course → class → batch"} to take attendance
           </p>
 
           <p className="text-sm text-slate-400 mt-1">
-            Choose a batch and date from the controls above
+            Then select the students who are present in this attendance session.
           </p>
         </div>
       )}
