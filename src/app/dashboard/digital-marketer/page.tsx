@@ -47,7 +47,7 @@ const emptyAd = (): Ad => ({
 });
 
 const initialForm = {
-  reportDate: new Date().toISOString().slice(0, 10),
+  reportDate: "",
   summary: "",
   tasksCompleted: "",
   postsCount: "0",
