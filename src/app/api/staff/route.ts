@@ -24,6 +24,7 @@ const STAFF_MANAGEMENT_ROLES = [
   "SUPER_ADMIN",
   "INSTITUTE_ADMIN",
   "MANAGER",
+  "DIGITAL_MARKETER",
 ];
 
 function cleanText(value: unknown): string {
