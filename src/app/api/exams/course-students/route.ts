@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
 import { getSession, requireRoles } from "@/lib/session";
-import { ensureAcademicSchema } from "@/lib/academic";
+import { ensureCourseSchema } from "@/lib/academic";
 
 const ROLES = ["SUPER_ADMIN","INSTITUTE_ADMIN","MANAGER","ADMIN","INSTITUTE","TEACHER"];
 const rowsOf = (result: any): any[] => result?.rows || (Array.isArray(result) ? result : []);
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const roleError = requireRoles(session, ROLES);
     if (roleError) return roleError;
 
-    await ensureAcademicSchema();
+    await ensureCourseSchema();
 
     const { searchParams } = new URL(request.url);
     const courseId = String(searchParams.get("courseId") || "").trim();
