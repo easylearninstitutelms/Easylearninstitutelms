@@ -29,7 +29,11 @@ interface AttendanceRecord {
 }
 
 export default function AttendancePage() {
-  const [batches, setBatches] = useState<BatchOption[]>([]);\n  const [programmes, setProgrammes] = useState<ProgrammeOption[]>([]);\n  const [courses, setCourses] = useState<CourseOption[]>([]);\n  const [selectedProgramme, setSelectedProgramme] = useState("");\n  const [selectedCourse, setSelectedCourse] = useState("");
+  const [batches, setBatches] = useState<BatchOption[]>([]);
+  const [programmes, setProgrammes] = useState<ProgrammeOption[]>([]);
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [selectedProgramme, setSelectedProgramme] = useState("");
+  const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedBatch, setSelectedBatch] = useState("");
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -41,7 +45,13 @@ export default function AttendancePage() {
   const [marks, setMarks] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);\n\n  const filteredBatches = batches.filter((item) => {\n    const matchesProgramme = !selectedProgramme || item.batch.programmeId === selectedProgramme;\n    const matchesCourse = !selectedCourse || item.batch.courseId === selectedCourse;\n    return matchesProgramme && matchesCourse;\n  });
+  const [saved, setSaved] = useState(false);
+
+  const filteredBatches = batches.filter((item) => {
+    const matchesProgramme = !selectedProgramme || item.batch.programmeId === selectedProgramme;
+    const matchesCourse = !selectedCourse || item.batch.courseId === selectedCourse;
+    return matchesProgramme && matchesCourse;
+  });
 
   useEffect(() => {
     Promise.all([
