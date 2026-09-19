@@ -380,6 +380,11 @@ export function ensureAcademicSchema() {
           UNIQUE (syllabus_class_id, batch_id)
         );
 
+        ALTER TABLE programme_class_recordings
+          ADD COLUMN IF NOT EXISTS duration varchar(50);
+        ALTER TABLE programme_class_recordings
+          ADD COLUMN IF NOT EXISTS updated_at timestamp NOT NULL DEFAULT now();
+
         CREATE INDEX IF NOT EXISTS programme_recordings_institute_idx
           ON programme_class_recordings(institute_id);
 
@@ -410,6 +415,11 @@ export function ensureAcademicSchema() {
           updated_at timestamp NOT NULL DEFAULT now(),
           UNIQUE (syllabus_class_id)
         );
+
+        ALTER TABLE programme_syllabus_recordings
+          ADD COLUMN IF NOT EXISTS duration varchar(50);
+        ALTER TABLE programme_syllabus_recordings
+          ADD COLUMN IF NOT EXISTS updated_at timestamp NOT NULL DEFAULT now();
 
         CREATE INDEX IF NOT EXISTS programme_syllabus_recordings_institute_idx
           ON programme_syllabus_recordings(institute_id);
