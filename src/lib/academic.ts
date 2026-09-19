@@ -497,3 +497,124 @@ export function ensureAcademicSchema() {
 
   return ready;
 }
+
+/**
+ * Course-only schema repair.
+ *
+ * This is intentionally independent from the larger academic migration so a
+ * legacy programme/homework table cannot block the Courses screen.
+ */
+let courseReady: Promise<void> | null = null;
+
+export function ensureCourseSchema() {
+  if (!courseReady) {
+    courseReady = (async () => {
+      await db.execute(sql`
+        ALTER TABLE courses
+          ADD COLUMN IF NOT EXISTS course_no integer;
+
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS class_no integer;
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS scheduled_date date;
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS start_time time;
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS end_time time;
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS status varchar(20) NOT NULL DEFAULT 'UPCOMING';
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now();
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS updated_at timestamp NOT NULL DEFAULT now();
+
+        WITH ranked AS (
+          SELECT id,
+                 ROW_NUMBER() OVER (
+                   PARTITION BY course_id
+                   ORDER BY class_no NULLS LAST, created_at NULLS LAST, id
+                 ) AS rn
+          FROM course_syllabus_classes
+        )
+        UPDATE course_syllabus_classes c
+        SET class_no = r.rn
+        FROM ranked r
+        WHERE c.id = r.id
+          AND c.class_no IS NULL;
+
+        WITH duplicates AS (
+          SELECT id, course_id, class_no,
+                 ROW_NUMBER() OVER (
+                   PARTITION BY course_id, class_no
+                   ORDER BY created_at NULLS LAST, id
+                 ) AS rn
+          FROM course_syllabus_classes
+          WHERE class_no IS NOT NULL
+        ),
+        maxes AS (
+          SELECT course_id, COALESCE(MAX(class_no), 0) AS max_no
+          FROM course_syllabus_classes
+          GROUP BY course_id
+        )
+        UPDATE course_syllabus_classes c
+        SET class_no = m.max_no + d.rn
+        FROM duplicates d
+        JOIN maxes m ON m.course_id = d.course_id
+        WHERE c.id = d.id
+          AND d.rn > 1;
+
+        CREATE UNIQUE INDEX IF NOT EXISTS course_syllabus_course_class_no_idx
+          ON course_syllabus_classes(course_id, class_no)
+          WHERE class_no IS NOT NULL;
+
+        WITH duplicates AS (
+          SELECT id, institute_id, course_no,
+                 ROW_NUMBER() OVER (
+                   PARTITION BY institute_id, course_no
+                   ORDER BY created_at NULLS LAST, id
+                 ) AS rn
+          FROM courses
+          WHERE course_no IS NOT NULL
+        ),
+        maxes AS (
+          SELECT institute_id, COALESCE(MAX(course_no), 210) AS max_no
+          FROM courses
+          GROUP BY institute_id
+        )
+        UPDATE courses c
+        SET course_no = m.max_no + d.rn
+        FROM duplicates d
+        JOIN maxes m ON m.institute_id = d.institute_id
+        WHERE c.id = d.id
+          AND d.rn > 1;
+
+        WITH missing AS (
+          SELECT id,
+                 COALESCE(
+                   MAX(course_no) OVER (PARTITION BY institute_id),
+                   210
+                 ) + ROW_NUMBER() OVER (
+                   PARTITION BY institute_id
+                   ORDER BY created_at, id
+                 ) AS next_no
+          FROM courses
+          WHERE course_no IS NULL
+        )
+        UPDATE courses c
+        SET course_no = m.next_no
+        FROM missing m
+        WHERE c.id = m.id;
+
+        CREATE UNIQUE INDEX IF NOT EXISTS courses_institute_no_idx
+          ON courses(institute_id, course_no)
+          WHERE course_no IS NOT NULL;
+
+        ALTER TABLE course_class_recordings
+          ADD COLUMN IF NOT EXISTS duration varchar(50);
+        ALTER TABLE course_class_recordings
+          ADD COLUMN IF NOT EXISTS updated_at timestamp NOT NULL DEFAULT now();
+      `);
+    })().then(() => undefined);
+  }
+  return courseReady;
+}
