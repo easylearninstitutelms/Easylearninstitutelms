@@ -367,10 +367,16 @@ export const courseSyllabusClasses = pgTable("course_syllabus_classes", {
   id: uuid("id").primaryKey().defaultRandom(),
   instituteId: uuid("institute_id").notNull().references(() => institutes.id, { onDelete: "cascade" }),
   courseId: uuid("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
+  classNo: integer("class_no"),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
+  scheduledDate: date("scheduled_date"),
+  startTime: time("start_time"),
+  endTime: time("end_time"),
+  status: varchar("status", { length: 20 }).notNull().default("UPCOMING"),
   orderNo: integer("order_no").default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const programmeSyllabusClasses = pgTable("programme_syllabus_classes", {
@@ -378,10 +384,16 @@ export const programmeSyllabusClasses = pgTable("programme_syllabus_classes", {
   instituteId: uuid("institute_id").notNull().references(() => institutes.id, { onDelete: "cascade" }),
   programmeId: uuid("programme_id").notNull().references(() => programmes.id, { onDelete: "cascade" }),
   semesterId: uuid("semester_id").references(() => programmeSemesters.id, { onDelete: "cascade" }),
+  classNo: integer("class_no"),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
+  scheduledDate: date("scheduled_date"),
+  startTime: time("start_time"),
+  endTime: time("end_time"),
+  status: varchar("status", { length: 20 }).notNull().default("UPCOMING"),
   orderNo: integer("order_no").default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const courseClassRecordings = pgTable("course_class_recordings", {
@@ -390,7 +402,9 @@ export const courseClassRecordings = pgTable("course_class_recordings", {
   courseClassId: uuid("course_class_id").notNull().references(() => courseSyllabusClasses.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   videoUrl: text("video_url").notNull(),
+  duration: varchar("duration", { length: 50 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const programmeSyllabusRecordings = pgTable("programme_syllabus_recordings", {
@@ -399,7 +413,9 @@ export const programmeSyllabusRecordings = pgTable("programme_syllabus_recording
   programmeClassId: uuid("programme_class_id").notNull().references(() => programmeSyllabusClasses.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   videoUrl: text("video_url").notNull(),
+  duration: varchar("duration", { length: 50 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // ─── Batches ─────────────────────────────────────────────────────────────────
