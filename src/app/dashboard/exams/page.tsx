@@ -1293,7 +1293,7 @@ export default function ExamsPage() {
       const response = await fetch(`/api/attendance/options?programmeId=${encodeURIComponent(programmeId)}`, { cache: "no-store" });
       const data = await response.json().catch(() => null);
       const raw = response.ok && Array.isArray(data?.classes) ? data.classes : [];
-      setProgrammeClasses(raw.filter((item: unknown): item is ProgrammeClass => Boolean(item && typeof item === "object" && typeof (item as Record<string, unknown>).id === "string" && typeof (item as Record<string, unknown>).title === "string")).map((item) => ({ id: item.id, classNo: item.classNo == null ? null : Number(item.classNo), title: item.title, semesterId: typeof item.semesterId === "string" ? item.semesterId : null })));
+      setProgrammeClasses(raw.filter((item: unknown): item is ProgrammeClass => Boolean(item && typeof item === "object" && typeof (item as Record<string, unknown>).id === "string" && typeof (item as Record<string, unknown>).title === "string")).map((item: ProgrammeClass) => ({ id: item.id, classNo: item.classNo == null ? null : Number(item.classNo), title: item.title, semesterId: typeof item.semesterId === "string" ? item.semesterId : null })));
     } catch { setProgrammeClasses([]); }
   }
 
