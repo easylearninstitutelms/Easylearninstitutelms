@@ -557,7 +557,41 @@ export function ensureAcademicCoreSchema() {
         ALTER TABLE batches ADD COLUMN IF NOT EXISTS batch_no integer;\
         CREATE INDEX IF NOT EXISTS batches_programme_idx ON batches(programme_id);\
         CREATE INDEX IF NOT EXISTS batches_semester_idx ON batches(semester_id);\
-        CREATE INDEX IF NOT EXISTS batches_course_idx ON batches(course_id);\
+        CREATE INDEX IF NOT EXISTS batches_course_idx ON batches(course_id);
+
+        CREATE TABLE IF NOT EXISTS programme_syllabus_classes (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          institute_id uuid NOT NULL,
+          programme_id uuid NOT NULL,
+          semester_id uuid,
+          class_no integer,
+          title varchar(255) NOT NULL,
+          description text,
+          scheduled_date date,
+          start_time time,
+          end_time time,
+          status varchar(20) NOT NULL DEFAULT 'UPCOMING',
+          order_no integer DEFAULT 0,
+          created_at timestamp NOT NULL DEFAULT now(),
+          updated_at timestamp NOT NULL DEFAULT now()
+        );
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS institute_id uuid;
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS programme_id uuid;
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS semester_id uuid;
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS class_no integer;
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS title varchar(255);
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS description text;
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS scheduled_date date;
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS start_time time;
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS end_time time;
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS status varchar(20) NOT NULL DEFAULT 'UPCOMING';
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS order_no integer DEFAULT 0;
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now();
+        ALTER TABLE programme_syllabus_classes ADD COLUMN IF NOT EXISTS updated_at timestamp NOT NULL DEFAULT now();
+        CREATE INDEX IF NOT EXISTS programme_syllabus_classes_programme_idx
+          ON programme_syllabus_classes(programme_id);
+        CREATE INDEX IF NOT EXISTS programme_syllabus_classes_semester_idx
+          ON programme_syllabus_classes(semester_id);\
       `);
     })().then(() => undefined);
   }
