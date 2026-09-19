@@ -26,10 +26,17 @@ interface Course {
   code?: string | null;
 }
 
+interface ProgrammeSemester {
+  id: string;
+  name: string;
+  semesterNo?: number | null;
+}
+
 interface Programme {
   id: string;
   name: string;
   code?: string | null;
+  semesters?: ProgrammeSemester[];
 }
 
 interface Semester {
@@ -37,6 +44,7 @@ interface Semester {
   name: string;
   programmeId?: string | null;
   programme_id?: string | null;
+  semesterNo?: number | null;
 }
 
 interface Batch {
@@ -87,8 +95,11 @@ export default function HomeworkPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const [targetType, setTargetType] = useState<TargetType>("course");
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [targetType, setTargetType] =
+    useState<TargetType>("course");
+
+  const [form, setForm] =
+    useState<FormState>(initialForm);
 
   const fetchHw = useCallback(async () => {
     try {
@@ -101,7 +112,9 @@ export default function HomeworkPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data?.error || "Failed to load homework");
+        throw new Error(
+          data?.error || "Failed to load homework",
+        );
       }
 
       setHwList(data.homework || []);
@@ -116,43 +129,172 @@ export default function HomeworkPage() {
   const fetchOptions = useCallback(async () => {
     try {
       setLoadingOptions(true);
+      setError("");
 
+      /*
+       * IMPORTANT:
+       * There is NO /api/semesters endpoint.
+       *
+       * Semesters are already returned inside:
+       * /api/programmes
+       *
+       * So we only fetch these four APIs here.
+       */
       const results = await Promise.all([
-        fetch("/api/courses", { cache: "no-store" }),
-        fetch("/api/programmes", { cache: "no-store" }),
-        fetch("/api/semesters", { cache: "no-store" }),
-        fetch("/api/batches", { cache: "no-store" }),
-        fetch("/api/staff", { cache: "no-store" }),
+        fetch("/api/courses", {
+          cache: "no-store",
+        }),
+
+        fetch("/api/programmes", {
+          cache: "no-store",
+        }),
+
+        fetch("/api/batches", {
+          cache: "no-store",
+        }),
+
+        fetch("/api/staff", {
+          cache: "no-store",
+        }),
       ]);
 
       const courseData = await results[0].json();
       const programmeData = await results[1].json();
-      const semesterData = await results[2].json();
-      const batchData = await results[3].json();
-      const staffData = await results[4].json();
+      const batchData = await results[2].json();
+      const staffData = await results[3].json();
 
-      setCourses(courseData.courses || []);
-      setProgrammes(programmeData.programmes || []);
-      setSemesters(semesterData.semesters || []);
+      if (!results[0].ok) {
+        throw new Error(
+          courseData?.error ||
+            "Failed to load courses",
+        );
+      }
 
-      const batchRows = batchData.batches || [];
+      if (!results[1].ok) {
+        throw new Error(
+          programmeData?.error ||
+            "Failed to load programmes",
+        );
+      }
 
-      const normalizedBatches: Batch[] = batchRows.map(
-        (item: Batch | { batch: Batch }) => {
-          if ("batch" in item && item.batch) {
-            return item.batch;
-          }
+      if (!results[2].ok) {
+        throw new Error(
+          batchData?.error ||
+            "Failed to load batches",
+        );
+      }
 
-          return item as Batch;
-        }
-      );
+      if (!results[3].ok) {
+        throw new Error(
+          staffData?.error ||
+            "Failed to load staff",
+        );
+      }
+
+      const courseRows: Course[] =
+        courseData.courses || [];
+
+      const programmeRows: Programme[] =
+        programmeData.programmes || [];
+
+      const batchRows =
+        batchData.batches || [];
+
+      const staffRows: Staff[] =
+        staffData.staff || [];
+
+      setCourses(courseRows);
+      setProgrammes(programmeRows);
+      setStaffList(staffRows);
+
+      /*
+       * Convert Programme -> nested Semesters
+       * into one flat semester list.
+       *
+       * Example:
+       *
+       * Programme A
+       *   Semester 1
+       *   Semester 2
+       *   Semester 3
+       *   Semester 4
+       *
+       * becomes:
+       *
+       * [
+       *   { id, name, programmeId },
+       *   { id, name, programmeId },
+       *   ...
+       * ]
+       */
+      const semesterRows: Semester[] =
+        programmeRows.flatMap((programme) =>
+          (programme.semesters || []).map(
+            (semester) => ({
+              id: semester.id,
+              name: semester.name,
+              semesterNo:
+                semester.semesterNo ?? null,
+              programmeId: programme.id,
+            }),
+          ),
+        );
+
+      setSemesters(semesterRows);
+
+      /*
+       * Existing /api/batches response contains:
+       *
+       * {
+       *   id,
+       *   name,
+       *   ...
+       *   batch: {
+       *     id,
+       *     name,
+       *     ...
+       *   }
+       * }
+       *
+       * Keep compatibility with that structure.
+       */
+      const normalizedBatches: Batch[] =
+        batchRows.map(
+          (
+            item:
+              | Batch
+              | {
+                  batch: Batch;
+                },
+          ) => {
+            if (
+              "batch" in item &&
+              item.batch
+            ) {
+              return item.batch;
+            }
+
+            return item as Batch;
+          },
+        );
 
       setBatches(normalizedBatches);
-
-      setStaffList(staffData.staff || []);
     } catch (err) {
-      console.error(err);
-      setError("Course, Programme, Semester বা Batch data load করতে সমস্যা হয়েছে.");
+      console.error(
+        "Homework options load error:",
+        err,
+      );
+
+      if (err instanceof Error) {
+        setError(
+          err.message ||
+            "Course, Programme, Semester বা Batch data load করতে সমস্যা হয়েছে.",
+        );
+      } else {
+        setError(
+          "Course, Programme, Semester বা Batch data load করতে সমস্যা হয়েছে.",
+        );
+      }
     } finally {
       setLoadingOptions(false);
     }
@@ -171,12 +313,26 @@ export default function HomeworkPage() {
       return [];
     }
 
-    return semesters.filter((semester) => {
-      const programmeId =
-        semester.programmeId || semester.programme_id || "";
+    return semesters
+      .filter((semester) => {
+        const programmeId =
+          semester.programmeId ||
+          semester.programme_id ||
+          "";
 
-      return programmeId === form.programmeId;
-    });
+        return (
+          programmeId === form.programmeId
+        );
+      })
+      .sort((a, b) => {
+        const aNo =
+          a.semesterNo ?? Number.MAX_SAFE_INTEGER;
+
+        const bNo =
+          b.semesterNo ?? Number.MAX_SAFE_INTEGER;
+
+        return aNo - bNo;
+      });
   }, [semesters, form.programmeId]);
 
   function openModal() {
@@ -195,7 +351,9 @@ export default function HomeworkPage() {
     setError("");
   }
 
-  function changeTargetType(type: TargetType) {
+  function changeTargetType(
+    type: TargetType,
+  ) {
     setTargetType(type);
 
     setForm((previous) => ({
@@ -209,17 +367,24 @@ export default function HomeworkPage() {
     setError("");
   }
 
-  function changeProgramme(programmeId: string) {
+  function changeProgramme(
+    programmeId: string,
+  ) {
     setForm((previous) => ({
       ...previous,
       programmeId,
       semesterId: "",
     }));
+
+    setError("");
   }
 
   function getTargetLabel(row: HwRow) {
     if (row.courseName) {
-      return "Course: " + row.courseName;
+      return (
+        "Course: " +
+        row.courseName
+      );
     }
 
     if (row.programmeName) {
@@ -232,11 +397,17 @@ export default function HomeworkPage() {
         );
       }
 
-      return "Programme: " + row.programmeName;
+      return (
+        "Programme: " +
+        row.programmeName
+      );
     }
 
     if (row.batchName) {
-      return "Batch: " + row.batchName;
+      return (
+        "Batch: " +
+        row.batchName
+      );
     }
 
     return "General";
@@ -258,7 +429,9 @@ export default function HomeworkPage() {
     return "📝";
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     setError("");
@@ -268,25 +441,39 @@ export default function HomeworkPage() {
       return;
     }
 
-    if (targetType === "course" && !form.courseId) {
-      setError("একটি Course select করুন.");
+    if (
+      targetType === "course" &&
+      !form.courseId
+    ) {
+      setError(
+        "একটি Course select করুন.",
+      );
       return;
     }
 
     if (targetType === "programme") {
       if (!form.programmeId) {
-        setError("একটি Programme select করুন.");
+        setError(
+          "একটি Programme select করুন.",
+        );
         return;
       }
 
       if (!form.semesterId) {
-        setError("একটি Semester select করুন.");
+        setError(
+          "একটি Semester select করুন.",
+        );
         return;
       }
     }
 
-    if (targetType === "batch" && !form.batchId) {
-      setError("একটি Batch select করুন.");
+    if (
+      targetType === "batch" &&
+      !form.batchId
+    ) {
+      setError(
+        "একটি Batch select করুন.",
+      );
       return;
     }
 
@@ -295,32 +482,60 @@ export default function HomeworkPage() {
 
       const payload = {
         targetType,
+
         courseId:
-          targetType === "course" ? form.courseId : null,
+          targetType === "course"
+            ? form.courseId
+            : null,
+
         programmeId:
-          targetType === "programme" ? form.programmeId : null,
+          targetType === "programme"
+            ? form.programmeId
+            : null,
+
         semesterId:
-          targetType === "programme" ? form.semesterId : null,
+          targetType === "programme"
+            ? form.semesterId
+            : null,
+
         batchId:
-          targetType === "batch" ? form.batchId : null,
-        teacherId: form.teacherId || null,
-        title: form.title.trim(),
-        description: form.description.trim(),
-        deadline: form.deadline || null,
+          targetType === "batch"
+            ? form.batchId
+            : null,
+
+        teacherId:
+          form.teacherId || null,
+
+        title:
+          form.title.trim(),
+
+        description:
+          form.description.trim(),
+
+        deadline:
+          form.deadline || null,
       };
 
-      const res = await fetch("/api/homework", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await fetch(
+        "/api/homework",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      });
+      );
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
       if (!res.ok) {
-        throw new Error(data?.error || "Failed to assign homework");
+        throw new Error(
+          data?.error ||
+            "Failed to assign homework",
+        );
       }
 
       setShowModal(false);
@@ -332,9 +547,14 @@ export default function HomeworkPage() {
       console.error(err);
 
       if (err instanceof Error) {
-        setError(err.message);
+        setError(
+          err.message ||
+            "Homework assign করতে সমস্যা হয়েছে.",
+        );
       } else {
-        setError("Homework assign করতে সমস্যা হয়েছে.");
+        setError(
+          "Homework assign করতে সমস্যা হয়েছে.",
+        );
       }
     } finally {
       setSubmitting(false);
@@ -345,7 +565,10 @@ export default function HomeworkPage() {
     <div className="space-y-5">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Homework</h1>
+          <h1 className="page-title">
+            Homework
+          </h1>
+
           <p className="text-sm text-slate-500">
             {hwList.length} assignments
           </p>
@@ -369,6 +592,7 @@ export default function HomeworkPage() {
               d="M12 4v16m8-8H4"
             />
           </svg>
+
           Assign Homework
         </button>
       </div>
@@ -387,7 +611,9 @@ export default function HomeworkPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {hwList.length === 0 ? (
             <div className="col-span-full text-center py-12">
-              <div className="text-4xl mb-3">📝</div>
+              <div className="text-4xl mb-3">
+                📝
+              </div>
 
               <p className="text-slate-500">
                 No homework assigned yet
@@ -431,18 +657,25 @@ export default function HomeworkPage() {
 
                 <div className="flex items-center justify-between gap-2 text-xs text-slate-400">
                   <span>
-                    👩‍🏫 {row.teacherName || "—"}
+                    👩‍🏫{" "}
+                    {row.teacherName ||
+                      "—"}
                   </span>
 
                   {row.homework.deadline && (
                     <span
                       className={
-                        new Date(row.homework.deadline) < new Date()
+                        new Date(
+                          row.homework.deadline,
+                        ) < new Date()
                           ? "font-medium text-red-500"
                           : "font-medium text-orange-500"
                       }
                     >
-                      📅 {formatDate(row.homework.deadline)}
+                      📅{" "}
+                      {formatDate(
+                        row.homework.deadline,
+                      )}
                     </span>
                   )}
                 </div>
@@ -456,7 +689,10 @@ export default function HomeworkPage() {
         <div
           className="modal-overlay"
           onClick={(event) => {
-            if (event.target === event.currentTarget) {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
               closeModal();
             }
           }}
@@ -477,7 +713,9 @@ export default function HomeworkPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <form
+              onSubmit={handleSubmit}
+            >
               <div className="modal-body space-y-4">
                 {error && (
                   <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm">
@@ -497,7 +735,8 @@ export default function HomeworkPage() {
                     onChange={(event) =>
                       setForm({
                         ...form,
-                        title: event.target.value,
+                        title:
+                          event.target.value,
                       })
                     }
                     required
@@ -513,10 +752,13 @@ export default function HomeworkPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        changeTargetType("course")
+                        changeTargetType(
+                          "course",
+                        )
                       }
                       className={
-                        targetType === "course"
+                        targetType ===
+                        "course"
                           ? "px-3 py-2 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 text-sm font-semibold"
                           : "px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50"
                       }
@@ -527,10 +769,13 @@ export default function HomeworkPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        changeTargetType("programme")
+                        changeTargetType(
+                          "programme",
+                        )
                       }
                       className={
-                        targetType === "programme"
+                        targetType ===
+                        "programme"
                           ? "px-3 py-2 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 text-sm font-semibold"
                           : "px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50"
                       }
@@ -541,10 +786,13 @@ export default function HomeworkPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        changeTargetType("batch")
+                        changeTargetType(
+                          "batch",
+                        )
                       }
                       className={
-                        targetType === "batch"
+                        targetType ===
+                        "batch"
                           ? "px-3 py-2 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 text-sm font-semibold"
                           : "px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50"
                       }
@@ -554,7 +802,8 @@ export default function HomeworkPage() {
                   </div>
                 </div>
 
-                {targetType === "course" && (
+                {targetType ===
+                  "course" && (
                   <div>
                     <label className="form-label">
                       Course *
@@ -562,15 +811,21 @@ export default function HomeworkPage() {
 
                     <select
                       className="form-select"
-                      value={form.courseId}
+                      value={
+                        form.courseId
+                      }
                       onChange={(event) =>
                         setForm({
                           ...form,
-                          courseId: event.target.value,
+                          courseId:
+                            event.target
+                              .value,
                         })
                       }
                       required
-                      disabled={loadingOptions}
+                      disabled={
+                        loadingOptions
+                      }
                     >
                       <option value="">
                         {loadingOptions
@@ -578,29 +833,40 @@ export default function HomeworkPage() {
                           : "Select course"}
                       </option>
 
-                      {courses.map((course) => (
-                        <option
-                          key={course.id}
-                          value={course.id}
-                        >
-                          {course.name}
-                          {course.code
-                            ? " (" + course.code + ")"
-                            : ""}
-                        </option>
-                      ))}
+                      {courses.map(
+                        (course) => (
+                          <option
+                            key={
+                              course.id
+                            }
+                            value={
+                              course.id
+                            }
+                          >
+                            {course.name}
+                            {course.code
+                              ? " (" +
+                                course.code +
+                                ")"
+                              : ""}
+                          </option>
+                        ),
+                      )}
                     </select>
 
                     {!loadingOptions &&
-                      courses.length === 0 && (
+                      courses.length ===
+                        0 && (
                         <p className="text-xs text-amber-600 mt-1">
-                          No course found.
+                          No course
+                          found.
                         </p>
                       )}
                   </div>
                 )}
 
-                {targetType === "programme" && (
+                {targetType ===
+                  "programme" && (
                   <div className="space-y-3">
                     <div>
                       <label className="form-label">
@@ -609,14 +875,19 @@ export default function HomeworkPage() {
 
                       <select
                         className="form-select"
-                        value={form.programmeId}
+                        value={
+                          form.programmeId
+                        }
                         onChange={(event) =>
                           changeProgramme(
-                            event.target.value
+                            event.target
+                              .value,
                           )
                         }
                         required
-                        disabled={loadingOptions}
+                        disabled={
+                          loadingOptions
+                        }
                       >
                         <option value="">
                           {loadingOptions
@@ -624,25 +895,35 @@ export default function HomeworkPage() {
                             : "Select programme"}
                         </option>
 
-                        {programmes.map((programme) => (
-                          <option
-                            key={programme.id}
-                            value={programme.id}
-                          >
-                            {programme.name}
-                            {programme.code
-                              ? " (" +
-                                programme.code +
-                                ")"
-                              : ""}
-                          </option>
-                        ))}
+                        {programmes.map(
+                          (programme) => (
+                            <option
+                              key={
+                                programme.id
+                              }
+                              value={
+                                programme.id
+                              }
+                            >
+                              {
+                                programme.name
+                              }
+                              {programme.code
+                                ? " (" +
+                                  programme.code +
+                                  ")"
+                                : ""}
+                            </option>
+                          ),
+                        )}
                       </select>
 
                       {!loadingOptions &&
-                        programmes.length === 0 && (
+                        programmes.length ===
+                          0 && (
                           <p className="text-xs text-amber-600 mt-1">
-                            No programme found.
+                            No programme
+                            found.
                           </p>
                         )}
                     </div>
@@ -654,12 +935,15 @@ export default function HomeworkPage() {
 
                       <select
                         className="form-select"
-                        value={form.semesterId}
+                        value={
+                          form.semesterId
+                        }
                         onChange={(event) =>
                           setForm({
                             ...form,
                             semesterId:
-                              event.target.value,
+                              event.target
+                                .value,
                           })
                         }
                         required
@@ -677,27 +961,35 @@ export default function HomeworkPage() {
                         {filteredSemesters.map(
                           (semester) => (
                             <option
-                              key={semester.id}
-                              value={semester.id}
+                              key={
+                                semester.id
+                              }
+                              value={
+                                semester.id
+                              }
                             >
                               {semester.name}
                             </option>
-                          )
+                          ),
                         )}
                       </select>
 
                       {form.programmeId &&
-                        filteredSemesters.length === 0 && (
+                        filteredSemesters.length ===
+                          0 && (
                           <p className="text-xs text-amber-600 mt-1">
-                            এই Programme-এর জন্য
-                            কোনো Semester পাওয়া যায়নি।
+                            এই Programme-এর
+                            জন্য কোনো
+                            Semester পাওয়া
+                            যায়নি।
                           </p>
                         )}
                     </div>
                   </div>
                 )}
 
-                {targetType === "batch" && (
+                {targetType ===
+                  "batch" && (
                   <div>
                     <label className="form-label">
                       Batch *
@@ -705,15 +997,21 @@ export default function HomeworkPage() {
 
                     <select
                       className="form-select"
-                      value={form.batchId}
+                      value={
+                        form.batchId
+                      }
                       onChange={(event) =>
                         setForm({
                           ...form,
-                          batchId: event.target.value,
+                          batchId:
+                            event.target
+                              .value,
                         })
                       }
                       required
-                      disabled={loadingOptions}
+                      disabled={
+                        loadingOptions
+                      }
                     >
                       <option value="">
                         {loadingOptions
@@ -721,18 +1019,25 @@ export default function HomeworkPage() {
                           : "Select batch"}
                       </option>
 
-                      {batches.map((batch) => (
-                        <option
-                          key={batch.id}
-                          value={batch.id}
-                        >
-                          {batch.name}
-                        </option>
-                      ))}
+                      {batches.map(
+                        (batch) => (
+                          <option
+                            key={
+                              batch.id
+                            }
+                            value={
+                              batch.id
+                            }
+                          >
+                            {batch.name}
+                          </option>
+                        ),
+                      )}
                     </select>
 
                     {!loadingOptions &&
-                      batches.length === 0 && (
+                      batches.length ===
+                        0 && (
                         <p className="text-xs text-amber-600 mt-1">
                           No batch found.
                         </p>
@@ -747,27 +1052,39 @@ export default function HomeworkPage() {
 
                   <select
                     className="form-select"
-                    value={form.teacherId}
+                    value={
+                      form.teacherId
+                    }
                     onChange={(event) =>
                       setForm({
                         ...form,
-                        teacherId: event.target.value,
+                        teacherId:
+                          event.target
+                            .value,
                       })
                     }
-                    disabled={loadingOptions}
+                    disabled={
+                      loadingOptions
+                    }
                   >
                     <option value="">
                       Select teacher
                     </option>
 
-                    {staffList.map((staff) => (
-                      <option
-                        key={staff.id}
-                        value={staff.id}
-                      >
-                        {staff.name}
-                      </option>
-                    ))}
+                    {staffList.map(
+                      (staff) => (
+                        <option
+                          key={
+                            staff.id
+                          }
+                          value={
+                            staff.id
+                          }
+                        >
+                          {staff.name}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </div>
 
@@ -780,12 +1097,15 @@ export default function HomeworkPage() {
                     className="form-input"
                     rows={3}
                     placeholder="Homework details..."
-                    value={form.description}
+                    value={
+                      form.description
+                    }
                     onChange={(event) =>
                       setForm({
                         ...form,
                         description:
-                          event.target.value,
+                          event.target
+                            .value,
                       })
                     }
                   />
@@ -799,11 +1119,15 @@ export default function HomeworkPage() {
                   <input
                     type="date"
                     className="form-input"
-                    value={form.deadline}
+                    value={
+                      form.deadline
+                    }
                     onChange={(event) =>
                       setForm({
                         ...form,
-                        deadline: event.target.value,
+                        deadline:
+                          event.target
+                            .value,
                       })
                     }
                   />
@@ -815,14 +1139,18 @@ export default function HomeworkPage() {
                   type="button"
                   onClick={closeModal}
                   className="btn btn-outline"
-                  disabled={submitting}
+                  disabled={
+                    submitting
+                  }
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={
+                    submitting
+                  }
                   className="btn btn-primary"
                 >
                   {submitting
