@@ -68,7 +68,6 @@ export async function GET() {
     }));
 
     return Response.json({ courses: courseResults });
-);
   } catch (error) {
     console.error("Courses GET error:", error);
     return Response.json({ error: "Failed to load courses" }, { status: 500 });
