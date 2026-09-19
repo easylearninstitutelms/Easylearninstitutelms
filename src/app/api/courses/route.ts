@@ -50,13 +50,25 @@ export async function GET() {
 
     const countMap = new Map(countRows.map(row => [String(row.courseId), Number(row.classCount || 0)]));
 
-    return Response.json({
-      courses: rows.map(course => ({
+    const courseResults = await Promise.all(rows.map(async course => {
+      const studentRows = rowsOf(await db.execute(sql`
+        SELECT COUNT(DISTINCT e.student_id)::int AS count
+        FROM enrollments e
+        LEFT JOIN batches b ON b.id=e.batch_id
+        WHERE e.institute_id=${session.instituteId}
+          AND e.status='ACTIVE'
+          AND (e.course_id=${course.id} OR b.course_id=${course.id})
+      `));
+
+      return {
         ...course,
         classCount: countMap.get(course.id) || 0,
-        studentCount: Number(rowsOf(await db.execute(sql`SELECT COUNT(DISTINCT e.student_id)::int AS count FROM enrollments e LEFT JOIN batches b ON b.id=e.batch_id WHERE e.institute_id=${session.instituteId} AND e.status='ACTIVE' AND (e.course_id=${course.id} OR b.course_id=${course.id})`))[0]?.count || 0),
-      })),
-    });
+        studentCount: Number(studentRows[0]?.count || 0),
+      };
+    }));
+
+    return Response.json({ courses: courseResults });
+);
   } catch (error) {
     console.error("Courses GET error:", error);
     return Response.json({ error: "Failed to load courses" }, { status: 500 });
