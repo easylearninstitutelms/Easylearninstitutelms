@@ -314,6 +314,14 @@ function normalizeExamRows(
               typeof exam.semesterId === "string"
                 ? exam.semesterId
                 : null,
+            courseId:
+              typeof exam.courseId === "string"
+                ? exam.courseId
+                : null,
+            courseClassId:
+              typeof exam.courseClassId === "string"
+                ? exam.courseClassId
+                : null,
           },
           mode,
           batchName:
@@ -1003,6 +1011,12 @@ export default function ExamsPage() {
     void loadProgrammes();
     void loadCourses();
   }, []);
+
+  useEffect(() => {
+    if (marksheetMode === "COURSE" && marksheetCourseId) {
+      void loadCourseClasses(marksheetCourseId);
+    }
+  }, [marksheetMode, marksheetCourseId]);
 
   useEffect(() => {
     if (marksheetMode === "PROGRAMME" && marksheetProgrammeId &&
@@ -2396,8 +2410,7 @@ export default function ExamsPage() {
               setShowModal(true);
             }}
             disabled={
-              loadingBatches ||
-              (examMode === "BATCH" && batches.length === 0) ||
+              (examMode === "BATCH" && (loadingBatches || batches.length === 0)) ||
               (examMode === "PROGRAMME" && programmes.length === 0) ||
               (examMode === "COURSE" && courses.length === 0)
             }
