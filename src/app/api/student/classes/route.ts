@@ -43,7 +43,6 @@ export async function GET() {
         AND e.institute_id=${session.instituteId} AND e.status IN ('ACTIVE','INACTIVE') AND b.status='ACTIVE'
       ORDER BY batch_name, semester_no NULLS LAST, class_no NULLS LAST
     `;
-;
     return Response.json({ classes: rows.rows });
   } catch (error) {
     console.error("GET /api/student/classes error:", error);
