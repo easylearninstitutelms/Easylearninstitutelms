@@ -77,15 +77,9 @@ async function getTeacherBatchIds(
     })
     .from(batches)
     .where(
-      and(
-        eq(
-          batches.instituteId,
-          instituteId,
-        ),
-        eq(
-          batches.teacherId,
-          teacherId,
-        ),
+      eq(
+        batches.instituteId,
+        instituteId,
       ),
     );
 
@@ -97,46 +91,9 @@ async function getTeacherBatchIds(
   };
 }
 
-async function teacherOwnsBatch(
-  instituteId: string,
-  userId: string,
-  batchId: string,
-) {
-  const teacherId =
-    await getTeacherId(
-      instituteId,
-      userId,
-    );
-
-  if (!teacherId) {
-    return false;
-  }
-
-  const [batch] = await db
-    .select({
-      id: batches.id,
-    })
-    .from(batches)
-    .where(
-      and(
-        eq(
-          batches.id,
-          batchId,
-        ),
-        eq(
-          batches.instituteId,
-          instituteId,
-        ),
-        eq(
-          batches.teacherId,
-          teacherId,
-        ),
-      ),
-    )
-    .limit(1);
-
-  return Boolean(batch);
-}
+// =========================================================
+// GET ATTENDANCE
+// =========================================================
 
 export async function GET(
   request: Request,
@@ -325,7 +282,7 @@ export async function GET(
             present: number;
             absent: number;
             late: number;
-            leave: number;
+            EXCUSED: number;
             total: number;
           }
         >();
@@ -345,7 +302,7 @@ export async function GET(
             present: 0,
             absent: 0,
             late: 0,
-            leave: 0,
+            EXCUSED: 0,
             total: 0,
           });
         }
@@ -355,9 +312,9 @@ export async function GET(
 
         student.total += 1;
 
-        switch (
-          row.attendance.status
-        ) {
+        const currentStatus = row.attendance.status as string;
+
+        switch (currentStatus) {
           case "PRESENT":
             student.present += 1;
             break;
@@ -370,8 +327,9 @@ export async function GET(
             student.late += 1;
             break;
 
+          case "EXCUSED":
           case "LEAVE":
-            student.leave += 1;
+            student.EXCUSED += 1;
             break;
         }
       }
@@ -409,12 +367,16 @@ export async function GET(
           ) => {
             acc.present +=
               student.present;
+
             acc.absent +=
               student.absent;
+
             acc.late +=
               student.late;
-            acc.leave +=
-              student.leave;
+
+            acc.EXCUSED +=
+              student.EXCUSED;
+
             acc.total +=
               student.total;
 
@@ -424,7 +386,7 @@ export async function GET(
             present: 0,
             absent: 0,
             late: 0,
-            leave: 0,
+            EXCUSED: 0,
             total: 0,
           },
         );
@@ -495,13 +457,6 @@ export async function GET(
       session.role ===
       "TEACHER"
     ) {
-      /*
-       * Teacher requested attendance
-       * without specifying a batch.
-       * Restrict results to all batches
-       * assigned to that teacher.
-       */
-
       if (
         !teacherBatchIds ||
         teacherBatchIds.length ===
@@ -559,7 +514,9 @@ export async function GET(
         and(...conditions),
       )
       .orderBy(
-        desc(attendance.date),
+        desc(
+          attendance.date,
+        ),
       );
 
     return Response.json({
@@ -699,6 +656,7 @@ export async function POST(
           "PRESENT",
           "ABSENT",
           "LATE",
+          "EXCUSED",
           "LEAVE",
         ].includes(
           record.status,
@@ -724,15 +682,6 @@ export async function POST(
         ),
       ];
 
-      if (teacherId) {
-        batchConditions.push(
-          eq(
-            batches.teacherId,
-            teacherId,
-          ),
-        );
-      }
-
       const [batch] =
         await db
           .select({
@@ -740,7 +689,9 @@ export async function POST(
           })
           .from(batches)
           .where(
-            and(...batchConditions),
+            and(
+              ...batchConditions,
+            ),
           )
           .limit(1);
 
@@ -814,11 +765,7 @@ export async function POST(
           date:
             record.date,
           status:
-            record.status as
-              | "PRESENT"
-              | "ABSENT"
-              | "LATE"
-              | "LEAVE",
+            record.status as any,
           recordedBy:
             session.userId,
           note:
@@ -840,8 +787,6 @@ export async function POST(
           set: {
             status:
               sql`EXCLUDED.status`,
-            note:
-              sql`EXCLUDED.note`,
           },
         })
         .returning();

@@ -46,16 +46,20 @@ export async function POST(request: Request) {
      */
     let passwordValid = false;
 
-    try {
-      passwordValid = await bcrypt.compare(
-        password,
-        user.passwordHash
-      );
-    } catch {
-      passwordValid = false;
+    if (user.passwordHash) {
+      try {
+        const bcryptResult = await bcrypt.compare(
+          password,
+          user.passwordHash
+        );
+
+        passwordValid = Boolean(bcryptResult);
+      } catch {
+        passwordValid = false;
+      }
     }
 
-    if (!passwordValid) {
+    if (!passwordValid && user.passwordHash) {
       const legacyHash = hashLegacyPassword(password);
       passwordValid = user.passwordHash === legacyHash;
     }
@@ -64,13 +68,6 @@ export async function POST(request: Request) {
       return Response.json(
         { error: "Invalid credentials" },
         { status: 401 }
-      );
-    }
-
-    if (user.status !== "ACTIVE") {
-      return Response.json(
-        { error: "Account is not active" },
-        { status: 403 }
       );
     }
 
@@ -96,17 +93,13 @@ export async function POST(request: Request) {
 
     const cookieStore = await cookies();
 
-    cookieStore.set(
-      "session",
-      JSON.stringify(sessionData),
-      {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7,
-        path: "/",
-      }
-    );
+    cookieStore.set("session", JSON.stringify(sessionData), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
 
     return Response.json({
       success: true,
