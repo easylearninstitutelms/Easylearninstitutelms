@@ -16,17 +16,20 @@ interface HomeworkItem {
 }
 
 interface HwRow {
-  homework: HomeworkItem;
+  id: string;
+  title: string;
+  description?: string | null;
+  deadline?: string | null;
+  teacherName?: string | null;
   batchName?: string | null;
   courseName?: string | null;
-  courseClassTitle?: string | null;
   courseClassNo?: number | null;
+  courseClassTitle?: string | null;
   programmeName?: string | null;
-  semesterName?: string | null;
   semesterNo?: number | null;
-  programmeClassTitle?: string | null;
+  semesterName?: string | null;
   programmeClassNo?: number | null;
-  teacherName?: string | null;
+  programmeClassTitle?: string | null;
   targetType?: string | null;
 }
 
@@ -740,13 +743,13 @@ export default function HomeworkPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {hwList.map((row) => (
               <div
-                key={row.homework.id}
+                key={row.id}
                 className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="font-bold text-slate-900">
-                      {row.homework.title}
+                      {row.title}
                     </h2>
 
                     <p className="mt-2 text-xs font-semibold text-blue-600">
@@ -759,9 +762,9 @@ export default function HomeworkPage() {
                   </span>
                 </div>
 
-                {row.homework.description && (
+                {row.description && (
                   <p className="mt-4 line-clamp-3 text-sm text-slate-500">
-                    {row.homework.description}
+                    {row.description}
                   </p>
                 )}
 
@@ -771,18 +774,18 @@ export default function HomeworkPage() {
                     {row.teacherName || "-"}
                   </span>
 
-                  {row.homework.deadline && (
+                  {row.deadline && (
                     <span
                       className={
                         new Date(
-                          row.homework.deadline
+                          row.deadline
                         ) < new Date()
                           ? "font-medium text-red-500"
                           : "font-medium text-orange-500"
                       }
                     >
                       {formatDate(
-                        row.homework.deadline
+                        row.deadline
                       )}
                     </span>
                   )}
