@@ -509,6 +509,62 @@ export function ensureAcademicSchema() {
 }
 
 /**
+ * Minimal programme/batch schema repair.
+ * Keeps programme and batch loading independent from the larger academic
+ * migration, so a legacy table cannot make the basic dropdowns fail.
+ */
+let academicCoreReady: Promise<void> | null = null;
+
+export function ensureAcademicCoreSchema() {
+  if (!academicCoreReady) {
+    academicCoreReady = (async () => {
+      await db.execute(sql`\
+        CREATE TABLE IF NOT EXISTS programmes (\
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\
+          institute_id uuid NOT NULL,\
+          name varchar(255) NOT NULL,\
+          code varchar(50),\
+          programme_no integer,\
+          description text,\
+          duration varchar(100),\
+          status varchar(20) NOT NULL DEFAULT 'ACTIVE',\
+          created_at timestamp NOT NULL DEFAULT now(),\
+          updated_at timestamp NOT NULL DEFAULT now()\
+        );\
+        ALTER TABLE programmes ADD COLUMN IF NOT EXISTS code varchar(50);\
+        ALTER TABLE programmes ADD COLUMN IF NOT EXISTS programme_no integer;\
+        ALTER TABLE programmes ADD COLUMN IF NOT EXISTS description text;\
+        ALTER TABLE programmes ADD COLUMN IF NOT EXISTS duration varchar(100);\
+        ALTER TABLE programmes ADD COLUMN IF NOT EXISTS status varchar(20) NOT NULL DEFAULT 'ACTIVE';\
+        ALTER TABLE programmes ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now();\
+        ALTER TABLE programmes ADD COLUMN IF NOT EXISTS updated_at timestamp NOT NULL DEFAULT now();\
+        CREATE TABLE IF NOT EXISTS programme_semesters (\
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\
+          institute_id uuid NOT NULL,\
+          programme_id uuid NOT NULL REFERENCES programmes(id) ON DELETE CASCADE,\
+          semester_no integer NOT NULL,\
+          name varchar(100) NOT NULL,\
+          created_at timestamp NOT NULL DEFAULT now()\
+        );\
+        ALTER TABLE programme_semesters ADD COLUMN IF NOT EXISTS institute_id uuid;\
+        ALTER TABLE programme_semesters ADD COLUMN IF NOT EXISTS programme_id uuid;\
+        ALTER TABLE programme_semesters ADD COLUMN IF NOT EXISTS semester_no integer;\
+        ALTER TABLE programme_semesters ADD COLUMN IF NOT EXISTS name varchar(100);\
+        ALTER TABLE programme_semesters ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now();\
+        ALTER TABLE batches ADD COLUMN IF NOT EXISTS programme_id uuid;\
+        ALTER TABLE batches ADD COLUMN IF NOT EXISTS semester_id uuid;\
+        ALTER TABLE batches ADD COLUMN IF NOT EXISTS course_id uuid;\
+        ALTER TABLE batches ADD COLUMN IF NOT EXISTS batch_no integer;\
+        CREATE INDEX IF NOT EXISTS batches_programme_idx ON batches(programme_id);\
+        CREATE INDEX IF NOT EXISTS batches_semester_idx ON batches(semester_id);\
+        CREATE INDEX IF NOT EXISTS batches_course_idx ON batches(course_id);\
+      `);
+    })().then(() => undefined);
+  }
+  return academicCoreReady;
+}
+
+/**
  * Course-only schema repair.
  *
  * This is intentionally independent from the larger academic migration so a
