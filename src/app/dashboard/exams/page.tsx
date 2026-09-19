@@ -613,6 +613,36 @@ export default function ExamsPage() {
 
   const [marksheetMessage, setMarksheetMessage] =
     useState("");
+  const [marksheetMode, setMarksheetMode] = useState<"COURSE" | "PROGRAMME">("COURSE");
+  const [marksheetProgrammeId, setMarksheetProgrammeId] = useState("");
+  const [marksheetSemesterId, setMarksheetSemesterId] = useState("");
+  const [marksheetCourseId, setMarksheetCourseId] = useState("");
+  const [marksheetCourseClassId, setMarksheetCourseClassId] = useState("");
+
+  const marksheetProgrammeSemesters = useMemo(
+    () => programmes.find((programme) => programme.id === marksheetProgrammeId)?.semesters ?? [],
+    [programmes, marksheetProgrammeId]
+  );
+
+  const marksheetCourseExams = useMemo(
+    () => exams.filter((item) =>
+      item.mode === "COURSE" &&
+      (!marksheetCourseId || item.exam.courseId === marksheetCourseId) &&
+      (!marksheetCourseClassId || item.exam.courseClassId === marksheetCourseClassId)
+    ),
+    [exams, marksheetCourseId, marksheetCourseClassId]
+  );
+
+  const marksheetProgrammeExams = useMemo(
+    () => exams.filter((item) =>
+      item.mode === "PROGRAMME" &&
+      (!marksheetProgrammeId || item.exam.programmeId === marksheetProgrammeId) &&
+      (!marksheetSemesterId || item.exam.semesterId === marksheetSemesterId)
+    ),
+    [exams, marksheetProgrammeId, marksheetSemesterId]
+  );
+
+  const marksheetTargetExams = marksheetMode === "COURSE" ? marksheetCourseExams : marksheetProgrammeExams;
 
   const selectedExam = useMemo(
     () =>
@@ -973,6 +1003,19 @@ export default function ExamsPage() {
     void loadProgrammes();
     void loadCourses();
   }, []);
+
+  useEffect(() => {
+    if (marksheetMode === "PROGRAMME" && marksheetProgrammeId &&
+        !marksheetProgrammeSemesters.some((semester) => semester.id === marksheetSemesterId)) {
+      setMarksheetSemesterId(marksheetProgrammeSemesters[0]?.id ?? "");
+    }
+  }, [marksheetMode, marksheetProgrammeId, marksheetSemesterId, marksheetProgrammeSemesters]);
+
+  useEffect(() => {
+    const firstExam = marksheetTargetExams[0]?.exam.id ?? "";
+    if (selectedExamId && marksheetTargetExams.some((item) => item.exam.id === selectedExamId)) return;
+    if (firstExam) setSelectedExamId(firstExam);
+  }, [marksheetTargetExams, selectedExamId]);
 
   useEffect(() => {
     if (!selectedExam) {
@@ -2410,6 +2453,116 @@ export default function ExamsPage() {
           </div>
         </div>
 
+
+        <section className="rounded-xl border border-purple-200 bg-white shadow-sm">
+          <div className="border-b border-purple-100 bg-purple-50/60 px-5 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-semibold text-gray-900">Marksheet Center</h2>
+                <p className="mt-1 text-xs text-gray-600">Generate a student marksheet by Course or by Programme → Semester.</p>
+              </div>
+              <div className="flex rounded-lg border border-purple-200 bg-white p-1">
+                <button type="button" onClick={() => { setMarksheetMode("COURSE"); setMarksheetCourseId(""); setMarksheetCourseClassId(""); setMarksheetStudentId(null); setShowMarksheet(false); }}
+                  className={\u0024{marksheetMode === "COURSE" ? "rounded-md bg-purple-600 px-3 py-2 text-xs font-semibold text-white" : "rounded-md px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-purple-50"}}>
+                  Course-wise
+                </button>
+                <button type="button" onClick={() => { setMarksheetMode("PROGRAMME"); setMarksheetProgrammeId(""); setMarksheetSemesterId(""); setMarksheetStudentId(null); setShowMarksheet(false); }}
+                  className={\u0024{marksheetMode === "PROGRAMME" ? "rounded-md bg-[#0f766e] px-3 py-2 text-xs font-semibold text-white" : "rounded-md px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-teal-50"}}>
+                  Programme Semester-wise
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="p-5">
+            {marksheetMode === "COURSE" ? (
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">Course</label>
+                  <select value={marksheetCourseId} onChange={(event) => { setMarksheetCourseId(event.target.value); setMarksheetCourseClassId(""); setMarksheetStudentId(null); setShowMarksheet(false); }}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
+                    <option value="">Select course</option>
+                    {courses.map((course) => <option key={course.id} value={course.id}>{course.courseNo ? \u0024{course.courseNo} + " — " : ""}{course.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">Course Class</label>
+                  <select value={marksheetCourseClassId} onChange={(event) => { setMarksheetCourseClassId(event.target.value); setMarksheetStudentId(null); setShowMarksheet(false); }}
+                    disabled={!marksheetCourseId}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 disabled:bg-gray-100">
+                    <option value="">All classes</option>
+                    {exams.filter((item) => item.mode === "COURSE" && item.exam.courseId === marksheetCourseId)
+                      .reduce<ExamRow[]>((unique, item) => {
+                        const key = item.exam.courseClassId || item.courseClassTitle || item.exam.id;
+                        if (!unique.some((x) => (x.exam.courseClassId || x.courseClassTitle || x.exam.id) === key)) unique.push(item);
+                        return unique;
+                      }, [])
+                      .map((item) => <option key={item.exam.courseClassId || item.exam.id} value={item.exam.courseClassId || ""}>{item.courseClassNo ? "Class " + item.courseClassNo + " — " : ""}{item.courseClassTitle || "Course class"}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">Exam</label>
+                  <select value={marksheetTargetExams.some((item) => item.exam.id === selectedExamId) ? selectedExamId ?? "" : ""}
+                    onChange={(event) => { setSelectedExamId(event.target.value || null); setMarksheetStudentId(null); setShowMarksheet(false); }}
+                    disabled={!marksheetCourseId || marksheetTargetExams.length === 0}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 disabled:bg-gray-100">
+                    <option value="">Select exam</option>
+                    {marksheetTargetExams.map((item) => <option key={item.exam.id} value={item.exam.id}>{item.exam.name}{item.exam.examDate ? " — " + formatDate(item.exam.examDate) : ""}</option>)}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">Programme</label>
+                  <select value={marksheetProgrammeId} onChange={(event) => { setMarksheetProgrammeId(event.target.value); setMarksheetSemesterId(""); setMarksheetStudentId(null); setShowMarksheet(false); }}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/10">
+                    <option value="">Select programme</option>
+                    {programmes.map((programme) => <option key={programme.id} value={programme.id}>{programme.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">Semester</label>
+                  <select value={marksheetSemesterId} onChange={(event) => { setMarksheetSemesterId(event.target.value); setMarksheetStudentId(null); setShowMarksheet(false); }}
+                    disabled={!marksheetProgrammeId}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/10 disabled:bg-gray-100">
+                    <option value="">Select semester</option>
+                    {marksheetProgrammeSemesters.map((semester) => <option key={semester.id} value={semester.id}>{semester.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">Exam</label>
+                  <select value={marksheetTargetExams.some((item) => item.exam.id === selectedExamId) ? selectedExamId ?? "" : ""}
+                    onChange={(event) => { setSelectedExamId(event.target.value || null); setMarksheetStudentId(null); setShowMarksheet(false); }}
+                    disabled={!marksheetProgrammeId || !marksheetSemesterId || marksheetTargetExams.length === 0}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/10 disabled:bg-gray-100">
+                    <option value="">Select exam</option>
+                    {marksheetTargetExams.map((item) => <option key={item.exam.id} value={item.exam.id}>{item.exam.name}{item.exam.examDate ? " — " + formatDate(item.exam.examDate) : ""}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+            <div className="mt-4 flex flex-col gap-3 rounded-lg border border-dashed border-purple-200 bg-purple-50/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">
+                  {selectedExam && marksheetTargetExams.some((item) => item.exam.id === selectedExam.id) ? "Selected: " + selectedExam.exam.name : "Select the required Course/Programme, Semester and Exam"}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">Then choose a student and print the official A4 marksheet.</p>
+              </div>
+              <button type="button" onClick={() => openMarksheet()}
+                disabled={!selectedExam || !marksheetTargetExams.some((item) => item.exam.id === selectedExam.id) || students.length === 0 || loadingStudents || loadingResults}
+                className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-gray-300">
+                📄 Open Marksheet
+              </button>
+            </div>
+            {marksheetTargetExams.length === 0 && (
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">No marksheet exam found for the selected filter. Create the exam and enter results first.</p>
+            )}
+            {selectedExam && marksheetTargetExams.some((item) => item.exam.id === selectedExam.id) && loadingStudents && (
+              <p className="mt-3 text-xs text-gray-500">Loading students for this marksheet…</p>
+            )}
+          </div>
+        </section>
+
         <div className="grid gap-6 lg:grid-cols-12">
           <div className="lg:col-span-5">
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -3678,7 +3831,7 @@ export default function ExamsPage() {
                         Select student
                       </option>
 
-                      {students.map(
+                      {filteredMarksheetStudents.map(
                         (
                           student: Student
                         ) => (
