@@ -126,10 +126,10 @@ export async function POST(request: Request) {
       if (!platform) continue;
       await tx.execute(sql`
         INSERT INTO marketing_ad_spends (
-          report_id, platform, campaign_name, amount, leads_count,
+          institute_id, report_id, platform, campaign_name, amount, leads_count,
           clicks, impressions, enrollments_count, note
         ) VALUES (
-          ${report.id}, ${platform}, ${textValue(ad.campaignName) || null},
+          ${session.instituteId}, ${report.id}, ${platform}, ${textValue(ad.campaignName) || null},
           ${n(ad.amount)}, ${Math.floor(n(ad.leadsCount))},
           ${Math.floor(n(ad.clicks))}, ${Math.floor(n(ad.impressions))},
           ${Math.floor(n(ad.enrollmentsCount))}, ${textValue(ad.note) || null}
