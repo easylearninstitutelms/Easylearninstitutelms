@@ -2571,7 +2571,7 @@ export default function ExamsPage() {
             {marksheetTargetExams.length === 0 && (
               <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">No marksheet exam found for the selected filter. Create the exam and enter results first.</p>
             )}
-            {selectedExam && marksheetTargetExams.some((item) => item.exam.id === selectedExam.id) && loadingStudents && (
+            {selectedExam && marksheetTargetExams.some((item) => item.exam.id === selectedExam.exam.id) && loadingStudents && (
               <p className="mt-3 text-xs text-gray-500">Loading students for this marksheet…</p>
             )}
           </div>
