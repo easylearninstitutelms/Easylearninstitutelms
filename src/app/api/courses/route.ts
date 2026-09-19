@@ -3,7 +3,7 @@ import { courses } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { getSession, requireRoles } from "@/lib/session";
-import { ensureAcademicSchema } from "@/lib/academic";
+import { ensureCourseSchema } from "@/lib/academic";
 
 const COURSE_VIEW_ROLES = ["SUPER_ADMIN", "INSTITUTE_ADMIN", "MANAGER", "TEACHER"];
 const COURSE_MANAGE_ROLES = ["SUPER_ADMIN", "INSTITUTE_ADMIN", "MANAGER", "TEACHER", "DIGITAL_MARKETER"];
@@ -29,7 +29,7 @@ export async function GET() {
   if (permissionError) return permissionError;
 
   try {
-    await ensureAcademicSchema();
+    await ensureCourseSchema();
 
     const rows = await db
       .select()
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
   if (permissionError) return permissionError;
 
   try {
-    await ensureAcademicSchema();
+    await ensureCourseSchema();
     const body = await request.json();
     const { name, description, duration, fee } = body;
     const requestedNo = Number(body.courseNo);
