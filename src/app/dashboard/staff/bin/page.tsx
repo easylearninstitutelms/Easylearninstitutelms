@@ -41,6 +41,26 @@ export default function StaffBinPage() {
     fetchBin();
   }, [fetchBin]);
 
+  async function handlePermanentDelete(id: string, name: string) {
+    const confirmed = confirm(
+      `Permanently delete ${name}? This cannot be undone and the staff member will be removed from the Bin permanently.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/staff/bin/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || "Failed to permanently delete staff.");
+        return;
+      }
+      await fetchBin();
+    } catch (error) {
+      console.error("Permanent delete error:", error);
+      alert("Failed to permanently delete staff.");
+    }
+  }
+
   async function handleRestore(id: string) {
     if (!confirm("Restore this staff member to the active Staff list?")) return;
 
@@ -126,12 +146,20 @@ export default function StaffBinPage() {
                 </div>
               </div>
 
-              <button
-                onClick={() => handleRestore(s.id)}
-                className="mt-4 w-full btn btn-outline btn-sm"
-              >
-                Restore
-              </button>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleRestore(s.id)}
+                  className="btn btn-outline btn-sm"
+                >
+                  Restore
+                </button>
+                <button
+                  onClick={() => handlePermanentDelete(s.id, s.name)}
+                  className="btn btn-sm border border-red-200 text-red-600 hover:bg-red-50"
+                >
+                  Delete Permanently
+                </button>
+              </div>
             </div>
           ))}
         </div>
