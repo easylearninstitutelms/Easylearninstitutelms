@@ -46,6 +46,12 @@ const STAFF_ADMIN_ROLES = [
   "MANAGER",
 ];
 
+const DIGITAL_MARKETER_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "DIGITAL_MARKETER",
+];
+
 const STUDENT_MANAGEMENT_ROLES = [
   "SUPER_ADMIN",
   "INSTITUTE_ADMIN",
@@ -128,6 +134,17 @@ const navItems: NavItem[] = [
             d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
           />
         </svg>
+      </NavIcon>
+    ),
+  },
+
+  {
+    href: "/dashboard/digital-marketer",
+    label: "Digital Marketing",
+    allowedRoles: DIGITAL_MARKETER_ROLES,
+    icon: (
+      <NavIcon>
+        <span className="text-base">📣</span>
       </NavIcon>
     ),
   },
