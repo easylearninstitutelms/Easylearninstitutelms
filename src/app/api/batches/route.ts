@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
 import { getSession, requireRoles } from "@/lib/session";
-import { ensureAcademicSchema } from "@/lib/academic";
+import { ensureAcademicCoreSchema } from "@/lib/academic";
 
 type Row = Record<string, any>;
 
@@ -51,7 +51,7 @@ export async function GET() {
   if (permissionError) return permissionError;
 
   try {
-    await ensureAcademicSchema();
+    await ensureAcademicCoreSchema();
 
     const teacherId =
       session.role === "TEACHER"
@@ -150,7 +150,7 @@ export async function POST(request: Request) {
   if (permissionError) return permissionError;
 
   try {
-    await ensureAcademicSchema();
+    await ensureAcademicCoreSchema();
 
     const body = await request.json();
 
