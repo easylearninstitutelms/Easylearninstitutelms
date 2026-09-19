@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { staff, users } from "@/db/schema";
+import { staff, users, batches, routines, homework, assignments, salaries } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { getSession, requireRoles } from "@/lib/session";
 import { ensureStaffSchema } from "@/lib/staff";
@@ -32,6 +32,26 @@ export async function DELETE(
 
   try {
     await db.transaction(async (tx) => {
+      // Clear nullable teacher references before removing the staff profile.
+      await tx.update(batches)
+        .set({ teacherId: null })
+        .where(and(eq(batches.teacherId, id), eq(batches.instituteId, session.instituteId)));
+
+      await tx.update(routines)
+        .set({ teacherId: null })
+        .where(and(eq(routines.teacherId, id), eq(routines.instituteId, session.instituteId)));
+
+      await tx.update(homework)
+        .set({ teacherId: null })
+        .where(and(eq(homework.teacherId, id), eq(homework.instituteId, session.instituteId)));
+
+      await tx.update(assignments)
+        .set({ teacherId: null })
+        .where(and(eq(assignments.teacherId, id), eq(assignments.instituteId, session.instituteId)));
+
+      await tx.delete(salaries)
+        .where(and(eq(salaries.staffId, id), eq(salaries.instituteId, session.instituteId)));
+
       await tx.delete(staff)
         .where(and(
           eq(staff.id, id),
