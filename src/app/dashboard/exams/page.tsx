@@ -1012,10 +1012,24 @@ export default function ExamsPage() {
   }, [marksheetMode, marksheetProgrammeId, marksheetSemesterId, marksheetProgrammeSemesters]);
 
   useEffect(() => {
+    const ready =
+      marksheetMode === "COURSE"
+        ? Boolean(marksheetCourseId)
+        : Boolean(marksheetProgrammeId && marksheetSemesterId);
+
+    if (!ready) return;
+
     const firstExam = marksheetTargetExams[0]?.exam.id ?? "";
     if (selectedExamId && marksheetTargetExams.some((item) => item.exam.id === selectedExamId)) return;
     if (firstExam) setSelectedExamId(firstExam);
-  }, [marksheetTargetExams, selectedExamId]);
+  }, [
+    marksheetMode,
+    marksheetCourseId,
+    marksheetProgrammeId,
+    marksheetSemesterId,
+    marksheetTargetExams,
+    selectedExamId,
+  ]);
 
   useEffect(() => {
     if (!selectedExam) {
