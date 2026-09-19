@@ -2558,12 +2558,12 @@ export default function ExamsPage() {
             <div className="mt-4 flex flex-col gap-3 rounded-lg border border-dashed border-purple-200 bg-purple-50/30 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-gray-800">
-                  {selectedExam && marksheetTargetExams.some((item) => item.exam.id === selectedExam.id) ? "Selected: " + selectedExam.exam.name : "Select the required Course/Programme, Semester and Exam"}
+                  {selectedExam && marksheetTargetExams.some((item) => item.exam.id === selectedExam.exam.id) ? "Selected: " + selectedExam.exam.name : "Select the required Course/Programme, Semester and Exam"}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">Then choose a student and print the official A4 marksheet.</p>
               </div>
               <button type="button" onClick={() => openMarksheet()}
-                disabled={!selectedExam || !marksheetTargetExams.some((item) => item.exam.id === selectedExam.id) || students.length === 0 || loadingStudents || loadingResults}
+                disabled={!selectedExam || !marksheetTargetExams.some((item) => item.exam.id === selectedExam.exam.id) || students.length === 0 || loadingStudents || loadingResults}
                 className="rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-gray-300">
                 📄 Open Marksheet
               </button>
