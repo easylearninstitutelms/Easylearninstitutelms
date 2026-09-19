@@ -559,6 +559,10 @@ export default function StaffPage() {
                         Staff
                       </option>
 
+                      <option value="DIGITAL_MARKETER">
+                        Digital Marketer
+                      </option>
+
                       <option value="TEACHER">
                         Teacher
                       </option>
