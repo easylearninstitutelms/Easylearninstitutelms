@@ -522,7 +522,7 @@ export const attendance = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
-    unique("attendance_student_batch_date").on(t.studentId, t.batchId, t.date),
+    unique("attendance_student_batch_date_class").on(t.studentId, t.batchId, t.date, t.classId),
     index("attendance_institute_idx").on(t.instituteId),
     index("attendance_batch_date_idx").on(t.batchId, t.date),
   ]
