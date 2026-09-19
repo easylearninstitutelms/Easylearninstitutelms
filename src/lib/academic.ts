@@ -239,11 +239,55 @@ export function ensureAcademicSchema() {
         ALTER TABLE course_syllabus_classes
           ADD COLUMN IF NOT EXISTS status varchar(20) NOT NULL DEFAULT 'UPCOMING';
         ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now();
+        ALTER TABLE course_syllabus_classes
           ADD COLUMN IF NOT EXISTS updated_at timestamp NOT NULL DEFAULT now();
 
-        UPDATE course_syllabus_classes
-        SET class_no = COALESCE(class_no, order_no, 1)
-        WHERE class_no IS NULL;
+        /* Safely backfill legacy rows without assuming an old order_no column. */
+        WITH ranked AS (
+          SELECT
+            id,
+            ROW_NUMBER() OVER (
+              PARTITION BY course_id
+              ORDER BY class_no NULLS LAST, created_at NULLS LAST, id
+            ) AS rn
+          FROM course_syllabus_classes
+        )
+        UPDATE course_syllabus_classes c
+        SET class_no = r.rn
+        FROM ranked r
+        WHERE c.id = r.id
+          AND c.class_no IS NULL;
+
+        /* Repair duplicate legacy class numbers before enforcing uniqueness. */
+        WITH ranked_duplicates AS (
+          SELECT
+            id,
+            ROW_NUMBER() OVER (
+              PARTITION BY course_id
+              ORDER BY class_no, created_at NULLS LAST, id
+            ) AS rn
+          FROM course_syllabus_classes
+        ),
+        max_numbers AS (
+          SELECT course_id, COALESCE(MAX(class_no), 0) AS max_no
+          FROM course_syllabus_classes
+          GROUP BY course_id
+        )
+        UPDATE course_syllabus_classes c
+        SET class_no = m.max_no + d.rn
+        FROM ranked_duplicates d
+        JOIN course_syllabus_classes original ON original.id = d.id
+        JOIN max_numbers m ON m.course_id = original.course_id
+        WHERE c.id = d.id
+          AND d.rn > 1
+          AND EXISTS (
+            SELECT 1
+            FROM course_syllabus_classes x
+            WHERE x.course_id = original.course_id
+              AND x.class_no = original.class_no
+              AND x.id <> original.id
+          );
 
         CREATE UNIQUE INDEX IF NOT EXISTS course_syllabus_course_class_no_idx
           ON course_syllabus_classes(course_id, class_no)
