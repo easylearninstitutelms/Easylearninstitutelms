@@ -36,6 +36,7 @@ export const userRoleEnum = pgEnum("user_role", [
   "STUDENT",
   "GUARDIAN",
   "STAFF",
+  "DIGITAL_MARKETER",
 ]);
 
 export const genderEnum = pgEnum("gender", [
