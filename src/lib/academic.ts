@@ -228,6 +228,27 @@ export function ensureAcademicSchema() {
         CREATE INDEX IF NOT EXISTS course_syllabus_course_idx
           ON course_syllabus_classes(course_id);
 
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS class_no integer;
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS scheduled_date date;
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS start_time time;
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS end_time time;
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS status varchar(20) NOT NULL DEFAULT 'UPCOMING';
+        ALTER TABLE course_syllabus_classes
+          ADD COLUMN IF NOT EXISTS updated_at timestamp NOT NULL DEFAULT now();
+
+        UPDATE course_syllabus_classes
+        SET class_no = COALESCE(class_no, order_no, 1)
+        WHERE class_no IS NULL;
+
+        CREATE UNIQUE INDEX IF NOT EXISTS course_syllabus_course_class_no_idx
+          ON course_syllabus_classes(course_id, class_no)
+          WHERE class_no IS NOT NULL;
+
 
         /* =========================================================
            PROGRAMME CLASS SESSIONS
