@@ -43,31 +43,23 @@ export async function GET() {
     if (!session?.instituteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     await ensureAcademicCoreSchema();
 
+    // Attendance and other dropdowns only need the programme identity.
+    // Keep this query independent from legacy enrollment/semester columns so
+    // one old table cannot make the programme list fail.
     const result = await db.execute(sql`
       SELECT
-        p.id, p.name, p.code, p.programme_no AS "programmeNo",
-        p.description, p.duration, p.status, p.created_at, p.updated_at,
-        (
-          SELECT COUNT(DISTINCT e.student_id)::int
-          FROM enrollments e
-          LEFT JOIN batches b ON b.id = e.batch_id
-          WHERE e.institute_id = p.institute_id
-            AND e.status = 'ACTIVE'
-            AND (e.programme_id = p.id OR b.programme_id = p.id)
-            AND (b.id IS NULL OR b.institute_id = p.institute_id)
-        ) AS "studentCount",
-        COALESCE(
-          json_agg(
-            json_build_object('id', s.id, 'semesterNo', s.semester_no, 'name', s.name)
-            ORDER BY s.semester_no
-          ) FILTER (WHERE s.id IS NOT NULL),
-          '[]'::json
-        ) AS semesters
+        p.id,
+        p.name,
+        p.code,
+        p.programme_no AS "programmeNo",
+        p.description,
+        p.duration,
+        p.status,
+        p.created_at,
+        p.updated_at
       FROM programmes p
-      LEFT JOIN programme_semesters s ON s.programme_id = p.id
       WHERE p.institute_id = ${session.instituteId}
-      GROUP BY p.id
-      ORDER BY p.created_at DESC
+      ORDER BY p.created_at DESC NULLS LAST, p.name ASC
     `);
 
     return NextResponse.json({
