@@ -37,6 +37,7 @@ const STUDENT_MANAGE_ROLES = [
   "INSTITUTE_ADMIN",
   "MANAGER",
   "RECEPTIONIST",
+  "DIGITAL_MARKETER",
 ];
 
 function cleanText(value: unknown): string {
