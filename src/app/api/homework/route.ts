@@ -6,6 +6,8 @@ import { ensureAcademicSchema } from "@/lib/academic";
 
 type Row = Record<string, any>;
 
+type TargetType = "course" | "programme" | "batch";
+
 function rowsOf(result: unknown): Row[] {
   if (
     result &&
@@ -21,6 +23,20 @@ function rowsOf(result: unknown): Row[] {
 
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function getTargetType(value: unknown): TargetType | "" {
+  const type = cleanText(value).toLowerCase();
+
+  if (
+    type === "course" ||
+    type === "programme" ||
+    type === "batch"
+  ) {
+    return type;
+  }
+
+  return "";
 }
 
 const MANAGE_ROLES = [
@@ -99,22 +115,26 @@ export async function GET(request: Request) {
         ON st.id = h.teacher_id
 
       WHERE h.institute_id = ${session.instituteId}
-
-        ${courseId
-          ? sql`AND h.course_id = ${courseId}`
-          : sql``}
-
-        ${programmeId
-          ? sql`AND h.programme_id = ${programmeId}`
-          : sql``}
-
-        ${semesterId
-          ? sql`AND h.semester_id = ${semesterId}`
-          : sql``}
-
-        ${batchId
-          ? sql`AND h.batch_id = ${batchId}`
-          : sql``}
+        ${
+          courseId
+            ? sql`AND h.course_id = ${courseId}`
+            : sql``
+        }
+        ${
+          programmeId
+            ? sql`AND h.programme_id = ${programmeId}`
+            : sql``
+        }
+        ${
+          semesterId
+            ? sql`AND h.semester_id = ${semesterId}`
+            : sql``
+        }
+        ${
+          batchId
+            ? sql`AND h.batch_id = ${batchId}`
+            : sql``
+        }
 
       ORDER BY h.created_at DESC
     `);
@@ -149,7 +169,10 @@ export async function POST(request: Request) {
 
     if (!MANAGE_ROLES.includes(session.role)) {
       return NextResponse.json(
-        { error: "You do not have permission to create homework." },
+        {
+          error:
+            "You do not have permission to create homework.",
+        },
         { status: 403 }
       );
     }
@@ -169,42 +192,68 @@ export async function POST(request: Request) {
     const deadline = cleanText(body.deadline);
     const attachmentUrl = cleanText(body.attachmentUrl);
 
+    const targetTypeFromBody = getTargetType(body.targetType);
+
+    const targetType: TargetType | "" =
+      targetTypeFromBody ||
+      (courseId
+        ? "course"
+        : programmeId
+        ? "programme"
+        : batchId
+        ? "batch"
+        : "");
+
     if (!title) {
       return NextResponse.json(
-        { error: "Homework title is required." },
-        { status: 400 }
-      );
-    }
-
-    /*
-      Exactly one target is required:
-
-      COURSE
-      PROGRAMME
-      BATCH (legacy)
-    */
-
-    const targetCount = [
-      courseId,
-      programmeId,
-      batchId,
-    ].filter(Boolean).length;
-
-    if (targetCount !== 1) {
-      return NextResponse.json(
         {
-          error:
-            "Please select exactly one target: Course, Programme, or Batch.",
+          error: "Homework title is required.",
         },
         { status: 400 }
       );
     }
 
-    /*
-      COURSE
-    */
+    if (!targetType) {
+      return NextResponse.json(
+        {
+          error:
+            "Please select a homework target.",
+        },
+        { status: 400 }
+      );
+    }
 
-    if (courseId) {
+    if (targetType === "course") {
+      if (!courseId) {
+        return NextResponse.json(
+          {
+            error:
+              "Please select a course.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (!batchId) {
+        return NextResponse.json(
+          {
+            error:
+              "Please select a class/batch.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (programmeId || semesterId) {
+        return NextResponse.json(
+          {
+            error:
+              "Course homework cannot contain programme or semester.",
+          },
+          { status: 400 }
+        );
+      }
+
       const courseResult = await db.execute(sql`
         SELECT
           id,
@@ -220,17 +269,92 @@ export async function POST(request: Request) {
 
       if (!course) {
         return NextResponse.json(
-          { error: "Selected course was not found or is inactive." },
+          {
+            error:
+              "Selected course was not found or is inactive.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const batchResult = await db.execute(sql`
+        SELECT
+          id,
+          name,
+          course_id AS "courseId",
+          programme_id AS "programmeId",
+          semester_id AS "semesterId"
+        FROM batches
+        WHERE id = ${batchId}
+          AND institute_id = ${session.instituteId}
+          AND status = 'ACTIVE'
+        LIMIT 1
+      `);
+
+      const batch = rowsOf(batchResult)[0];
+
+      if (!batch) {
+        return NextResponse.json(
+          {
+            error:
+              "Selected class/batch was not found or is inactive.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (String(batch.courseId || "") !== courseId) {
+        return NextResponse.json(
+          {
+            error:
+              "Selected class/batch does not belong to this course.",
+          },
           { status: 400 }
         );
       }
     }
 
-    /*
-      PROGRAMME
-    */
+    if (targetType === "programme") {
+      if (!programmeId) {
+        return NextResponse.json(
+          {
+            error:
+              "Please select a programme.",
+          },
+          { status: 400 }
+        );
+      }
 
-    if (programmeId) {
+      if (!semesterId) {
+        return NextResponse.json(
+          {
+            error:
+              "Please select a semester.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (!batchId) {
+        return NextResponse.json(
+          {
+            error:
+              "Please select a class/batch.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (courseId) {
+        return NextResponse.json(
+          {
+            error:
+              "Programme homework cannot contain a course.",
+          },
+          { status: 400 }
+        );
+      }
+
       const programmeResult = await db.execute(sql`
         SELECT
           id,
@@ -249,20 +373,6 @@ export async function POST(request: Request) {
           {
             error:
               "Selected programme was not found or is inactive.",
-          },
-          { status: 400 }
-        );
-      }
-
-      /*
-        Programme homework must specify a semester.
-      */
-
-      if (!semesterId) {
-        return NextResponse.json(
-          {
-            error:
-              "Please select a semester for programme homework.",
           },
           { status: 400 }
         );
@@ -292,27 +402,7 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-    }
 
-    /*
-      COURSE homework must NOT have a semester.
-    */
-
-    if (courseId && semesterId) {
-      return NextResponse.json(
-        {
-          error:
-            "Course homework does not use a programme semester.",
-        },
-        { status: 400 }
-      );
-    }
-
-    /*
-      BATCH is legacy.
-    */
-
-    if (batchId) {
       const batchResult = await db.execute(sql`
         SELECT
           id,
@@ -333,6 +423,77 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error:
+              "Selected class/batch was not found or is inactive.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (
+        String(batch.programmeId || "") !==
+        programmeId
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Selected class/batch does not belong to this programme.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (
+        String(batch.semesterId || "") !==
+        semesterId
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Selected class/batch does not belong to this semester.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (targetType === "batch") {
+      if (!batchId) {
+        return NextResponse.json(
+          {
+            error:
+              "Please select a class/batch.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (courseId || programmeId || semesterId) {
+        return NextResponse.json(
+          {
+            error:
+              "Legacy batch homework cannot contain course, programme or semester.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const batchResult = await db.execute(sql`
+        SELECT
+          id,
+          name
+        FROM batches
+        WHERE id = ${batchId}
+          AND institute_id = ${session.instituteId}
+          AND status = 'ACTIVE'
+        LIMIT 1
+      `);
+
+      const batch = rowsOf(batchResult)[0];
+
+      if (!batch) {
+        return NextResponse.json(
+          {
+            error:
               "Selected batch was not found or is inactive.",
           },
           { status: 400 }
@@ -340,16 +501,12 @@ export async function POST(request: Request) {
       }
     }
 
-    /*
-      Teacher validation.
-      Teacher is optional.
-    */
-
     let finalTeacherId: string | null = null;
 
     if (teacherId) {
       const teacherResult = await db.execute(sql`
-        SELECT id
+        SELECT
+          id
         FROM staff
         WHERE id = ${teacherId}
           AND institute_id = ${session.instituteId}
@@ -370,12 +527,6 @@ export async function POST(request: Request) {
 
       finalTeacherId = teacherId;
     }
-
-    /*
-      Insert homework using raw SQL so the new nullable
-      target fields work immediately without depending
-      on the older Drizzle homework definition.
-    */
 
     const insertResult = await db.execute(sql`
       INSERT INTO homework (
@@ -449,7 +600,10 @@ export async function DELETE(request: Request) {
 
     if (!MANAGE_ROLES.includes(session.role)) {
       return NextResponse.json(
-        { error: "You do not have permission to delete homework." },
+        {
+          error:
+            "You do not have permission to delete homework.",
+        },
         { status: 403 }
       );
     }
@@ -462,7 +616,9 @@ export async function DELETE(request: Request) {
 
     if (!id) {
       return NextResponse.json(
-        { error: "Homework ID is required." },
+        {
+          error: "Homework ID is required.",
+        },
         { status: 400 }
       );
     }
@@ -478,7 +634,9 @@ export async function DELETE(request: Request) {
 
     if (!deleted) {
       return NextResponse.json(
-        { error: "Homework not found." },
+        {
+          error: "Homework not found.",
+        },
         { status: 404 }
       );
     }
@@ -488,7 +646,10 @@ export async function DELETE(request: Request) {
       id: deleted.id,
     });
   } catch (error) {
-    console.error("DELETE /api/homework error:", error);
+    console.error(
+      "DELETE /api/homework error:",
+      error
+    );
 
     return NextResponse.json(
       {

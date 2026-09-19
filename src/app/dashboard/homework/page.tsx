@@ -1,6 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { formatDate } from "@/lib/utils";
 
 interface HomeworkItem {
@@ -50,6 +55,12 @@ interface Semester {
 interface Batch {
   id: string;
   name: string;
+  programmeId?: string | null;
+  semesterId?: string | null;
+  courseId?: string | null;
+  programmeName?: string | null;
+  semesterName?: string | null;
+  courseName?: string | null;
 }
 
 interface Staff {
@@ -113,14 +124,14 @@ export default function HomeworkPage() {
 
       if (!res.ok) {
         throw new Error(
-          data?.error || "Failed to load homework",
+          data?.error || "Failed to load homework"
         );
       }
 
       setHwList(data.homework || []);
     } catch (err) {
       console.error(err);
-      setError("Homework load করতে সমস্যা হয়েছে.");
+      setError("Homework load failed.");
     } finally {
       setLoading(false);
     }
@@ -131,28 +142,16 @@ export default function HomeworkPage() {
       setLoadingOptions(true);
       setError("");
 
-      /*
-       * IMPORTANT:
-       * There is NO /api/semesters endpoint.
-       *
-       * Semesters are already returned inside:
-       * /api/programmes
-       *
-       * So we only fetch these four APIs here.
-       */
       const results = await Promise.all([
         fetch("/api/courses", {
           cache: "no-store",
         }),
-
         fetch("/api/programmes", {
           cache: "no-store",
         }),
-
         fetch("/api/batches", {
           cache: "no-store",
         }),
-
         fetch("/api/staff", {
           cache: "no-store",
         }),
@@ -165,29 +164,26 @@ export default function HomeworkPage() {
 
       if (!results[0].ok) {
         throw new Error(
-          courseData?.error ||
-            "Failed to load courses",
+          courseData?.error || "Failed to load courses"
         );
       }
 
       if (!results[1].ok) {
         throw new Error(
           programmeData?.error ||
-            "Failed to load programmes",
+            "Failed to load programmes"
         );
       }
 
       if (!results[2].ok) {
         throw new Error(
-          batchData?.error ||
-            "Failed to load batches",
+          batchData?.error || "Failed to load batches"
         );
       }
 
       if (!results[3].ok) {
         throw new Error(
-          staffData?.error ||
-            "Failed to load staff",
+          staffData?.error || "Failed to load staff"
         );
       }
 
@@ -197,8 +193,7 @@ export default function HomeworkPage() {
       const programmeRows: Programme[] =
         programmeData.programmes || [];
 
-      const batchRows =
-        batchData.batches || [];
+      const batchRows = batchData.batches || [];
 
       const staffRows: Staff[] =
         staffData.staff || [];
@@ -207,26 +202,6 @@ export default function HomeworkPage() {
       setProgrammes(programmeRows);
       setStaffList(staffRows);
 
-      /*
-       * Convert Programme -> nested Semesters
-       * into one flat semester list.
-       *
-       * Example:
-       *
-       * Programme A
-       *   Semester 1
-       *   Semester 2
-       *   Semester 3
-       *   Semester 4
-       *
-       * becomes:
-       *
-       * [
-       *   { id, name, programmeId },
-       *   { id, name, programmeId },
-       *   ...
-       * ]
-       */
       const semesterRows: Semester[] =
         programmeRows.flatMap((programme) =>
           (programme.semesters || []).map(
@@ -236,28 +211,12 @@ export default function HomeworkPage() {
               semesterNo:
                 semester.semesterNo ?? null,
               programmeId: programme.id,
-            }),
-          ),
+            })
+          )
         );
 
       setSemesters(semesterRows);
 
-      /*
-       * Existing /api/batches response contains:
-       *
-       * {
-       *   id,
-       *   name,
-       *   ...
-       *   batch: {
-       *     id,
-       *     name,
-       *     ...
-       *   }
-       * }
-       *
-       * Keep compatibility with that structure.
-       */
       const normalizedBatches: Batch[] =
         batchRows.map(
           (
@@ -265,34 +224,31 @@ export default function HomeworkPage() {
               | Batch
               | {
                   batch: Batch;
-                },
+                }
           ) => {
-            if (
-              "batch" in item &&
-              item.batch
-            ) {
+            if ("batch" in item && item.batch) {
               return item.batch;
             }
 
             return item as Batch;
-          },
+          }
         );
 
       setBatches(normalizedBatches);
     } catch (err) {
       console.error(
         "Homework options load error:",
-        err,
+        err
       );
 
       if (err instanceof Error) {
         setError(
           err.message ||
-            "Course, Programme, Semester বা Batch data load করতে সমস্যা হয়েছে.",
+            "Failed to load Course, Programme, Semester or Batch data."
         );
       } else {
         setError(
-          "Course, Programme, Semester বা Batch data load করতে সমস্যা হয়েছে.",
+          "Failed to load Course, Programme, Semester or Batch data."
         );
       }
     } finally {
@@ -320,9 +276,7 @@ export default function HomeworkPage() {
           semester.programme_id ||
           "";
 
-        return (
-          programmeId === form.programmeId
-        );
+        return programmeId === form.programmeId;
       })
       .sort((a, b) => {
         const aNo =
@@ -335,9 +289,48 @@ export default function HomeworkPage() {
       });
   }, [semesters, form.programmeId]);
 
+  const filteredBatches = useMemo(() => {
+    if (targetType === "course") {
+      if (!form.courseId) {
+        return [];
+      }
+
+      return batches.filter(
+        (batch) =>
+          String(batch.courseId || "") ===
+          form.courseId
+      );
+    }
+
+    if (targetType === "programme") {
+      if (
+        !form.programmeId ||
+        !form.semesterId
+      ) {
+        return [];
+      }
+
+      return batches.filter(
+        (batch) =>
+          String(batch.programmeId || "") ===
+            form.programmeId &&
+          String(batch.semesterId || "") ===
+            form.semesterId
+      );
+    }
+
+    return batches;
+  }, [
+    batches,
+    targetType,
+    form.courseId,
+    form.programmeId,
+    form.semesterId,
+  ]);
+
   function openModal() {
     setError("");
-    setForm(initialForm);
+    setForm({ ...initialForm });
     setTargetType("course");
     setShowModal(true);
   }
@@ -351,9 +344,7 @@ export default function HomeworkPage() {
     setError("");
   }
 
-  function changeTargetType(
-    type: TargetType,
-  ) {
+  function changeTargetType(type: TargetType) {
     setTargetType(type);
 
     setForm((previous) => ({
@@ -367,13 +358,32 @@ export default function HomeworkPage() {
     setError("");
   }
 
-  function changeProgramme(
-    programmeId: string,
-  ) {
+  function changeCourse(courseId: string) {
+    setForm((previous) => ({
+      ...previous,
+      courseId,
+      batchId: "",
+    }));
+
+    setError("");
+  }
+
+  function changeProgramme(programmeId: string) {
     setForm((previous) => ({
       ...previous,
       programmeId,
       semesterId: "",
+      batchId: "",
+    }));
+
+    setError("");
+  }
+
+  function changeSemester(semesterId: string) {
+    setForm((previous) => ({
+      ...previous,
+      semesterId,
+      batchId: "",
     }));
 
     setError("");
@@ -381,33 +391,34 @@ export default function HomeworkPage() {
 
   function getTargetLabel(row: HwRow) {
     if (row.courseName) {
-      return (
-        "Course: " +
-        row.courseName
-      );
+      let label = "Course: " + row.courseName;
+
+      if (row.batchName) {
+        label += " | Class: " + row.batchName;
+      }
+
+      return label;
     }
 
     if (row.programmeName) {
+      let label =
+        "Programme: " + row.programmeName;
+
       if (row.semesterName) {
-        return (
-          "Programme: " +
-          row.programmeName +
-          " • Semester: " +
-          row.semesterName
-        );
+        label +=
+          " | Semester: " + row.semesterName;
       }
 
-      return (
-        "Programme: " +
-        row.programmeName
-      );
+      if (row.batchName) {
+        label +=
+          " | Class: " + row.batchName;
+      }
+
+      return label;
     }
 
     if (row.batchName) {
-      return (
-        "Batch: " +
-        row.batchName
-      );
+      return "Batch: " + row.batchName;
     }
 
     return "General";
@@ -415,53 +426,60 @@ export default function HomeworkPage() {
 
   function getTargetIcon(row: HwRow) {
     if (row.courseName) {
-      return "📚";
+      return "BOOK";
     }
 
     if (row.programmeName) {
-      return "🎓";
+      return "PROGRAMME";
     }
 
     if (row.batchName) {
-      return "👥";
+      return "BATCH";
     }
 
-    return "📝";
+    return "HW";
   }
 
   async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>,
+    event: React.FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
     setError("");
 
     if (!form.title.trim()) {
-      setError("Homework title দিন.");
+      setError("Homework title is required.");
       return;
     }
 
-    if (
-      targetType === "course" &&
-      !form.courseId
-    ) {
-      setError(
-        "একটি Course select করুন.",
-      );
-      return;
+    if (targetType === "course") {
+      if (!form.courseId) {
+        setError("Please select a Course.");
+        return;
+      }
+
+      if (!form.batchId) {
+        setError(
+          "Please select a Class / Batch for the selected Course."
+        );
+        return;
+      }
     }
 
     if (targetType === "programme") {
       if (!form.programmeId) {
-        setError(
-          "একটি Programme select করুন.",
-        );
+        setError("Please select a Programme.");
         return;
       }
 
       if (!form.semesterId) {
+        setError("Please select a Semester.");
+        return;
+      }
+
+      if (!form.batchId) {
         setError(
-          "একটি Semester select করুন.",
+          "Please select a Class / Batch for the selected Programme and Semester."
         );
         return;
       }
@@ -471,9 +489,7 @@ export default function HomeworkPage() {
       targetType === "batch" &&
       !form.batchId
     ) {
-      setError(
-        "একটি Batch select করুন.",
-      );
+      setError("Please select a Batch.");
       return;
     }
 
@@ -498,16 +514,11 @@ export default function HomeworkPage() {
             ? form.semesterId
             : null,
 
-        batchId:
-          targetType === "batch"
-            ? form.batchId
-            : null,
+        batchId: form.batchId || null,
 
-        teacherId:
-          form.teacherId || null,
+        teacherId: form.teacherId || null,
 
-        title:
-          form.title.trim(),
+        title: form.title.trim(),
 
         description:
           form.description.trim(),
@@ -525,21 +536,20 @@ export default function HomeworkPage() {
               "application/json",
           },
           body: JSON.stringify(payload),
-        },
+        }
       );
 
-      const data =
-        await res.json();
+      const data = await res.json();
 
       if (!res.ok) {
         throw new Error(
           data?.error ||
-            "Failed to assign homework",
+            "Failed to assign homework"
         );
       }
 
       setShowModal(false);
-      setForm(initialForm);
+      setForm({ ...initialForm });
       setTargetType("course");
 
       await fetchHw();
@@ -549,11 +559,11 @@ export default function HomeworkPage() {
       if (err instanceof Error) {
         setError(
           err.message ||
-            "Homework assign করতে সমস্যা হয়েছে.",
+            "Homework assignment failed."
         );
       } else {
         setError(
-          "Homework assign করতে সমস্যা হয়েছে.",
+          "Homework assignment failed."
         );
       }
     } finally {
@@ -612,7 +622,7 @@ export default function HomeworkPage() {
           {hwList.length === 0 ? (
             <div className="col-span-full text-center py-12">
               <div className="text-4xl mb-3">
-                📝
+                HW
               </div>
 
               <p className="text-slate-500">
@@ -634,7 +644,7 @@ export default function HomeworkPage() {
                 className="card hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">
+                  <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-xs font-bold text-orange-600 flex-shrink-0">
                     {getTargetIcon(row)}
                   </div>
 
@@ -657,24 +667,23 @@ export default function HomeworkPage() {
 
                 <div className="flex items-center justify-between gap-2 text-xs text-slate-400">
                   <span>
-                    👩‍🏫{" "}
-                    {row.teacherName ||
-                      "—"}
+                    Teacher:{" "}
+                    {row.teacherName || "-"}
                   </span>
 
                   {row.homework.deadline && (
                     <span
                       className={
                         new Date(
-                          row.homework.deadline,
+                          row.homework.deadline
                         ) < new Date()
                           ? "font-medium text-red-500"
                           : "font-medium text-orange-500"
                       }
                     >
-                      📅{" "}
+                      Deadline:{" "}
                       {formatDate(
-                        row.homework.deadline,
+                        row.homework.deadline
                       )}
                     </span>
                   )}
@@ -709,13 +718,11 @@ export default function HomeworkPage() {
                 className="btn btn-ghost btn-sm"
                 disabled={submitting}
               >
-                ✕
+                X
               </button>
             </div>
 
-            <form
-              onSubmit={handleSubmit}
-            >
+            <form onSubmit={handleSubmit}>
               <div className="modal-body space-y-4">
                 {error && (
                   <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm">
@@ -753,120 +760,166 @@ export default function HomeworkPage() {
                       type="button"
                       onClick={() =>
                         changeTargetType(
-                          "course",
+                          "course"
                         )
                       }
                       className={
-                        targetType ===
-                        "course"
+                        targetType === "course"
                           ? "px-3 py-2 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 text-sm font-semibold"
                           : "px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50"
                       }
                     >
-                      📚 Course
+                      Course
                     </button>
 
                     <button
                       type="button"
                       onClick={() =>
                         changeTargetType(
-                          "programme",
+                          "programme"
                         )
                       }
                       className={
-                        targetType ===
-                        "programme"
+                        targetType === "programme"
                           ? "px-3 py-2 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 text-sm font-semibold"
                           : "px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50"
                       }
                     >
-                      🎓 Programme
+                      Programme
                     </button>
 
                     <button
                       type="button"
                       onClick={() =>
                         changeTargetType(
-                          "batch",
+                          "batch"
                         )
                       }
                       className={
-                        targetType ===
-                        "batch"
+                        targetType === "batch"
                           ? "px-3 py-2 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 text-sm font-semibold"
                           : "px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50"
                       }
                     >
-                      👥 Batch
+                      Batch
                     </button>
                   </div>
                 </div>
 
-                {targetType ===
-                  "course" && (
-                  <div>
-                    <label className="form-label">
-                      Course *
-                    </label>
+                {targetType === "course" && (
+                  <>
+                    <div>
+                      <label className="form-label">
+                        Course *
+                      </label>
 
-                    <select
-                      className="form-select"
-                      value={
-                        form.courseId
-                      }
-                      onChange={(event) =>
-                        setForm({
-                          ...form,
-                          courseId:
-                            event.target
-                              .value,
-                        })
-                      }
-                      required
-                      disabled={
-                        loadingOptions
-                      }
-                    >
-                      <option value="">
-                        {loadingOptions
-                          ? "Loading courses..."
-                          : "Select course"}
-                      </option>
+                      <select
+                        className="form-select"
+                        value={form.courseId}
+                        onChange={(event) =>
+                          changeCourse(
+                            event.target.value
+                          )
+                        }
+                        required
+                        disabled={
+                          loadingOptions
+                        }
+                      >
+                        <option value="">
+                          {loadingOptions
+                            ? "Loading courses..."
+                            : "Select course"}
+                        </option>
 
-                      {courses.map(
-                        (course) => (
-                          <option
-                            key={
-                              course.id
-                            }
-                            value={
-                              course.id
-                            }
-                          >
-                            {course.name}
-                            {course.code
-                              ? " (" +
-                                course.code +
-                                ")"
-                              : ""}
-                          </option>
-                        ),
-                      )}
-                    </select>
+                        {courses.map(
+                          (course) => (
+                            <option
+                              key={
+                                course.id
+                              }
+                              value={
+                                course.id
+                              }
+                            >
+                              {course.name}
+                              {course.code
+                                ? " (" +
+                                  course.code +
+                                  ")"
+                                : ""}
+                            </option>
+                          )
+                        )}
+                      </select>
 
-                    {!loadingOptions &&
-                      courses.length ===
-                        0 && (
-                        <p className="text-xs text-amber-600 mt-1">
-                          No course
-                          found.
-                        </p>
-                      )}
-                  </div>
+                      {!loadingOptions &&
+                        courses.length ===
+                          0 && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            No course found.
+                          </p>
+                        )}
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Class / Batch *
+                      </label>
+
+                      <select
+                        className="form-select"
+                        value={form.batchId}
+                        onChange={(event) =>
+                          setForm({
+                            ...form,
+                            batchId:
+                              event.target.value,
+                          })
+                        }
+                        required
+                        disabled={
+                          loadingOptions ||
+                          !form.courseId
+                        }
+                      >
+                        <option value="">
+                          {!form.courseId
+                            ? "Select course first"
+                            : loadingOptions
+                            ? "Loading classes..."
+                            : "Select class / batch"}
+                        </option>
+
+                        {filteredBatches.map(
+                          (batch) => (
+                            <option
+                              key={
+                                batch.id
+                              }
+                              value={
+                                batch.id
+                              }
+                            >
+                              {batch.name}
+                            </option>
+                          )
+                        )}
+                      </select>
+
+                      {form.courseId &&
+                        !loadingOptions &&
+                        filteredBatches.length ===
+                          0 && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            No active Class / Batch found for this Course.
+                          </p>
+                        )}
+                    </div>
+                  </>
                 )}
 
-                {targetType ===
-                  "programme" && (
+                {targetType === "programme" && (
                   <div className="space-y-3">
                     <div>
                       <label className="form-label">
@@ -880,8 +933,7 @@ export default function HomeworkPage() {
                         }
                         onChange={(event) =>
                           changeProgramme(
-                            event.target
-                              .value,
+                            event.target.value
                           )
                         }
                         required
@@ -905,16 +957,14 @@ export default function HomeworkPage() {
                                 programme.id
                               }
                             >
-                              {
-                                programme.name
-                              }
+                              {programme.name}
                               {programme.code
                                 ? " (" +
                                   programme.code +
                                   ")"
                                 : ""}
                             </option>
-                          ),
+                          )
                         )}
                       </select>
 
@@ -922,8 +972,7 @@ export default function HomeworkPage() {
                         programmes.length ===
                           0 && (
                           <p className="text-xs text-amber-600 mt-1">
-                            No programme
-                            found.
+                            No programme found.
                           </p>
                         )}
                     </div>
@@ -939,12 +988,9 @@ export default function HomeworkPage() {
                           form.semesterId
                         }
                         onChange={(event) =>
-                          setForm({
-                            ...form,
-                            semesterId:
-                              event.target
-                                .value,
-                          })
+                          changeSemester(
+                            event.target.value
+                          )
                         }
                         required
                         disabled={
@@ -970,7 +1016,7 @@ export default function HomeworkPage() {
                             >
                               {semester.name}
                             </option>
-                          ),
+                          )
                         )}
                       </select>
 
@@ -978,18 +1024,73 @@ export default function HomeworkPage() {
                         filteredSemesters.length ===
                           0 && (
                           <p className="text-xs text-amber-600 mt-1">
-                            এই Programme-এর
-                            জন্য কোনো
-                            Semester পাওয়া
-                            যায়নি।
+                            No Semester found for this Programme.
+                          </p>
+                        )}
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Class / Batch *
+                      </label>
+
+                      <select
+                        className="form-select"
+                        value={form.batchId}
+                        onChange={(event) =>
+                          setForm({
+                            ...form,
+                            batchId:
+                              event.target.value,
+                          })
+                        }
+                        required
+                        disabled={
+                          loadingOptions ||
+                          !form.programmeId ||
+                          !form.semesterId
+                        }
+                      >
+                        <option value="">
+                          {!form.programmeId
+                            ? "Select programme first"
+                            : !form.semesterId
+                            ? "Select semester first"
+                            : loadingOptions
+                            ? "Loading classes..."
+                            : "Select class / batch"}
+                        </option>
+
+                        {filteredBatches.map(
+                          (batch) => (
+                            <option
+                              key={
+                                batch.id
+                              }
+                              value={
+                                batch.id
+                              }
+                            >
+                              {batch.name}
+                            </option>
+                          )
+                        )}
+                      </select>
+
+                      {form.programmeId &&
+                        form.semesterId &&
+                        !loadingOptions &&
+                        filteredBatches.length ===
+                          0 && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            No active Class / Batch found for this Programme and Semester.
                           </p>
                         )}
                     </div>
                   </div>
                 )}
 
-                {targetType ===
-                  "batch" && (
+                {targetType === "batch" && (
                   <div>
                     <label className="form-label">
                       Batch *
@@ -997,15 +1098,12 @@ export default function HomeworkPage() {
 
                     <select
                       className="form-select"
-                      value={
-                        form.batchId
-                      }
+                      value={form.batchId}
                       onChange={(event) =>
                         setForm({
                           ...form,
                           batchId:
-                            event.target
-                              .value,
+                            event.target.value,
                         })
                       }
                       required
@@ -1022,16 +1120,12 @@ export default function HomeworkPage() {
                       {batches.map(
                         (batch) => (
                           <option
-                            key={
-                              batch.id
-                            }
-                            value={
-                              batch.id
-                            }
+                            key={batch.id}
+                            value={batch.id}
                           >
                             {batch.name}
                           </option>
-                        ),
+                        )
                       )}
                     </select>
 
@@ -1052,15 +1146,12 @@ export default function HomeworkPage() {
 
                   <select
                     className="form-select"
-                    value={
-                      form.teacherId
-                    }
+                    value={form.teacherId}
                     onChange={(event) =>
                       setForm({
                         ...form,
                         teacherId:
-                          event.target
-                            .value,
+                          event.target.value,
                       })
                     }
                     disabled={
@@ -1074,16 +1165,12 @@ export default function HomeworkPage() {
                     {staffList.map(
                       (staff) => (
                         <option
-                          key={
-                            staff.id
-                          }
-                          value={
-                            staff.id
-                          }
+                          key={staff.id}
+                          value={staff.id}
                         >
                           {staff.name}
                         </option>
-                      ),
+                      )
                     )}
                   </select>
                 </div>
@@ -1104,8 +1191,7 @@ export default function HomeworkPage() {
                       setForm({
                         ...form,
                         description:
-                          event.target
-                            .value,
+                          event.target.value,
                       })
                     }
                   />
@@ -1119,15 +1205,12 @@ export default function HomeworkPage() {
                   <input
                     type="date"
                     className="form-input"
-                    value={
-                      form.deadline
-                    }
+                    value={form.deadline}
                     onChange={(event) =>
                       setForm({
                         ...form,
                         deadline:
-                          event.target
-                            .value,
+                          event.target.value,
                       })
                     }
                   />
@@ -1139,18 +1222,14 @@ export default function HomeworkPage() {
                   type="button"
                   onClick={closeModal}
                   className="btn btn-outline"
-                  disabled={
-                    submitting
-                  }
+                  disabled={submitting}
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  disabled={
-                    submitting
-                  }
+                  disabled={submitting}
                   className="btn btn-primary"
                 >
                   {submitting
