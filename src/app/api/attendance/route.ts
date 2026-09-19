@@ -17,6 +17,7 @@ import {
   getSession,
   requireRoles,
 } from "@/lib/session";
+import { ensureAcademicCoreSchema } from "@/lib/academic";
 
 const ATTENDANCE_VIEW_ROLES = [
   "SUPER_ADMIN",
