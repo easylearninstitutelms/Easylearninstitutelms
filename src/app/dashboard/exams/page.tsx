@@ -2495,7 +2495,7 @@ export default function ExamsPage() {
                   <select value={marksheetCourseId} onChange={(event) => { setMarksheetCourseId(event.target.value); setMarksheetCourseClassId(""); setMarksheetStudentId(null); setShowMarksheet(false); }}
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
                     <option value="">Select course</option>
-                    {courses.map((course) => <option key={course.id} value={course.id}>{course.courseNo ? \u0024{course.courseNo} + " — " : ""}{course.name}</option>)}
+                    {courses.map((course) => <option key={course.id} value={course.id}>{course.courseNo ? `${course.courseNo} — ` : ""}{course.name}</option>)}
                   </select>
                 </div>
                 <div>
