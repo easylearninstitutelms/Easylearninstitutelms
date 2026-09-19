@@ -44,6 +44,29 @@ export function ensureAcademicSchema() {
       ALTER TABLE courses ADD COLUMN IF NOT EXISTS course_no integer;
       CREATE UNIQUE INDEX IF NOT EXISTS courses_institute_no_idx ON courses(institute_id, course_no) WHERE course_no IS NOT NULL;
 
+      WITH missing_course_numbers AS (
+        SELECT
+          c.id,
+          COALESCE(
+            (
+              SELECT MAX(c2.course_no)
+              FROM courses c2
+              WHERE c2.institute_id = c.institute_id
+                AND c2.course_no IS NOT NULL
+            ),
+            210
+          ) + ROW_NUMBER() OVER (
+            PARTITION BY c.institute_id
+            ORDER BY c.created_at, c.id
+          ) AS next_no
+        FROM courses c
+        WHERE c.course_no IS NULL
+      )
+      UPDATE courses c
+      SET course_no = m.next_no
+      FROM missing_course_numbers m
+      WHERE c.id = m.id;
+
       ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS course_id uuid;
       ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS programme_id uuid;
       CREATE INDEX IF NOT EXISTS enrollments_course_idx ON enrollments(course_id);
