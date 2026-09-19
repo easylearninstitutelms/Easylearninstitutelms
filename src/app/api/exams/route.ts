@@ -764,6 +764,7 @@ export async function POST(
             semester_id,
             course_id,
             course_class_id,
+            programme_class_id,
             name,
             exam_date
           )
@@ -790,6 +791,7 @@ export async function POST(
                 ? courseClassId
                 : null
             },
+            ${mode === "PROGRAMME" ? programmeClassId : null},
             ${name},
             ${examDate}
           )
