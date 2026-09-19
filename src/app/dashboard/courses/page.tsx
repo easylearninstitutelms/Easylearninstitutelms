@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { getStatusColor, formatCurrency } from "@/lib/utils";
 
 interface ClassDraft { classNo:number; title:string; description:string; scheduledDate:string; startTime:string; endTime:string; }
-interface Course { id:string; name:string; description:string; duration:string; fee:string; status:string; classCount?:number; }
+interface Course { id:string; name:string; description:string; duration:string; fee:string; status:string; classCount?:number; studentCount?:number; courseNo?:number | null; }
 interface CourseClass { id:string; classNo:number; title:string; description:string|null; scheduledDate:string|null; startTime:string|null; endTime:string|null; status:string; recordingId:string|null; recordingTitle:string|null; videoUrl:string|null; recordingDuration:string|null; }
 function newClass(classNo:number):ClassDraft{return{classNo,title:"",description:"",scheduledDate:"",startTime:"",endTime:""};}
 
@@ -40,7 +40,7 @@ export default function CoursesPage(){
     <div className="flex items-start justify-between mb-3"><div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-xl">📚</div><span className={`badge ${getStatusColor(c.status)}`}>{c.status}</span></div>
     <h3 className="font-bold text-slate-800 mb-1">{c.name}</h3>{c.description&&<p className="text-sm text-slate-500 mb-3 line-clamp-2">{c.description}</p>}
     <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Duration: <span className="font-medium text-slate-700">{c.duration||"—"}</span></span><span className="font-bold text-blue-600">{c.fee?formatCurrency(c.fee):"Free"}</span></div>
-    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3"><span className="text-xs font-semibold text-teal-700">{c.classCount||0} Classes</span><div className="flex gap-2"><button onClick={()=>openEdit(c)} className="btn btn-outline btn-sm">Edit</button><button onClick={()=>openEdit(c)} className="btn btn-primary btn-sm">📋 Manage Syllabus</button><button onClick={()=>toggleStatus(c)} className={`btn btn-sm btn-outline ${c.status==="ACTIVE"?"text-red-500":"text-green-600"}`}>{c.status==="ACTIVE"?"Deactivate":"Activate"}</button></div></div>
+    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3"><div className="flex items-center gap-3"><span className="text-xs font-semibold text-teal-700">{c.classCount||0} Classes</span><span className="text-xs font-semibold text-blue-700">{c.studentCount||0} Students</span></div><div className="flex gap-2"><button onClick={()=>openEdit(c)} className="btn btn-outline btn-sm">Edit</button><button onClick={()=>openEdit(c)} className="btn btn-primary btn-sm">📋 Manage Syllabus</button><button onClick={()=>toggleStatus(c)} className={`btn btn-sm btn-outline ${c.status==="ACTIVE"?"text-red-500":"text-green-600"}`}>{c.status==="ACTIVE"?"Deactivate":"Activate"}</button></div></div>
    </div>)}
   </div>}
 
