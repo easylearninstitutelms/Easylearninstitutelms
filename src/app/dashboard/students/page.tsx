@@ -47,6 +47,13 @@ interface StudentDetails {
       id: string;
       name: string;
     } | null;
+
+    programme: {
+      id: string;
+      name: string;
+      code?: string | null;
+      programmeNo?: number | null;
+    } | null;
   }>;
 
   attendance: Array<{
@@ -85,6 +92,9 @@ interface FormData {
   gender: string;
   admissionDate: string;
   batchId: string;
+  enrollmentType: "COURSE" | "PROGRAMME" | "BATCH";
+  courseId: string;
+  programmeId: string;
   photoUrl: string;
 }
 
@@ -112,6 +122,9 @@ const EMPTY_FORM: FormData = {
     .toISOString()
     .split("T")[0],
   batchId: "",
+  enrollmentType: "COURSE",
+  courseId: "",
+  programmeId: "",
   photoUrl: "",
 };
 
@@ -155,6 +168,14 @@ export default function StudentsPage() {
         };
       }>
     >([]);
+
+  const [courses, setCourses] = useState<
+    Array<{ id: string; name: string; courseNo?: number | null }>
+  >([]);
+
+  const [programmes, setProgrammes] = useState<
+    Array<{ id: string; name: string; code?: string | null; programmeNo?: number | null }>
+  >([]);
 
   const [
     selectedStudent,
@@ -257,18 +278,21 @@ export default function StudentsPage() {
   }, [fetchStudents]);
 
   useEffect(() => {
-    fetch("/api/batches", {
-      cache: "no-store",
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        setBatches(
-          d.batches || []
-        );
+    Promise.all([
+      fetch("/api/batches", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/courses", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/programmes", { cache: "no-store" }).then((r) => r.json()),
+    ])
+      .then(([batchData, courseData, programmeData]) => {
+        setBatches(batchData.batches || []);
+        setCourses(courseData.courses || []);
+        setProgrammes(programmeData.programmes || []);
       })
       .catch((err) => {
         console.error(err);
         setBatches([]);
+        setCourses([]);
+        setProgrammes([]);
       });
   }, []);
 
@@ -479,11 +503,15 @@ export default function StudentsPage() {
 
       const activeEnrollment =
         details.enrollments?.find(
-          (item) =>
-            item.enrollment
-              .status ===
-            "ACTIVE"
+          (item) => item.enrollment.status === "ACTIVE"
         );
+
+      const directEnrollmentType =
+        activeEnrollment?.programme?.id
+          ? "PROGRAMME"
+          : activeEnrollment?.course?.id
+            ? "COURSE"
+            : "BATCH";
 
       setEditingStudentId(
         student.id
@@ -529,6 +557,18 @@ export default function StudentsPage() {
           activeEnrollment?.batch
             ?.id || "",
 
+        enrollmentType: directEnrollmentType,
+
+        courseId:
+          activeEnrollment?.enrollment?.courseId ||
+          activeEnrollment?.course?.id ||
+          "",
+
+        programmeId:
+          activeEnrollment?.enrollment?.programmeId ||
+          activeEnrollment?.programme?.id ||
+          "",
+
         photoUrl:
           details.student.photoUrl ||
           "",
@@ -564,6 +604,33 @@ export default function StudentsPage() {
       return;
     }
 
+    if (
+      !editingStudentId &&
+      form.enrollmentType === "COURSE" &&
+      !form.courseId
+    ) {
+      setError("Please select a course.");
+      return;
+    }
+
+    if (
+      !editingStudentId &&
+      form.enrollmentType === "PROGRAMME" &&
+      !form.programmeId
+    ) {
+      setError("Please select a programme.");
+      return;
+    }
+
+    if (
+      !editingStudentId &&
+      form.enrollmentType === "BATCH" &&
+      !form.batchId
+    ) {
+      setError("Please select a batch.");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
 
@@ -594,7 +661,19 @@ export default function StudentsPage() {
           form.admissionDate,
 
         batchId:
-          form.batchId || null,
+          form.enrollmentType === "BATCH"
+            ? form.batchId || null
+            : null,
+
+        courseId:
+          form.enrollmentType === "COURSE"
+            ? form.courseId || null
+            : null,
+
+        programmeId:
+          form.enrollmentType === "PROGRAMME"
+            ? form.programmeId || null
+            : null,
 
         photoUrl:
           form.photoUrl || null,
@@ -1398,15 +1477,14 @@ export default function StudentsPage() {
 
                     <div>
                       <h3 className="font-semibold text-slate-700 mb-3">
-                        Batch / Course
+                        Course / Programme Enrollment
                       </h3>
 
                       {selectedStudent
                         .enrollments.length ===
                       0 ? (
                         <p className="text-sm text-slate-400">
-                          No batch enrollment
-                          found.
+                          No course or programme enrollment found.
                         </p>
                       ) : (
                         <div className="space-y-2">
@@ -1421,17 +1499,19 @@ export default function StudentsPage() {
                                 className="p-3 border rounded-xl"
                               >
                                 <p className="font-medium text-slate-700">
-                                  {item.batch
-                                    ?.name ||
-                                    "Unknown Batch"}
+                                  {item.programme?.name ||
+                                    item.course?.name ||
+                                    item.batch?.name ||
+                                    "Unknown Enrollment"}
                                 </p>
 
                                 <p className="text-sm text-slate-500">
-                                  Course:{" "}
-                                  {item
-                                    .course
-                                    ?.name ||
-                                    "â€”"}
+                                  {item.programme
+                                    ? "Programme"
+                                    : item.course
+                                      ? "Course"
+                                      : "Batch"}
+                                  {item.batch?.name ? " · Batch: " + item.batch.name : ""}
                                 </p>
 
                                 <p className="text-xs text-slate-400 mt-1">
@@ -2425,49 +2505,104 @@ export default function StudentsPage() {
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <label className="form-label">
-                        Enroll in Batch
-                      </label>
+                    <div className="sm:col-span-2 rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+                      <div className="mb-3">
+                        <label className="form-label mb-1">Student Enrollment *</label>
+                        <p className="text-xs text-slate-500">
+                          Institute runs students by Course or Programme. Batch is kept only for older records.
+                        </p>
+                      </div>
 
-                      <select
-                        className="form-select"
-                        value={
-                          form.batchId
-                        }
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            batchId:
-                              e.target
-                                .value,
-                          })
-                        }
-                      >
-                        <option value="">
-                          No batch
-                        </option>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="form-label">Enrollment Type</label>
+                          <select
+                            className="form-select"
+                            value={form.enrollmentType}
+                            onChange={(e) => {
+                              const type = e.target.value as "COURSE" | "PROGRAMME" | "BATCH";
+                              setForm({
+                                ...form,
+                                enrollmentType: type,
+                                courseId: "",
+                                programmeId: "",
+                                batchId: "",
+                              });
+                            }}
+                          >
+                            <option value="COURSE">Course</option>
+                            <option value="PROGRAMME">Programme</option>
+                            <option value="BATCH">Batch (legacy)</option>
+                          </select>
+                        </div>
 
-                        {batches.map(
-                          (b) => (
-                            <option
-                              key={
-                                b.batch
-                                  .id
-                              }
-                              value={
-                                b.batch
-                                  .id
-                              }
+                        {form.enrollmentType === "COURSE" ? (
+                          <div className="sm:col-span-2">
+                            <label className="form-label">Select Course *</label>
+                            <select
+                              className="form-select"
+                              value={form.courseId}
+                              onChange={(e) => setForm({
+                                ...form,
+                                courseId: e.target.value,
+                                programmeId: "",
+                                batchId: "",
+                              })}
                             >
-                              {
-                                b.batch
-                                  .name
-                              }
-                            </option>
-                          )
+                              <option value="">Select a course</option>
+                              {courses.map((course) => (
+                                <option key={course.id} value={course.id}>
+                                  {course.name}{course.courseNo ? " (#" + course.courseNo + ")" : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : form.enrollmentType === "PROGRAMME" ? (
+                          <div className="sm:col-span-2">
+                            <label className="form-label">Select Programme *</label>
+                            <select
+                              className="form-select"
+                              value={form.programmeId}
+                              onChange={(e) => setForm({
+                                ...form,
+                                programmeId: e.target.value,
+                                courseId: "",
+                                batchId: "",
+                              })}
+                            >
+                              <option value="">Select a programme</option>
+                              {programmes.map((programme) => (
+                                <option key={programme.id} value={programme.id}>
+                                  {programme.name}
+                                  {programme.code ? " (" + programme.code + ")" : ""}
+                                  {programme.programmeNo ? " #" + programme.programmeNo : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="sm:col-span-2">
+                            <label className="form-label">Select Batch</label>
+                            <select
+                              className="form-select"
+                              value={form.batchId}
+                              onChange={(e) => setForm({
+                                ...form,
+                                batchId: e.target.value,
+                                courseId: "",
+                                programmeId: "",
+                              })}
+                            >
+                              <option value="">Select a batch</option>
+                              {batches.map((b) => (
+                                <option key={b.batch.id} value={b.batch.id}>
+                                  {b.batch.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         )}
-                      </select>
+                      </div>
                     </div>
                   </div>
                 </div>
