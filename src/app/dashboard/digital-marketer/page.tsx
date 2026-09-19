@@ -184,7 +184,7 @@ export default function DigitalMarketerPage() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 grid place-items-center text-lg">📣</span>
+            <span className="w-11 h-11 rounded-xl bg-blue-600 text-white grid place-items-center text-xs font-bold shadow-sm">DM</span>
             <div>
               <h1 className="page-title">Digital Marketing</h1>
               <p className="text-sm text-slate-500">{staff?.name ? `Daily performance report for ${staff.name}` : "Marketing performance & daily reports"}</p>
@@ -211,12 +211,12 @@ export default function DigitalMarketerPage() {
           ["Enrollments", totals.enrollments, "🎓", "New enrollments"],
           ["Ad Spend", money(totals.spent), "💰", `${budgetPercent}% of budget`],
         ].map(([label, value, icon, sub]) => (
-          <div key={String(label)} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+          <div key={String(label)} className="relative overflow-hidden bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <div className="flex items-start justify-between">
               <span className="w-9 h-9 rounded-xl bg-blue-50 grid place-items-center">{icon}</span>
               <span className="text-[11px] text-emerald-600 font-medium">{label === "Ad Spend" ? "" : "● Active"}</span>
             </div>
-            <p className="text-xs text-slate-500 mt-4">{label}</p>
+            <p className="text-xs font-semibold text-slate-500 mt-4">{label}</p>
             <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
             <p className="text-[11px] text-slate-400 mt-1">{sub}</p>
           </div>
@@ -252,7 +252,7 @@ export default function DigitalMarketerPage() {
                 })}
               </div>
             )}
-            <div className="flex gap-5 mt-3 text-xs text-slate-500">
+            <div className="flex gap-5 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
               <span><i className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1" /> Leads</span>
               <span><i className="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1" /> Enrollments</span>
             </div>
