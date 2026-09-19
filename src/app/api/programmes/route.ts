@@ -56,7 +56,23 @@ export async function GET() {
         p.duration,
         p.status,
         p.created_at,
-        p.updated_at
+        p.updated_at,
+        COALESCE(
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', ps.id,
+                'semesterNo', ps.semester_no,
+                'name', ps.name
+              )
+              ORDER BY ps.semester_no
+            )
+            FROM programme_semesters ps
+            WHERE ps.programme_id = p.id
+              AND ps.institute_id = p.institute_id
+          ),
+          '[]'::json
+        ) AS semesters
       FROM programmes p
       WHERE p.institute_id = ${session.instituteId}
       ORDER BY p.created_at DESC NULLS LAST, p.name ASC
