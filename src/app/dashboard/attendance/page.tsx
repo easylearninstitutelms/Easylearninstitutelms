@@ -36,6 +36,7 @@ interface BatchOption {
     name: string;
     programmeId?: string | null;
     programmeName?: string | null;
+    semesterId?: string | null;
     courseId?: string | null;
     courseName?: string | null;
   };
