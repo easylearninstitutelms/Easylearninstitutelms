@@ -12,6 +12,7 @@ type ProgrammeSemester = {
   semesterNo: number;
   name: string;
 };
+type ProgrammeClass = { id: string; classNo?: number | null; title: string; semesterId?: string | null; };
 
 type Programme = {
   id: string;
@@ -551,6 +552,8 @@ export default function ExamsPage() {
 
   const [examSemesterId, setExamSemesterId] =
     useState("");
+  const [examProgrammeClassId, setExamProgrammeClassId] = useState("");
+  const [programmeClasses, setProgrammeClasses] = useState<ProgrammeClass[]>([]);
 
   const [examBatchId, setExamBatchId] =
     useState("");
@@ -624,6 +627,7 @@ export default function ExamsPage() {
   const [marksheetMode, setMarksheetMode] = useState<"COURSE" | "PROGRAMME">("COURSE");
   const [marksheetProgrammeId, setMarksheetProgrammeId] = useState("");
   const [marksheetSemesterId, setMarksheetSemesterId] = useState("");
+  const [marksheetProgrammeClassId, setMarksheetProgrammeClassId] = useState("");
   const [marksheetCourseId, setMarksheetCourseId] = useState("");
   const [marksheetCourseClassId, setMarksheetCourseClassId] = useState("");
 
@@ -641,13 +645,15 @@ export default function ExamsPage() {
     [exams, marksheetCourseId, marksheetCourseClassId]
   );
 
+  const marksheetProgrammeClasses = useMemo(() => programmeClasses.filter((item) => !marksheetSemesterId || item.semesterId === marksheetSemesterId), [programmeClasses, marksheetSemesterId]);
+
   const marksheetProgrammeExams = useMemo(
     () => exams.filter((item) =>
       item.mode === "PROGRAMME" &&
       (!marksheetProgrammeId || item.exam.programmeId === marksheetProgrammeId) &&
-      (!marksheetSemesterId || item.exam.semesterId === marksheetSemesterId)
+      (!marksheetSemesterId || item.exam.semesterId === marksheetSemesterId) && (!marksheetProgrammeClassId || item.exam.programmeClassId === marksheetProgrammeClassId)
     ),
-    [exams, marksheetProgrammeId, marksheetSemesterId]
+    [exams, marksheetProgrammeId, marksheetSemesterId, marksheetProgrammeClassId]
   );
 
   const marksheetTargetExams = marksheetMode === "COURSE" ? marksheetCourseExams : marksheetProgrammeExams;
@@ -1013,6 +1019,10 @@ export default function ExamsPage() {
   }, []);
 
   useEffect(() => {
+    if (marksheetMode === "PROGRAMME" && marksheetProgrammeId) void loadProgrammeClasses(marksheetProgrammeId);
+  }, [marksheetMode, marksheetProgrammeId]);
+
+  useEffect(() => {
     if (marksheetMode === "COURSE" && marksheetCourseId) {
       void loadCourseClasses(marksheetCourseId);
     }
@@ -1269,6 +1279,17 @@ export default function ExamsPage() {
       console.error(error);
       setCourses([]);
     }
+  }
+
+  async function loadProgrammeClasses(programmeId: string) {
+    setProgrammeClasses([]);
+    if (!programmeId) return;
+    try {
+      const response = await fetch(`/api/attendance/options?programmeId=${encodeURIComponent(programmeId)}`, { cache: "no-store" });
+      const data = await response.json().catch(() => null);
+      const raw = response.ok && Array.isArray(data?.classes) ? data.classes : [];
+      setProgrammeClasses(raw.filter((item: unknown): item is ProgrammeClass => Boolean(item && typeof item === "object" && typeof (item as Record<string, unknown>).id === "string" && typeof (item as Record<string, unknown>).title === "string")).map((item) => ({ id: item.id, classNo: item.classNo == null ? null : Number(item.classNo), title: item.title, semesterId: typeof item.semesterId === "string" ? item.semesterId : null })));
+    } catch { setProgrammeClasses([]); }
   }
 
   async function loadCourseClasses(courseId: string) {
@@ -3508,7 +3529,7 @@ export default function ExamsPage() {
                             setExamProgrammeId(value);
                             const firstSemester =
                               programmes.find((programme) => programme.id === value)?.semesters[0];
-                            setExamSemesterId(firstSemester?.id ?? "");
+                            setExamSemesterId(firstSemester?.id ?? ""); setExamProgrammeClassId(""); void loadProgrammeClasses(value);
                           }}
                           disabled={submitting}
                           className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#0f766e] focus:ring-2 focus:ring-[#0f766e]/10 disabled:bg-gray-100"
@@ -3541,7 +3562,15 @@ export default function ExamsPage() {
                         </select>
                       </div>
 
-                      <div>
+                                             <div>
+                         <label className="mb-1.5 block text-sm font-medium text-gray-700">Class</label>
+                         <select value={examProgrammeClassId} onChange={(event) => setExamProgrammeClassId(event.target.value)} disabled={submitting || !examSemesterId} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#0f766e] disabled:bg-gray-100">
+                           <option value="">Select class</option>
+                           {programmeClasses.filter((item) => item.semesterId === examSemesterId).map((item) => <option key={item.id} value={item.id}>{item.classNo ? `Class ${item.classNo} — ` : ""}{item.title}</option>)}
+                         </select>
+                       </div>
+
+<div>
                         <label className="mb-1.5 block text-sm font-medium text-gray-700">
                           Student Source Batch <span className="font-normal text-gray-400">(optional)</span>
                         </label>
