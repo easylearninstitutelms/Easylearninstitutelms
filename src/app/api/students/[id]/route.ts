@@ -4,6 +4,7 @@ import {
   enrollments,
   batches,
   courses,
+  programmes,
   attendance,
   fees,
   payments,
@@ -228,6 +229,7 @@ export async function GET(
           enrollment: enrollments,
           batch: batches,
           course: courses,
+          programme: programmes,
         })
         .from(enrollments)
         .leftJoin(
@@ -242,6 +244,13 @@ export async function GET(
           eq(
             batches.courseId,
             courses.id,
+          ),
+        )
+        .leftJoin(
+          programmes,
+          eq(
+            enrollments.programmeId,
+            programmes.id,
           ),
         )
         .where(
