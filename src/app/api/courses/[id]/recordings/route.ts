@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
 import { getSession, requireRoles } from "@/lib/session";
-import { ensureAcademicSchema } from "@/lib/academic";
+import { ensureCourseSchema } from "@/lib/academic";
 
 const MANAGE_ROLES = [
   "SUPER_ADMIN",
@@ -49,7 +49,7 @@ export async function POST(
       return permissionError;
     }
 
-    await ensureAcademicSchema();
+    await ensureCourseSchema();
 
     const { id } = await params;
     const body = await request.json();
@@ -170,7 +170,7 @@ export async function DELETE(
       return permissionError;
     }
 
-    await ensureAcademicSchema();
+    await ensureCourseSchema();
 
     const { id } = await params;
     const body = await request.json();
