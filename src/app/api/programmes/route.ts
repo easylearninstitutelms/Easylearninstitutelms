@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
 import { getSession } from "@/lib/session";
-import { ensureAcademicSchema } from "@/lib/academic";
+import { ensureAcademicCoreSchema } from "@/lib/academic";
 
 type DbRow = Record<string, unknown>;
 
@@ -41,7 +41,7 @@ export async function GET() {
   try {
     const session = await getSession();
     if (!session?.instituteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    await ensureAcademicSchema();
+    await ensureAcademicCoreSchema();
 
     const result = await db.execute(sql`
       SELECT
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "You do not have permission to create programmes" }, { status: 403 });
     }
 
-    await ensureAcademicSchema();
+    await ensureAcademicCoreSchema();
     const body = await req.json();
 
     const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -213,7 +213,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "You do not have permission to delete programmes" }, { status: 403 });
     }
 
-    await ensureAcademicSchema();
+    await ensureAcademicCoreSchema();
     const id = new URL(request.url).searchParams.get("id")?.trim();
     if (!id) return NextResponse.json({ error: "Programme ID is required" }, { status: 400 });
 
