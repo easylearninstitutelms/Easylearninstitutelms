@@ -50,11 +50,11 @@ export async function GET() {
         (
           SELECT COUNT(DISTINCT e.student_id)::int
           FROM enrollments e
-          INNER JOIN batches b ON b.id = e.batch_id
+          LEFT JOIN batches b ON b.id = e.batch_id
           WHERE e.institute_id = p.institute_id
             AND e.status = 'ACTIVE'
-            AND b.programme_id = p.id
-            AND b.institute_id = p.institute_id
+            AND (e.programme_id = p.id OR b.programme_id = p.id)
+            AND (b.id IS NULL OR b.institute_id = p.institute_id)
         ) AS "studentCount",
         COALESCE(
           json_agg(
