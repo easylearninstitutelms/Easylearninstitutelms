@@ -35,7 +35,10 @@ type ExamSubject = {
   totalMarks: number;
 };
 
-type ExamMode = "BATCH" | "PROGRAMME";
+type ExamMode = "BATCH" | "PROGRAMME" | "COURSE";
+
+type Course = { id: string; name: string; courseNo?: string | null; };
+type CourseClass = { id: string; classNo?: number | null; title: string; status?: string | null; };
 
 type Exam = {
   id: string;
@@ -45,6 +48,8 @@ type Exam = {
   createdAt: string;
   programmeId?: string | null;
   semesterId?: string | null;
+  courseId?: string | null;
+  courseClassId?: string | null;
 };
 
 type ExamRow = {
@@ -53,6 +58,9 @@ type ExamRow = {
   batchName: string;
   programmeName?: string | null;
   semesterName?: string | null;
+  courseName?: string | null;
+  courseClassNo?: number | null;
+  courseClassTitle?: string | null;
   subjects?: ExamSubject[];
 };
 
@@ -276,7 +284,11 @@ function normalizeExamRows(
         }
 
         const mode: ExamMode =
-          row.mode === "PROGRAMME" ? "PROGRAMME" : "BATCH";
+          row.mode === "COURSE"
+            ? "COURSE"
+            : row.mode === "PROGRAMME"
+              ? "PROGRAMME"
+              : "BATCH";
 
         return {
           exam: {
@@ -315,6 +327,16 @@ function normalizeExamRows(
           semesterName:
             typeof row.semesterName === "string"
               ? row.semesterName
+              : null,
+          courseName:
+            typeof row.courseName === "string"
+              ? row.courseName
+              : null,
+          courseClassNo:
+            row.courseClassNo == null ? null : Number(row.courseClassNo),
+          courseClassTitle:
+            typeof row.courseClassTitle === "string"
+              ? row.courseClassTitle
               : null,
           subjects: normalizeSubjects(
             row.subjects
@@ -489,6 +511,12 @@ export default function ExamsPage() {
   const [programmes, setProgrammes] =
     useState<Programme[]>([]);
 
+  const [courses, setCourses] =
+    useState<Course[]>([]);
+
+  const [courseClasses, setCourseClasses] =
+    useState<CourseClass[]>([]);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -517,6 +545,12 @@ export default function ExamsPage() {
     useState("");
 
   const [examBatchId, setExamBatchId] =
+    useState("");
+
+  const [examCourseId, setExamCourseId] =
+    useState("");
+
+  const [examCourseClassId, setExamCourseClassId] =
     useState("");
 
   const [examName, setExamName] =
@@ -615,6 +649,15 @@ export default function ExamsPage() {
   const examBatches = useMemo(
     () => batches,
     [batches]
+  );
+
+  const selectedExamCourse = useMemo(
+    () =>
+      courses.find(
+        (course: Course) =>
+          course.id === selectedExam?.exam.courseId
+      ) ?? null,
+    [courses, selectedExam]
   );
 
   const selectedSubject = useMemo(() => {
@@ -928,6 +971,7 @@ export default function ExamsPage() {
     void loadExams();
     void loadBatches();
     void loadProgrammes();
+    void loadCourses();
   }, []);
 
   useEffect(() => {
@@ -1135,6 +1179,50 @@ export default function ExamsPage() {
     }
   }
 
+  async function loadCourses() {
+    try {
+      const response = await fetch("/api/courses", { cache: "no-store" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || "Failed to load courses.");
+      const raw = Array.isArray(data?.courses) ? data.courses : Array.isArray(data) ? data : [];
+      const normalized = raw.map((item: unknown): Course | null => {
+        if (!item || typeof item !== "object") return null;
+        const source = item as Record<string, unknown>;
+        const value = source.course && typeof source.course === "object" ? source.course as Record<string, unknown> : source;
+        if (typeof value.id !== "string" || typeof value.name !== "string") return null;
+        return { id: value.id, name: value.name, courseNo: typeof value.courseNo === "string" ? value.courseNo : null };
+      }).filter((item: Course | null): item is Course => item !== null);
+      setCourses(normalized);
+      if (normalized.length > 0) setExamCourseId((current) => current || normalized[0].id);
+    } catch (error) {
+      console.error(error);
+      setCourses([]);
+    }
+  }
+
+  async function loadCourseClasses(courseId: string) {
+    setCourseClasses([]);
+    setExamCourseClassId("");
+    if (!courseId) return;
+    try {
+      const response = await fetch(`/api/courses/${encodeURIComponent(courseId)}/classes`, { cache: "no-store" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || "Failed to load course classes.");
+      const raw = Array.isArray(data?.classes) ? data.classes : [];
+      const normalized = raw.map((item: unknown): CourseClass | null => {
+        if (!item || typeof item !== "object") return null;
+        const row = item as Record<string, unknown>;
+        if (typeof row.id !== "string" || typeof row.title !== "string") return null;
+        return { id: row.id, classNo: row.classNo == null ? null : Number(row.classNo), title: row.title, status: typeof row.status === "string" ? row.status : null };
+      }).filter((item: CourseClass | null): item is CourseClass => item !== null);
+      setCourseClasses(normalized);
+      if (normalized.length > 0) setExamCourseClassId(normalized[0].id);
+    } catch (error) {
+      console.error(error);
+      setCourseClasses([]);
+    }
+  }
+
   async function loadBatches() {
     setLoadingBatches(true);
 
@@ -1287,6 +1375,17 @@ export default function ExamsPage() {
     setLoadingStudents(true);
 
     try {
+      if (examRow.mode === "COURSE" && examRow.exam.courseId) {
+        const response = await fetch(
+          `/api/exams/course-students?courseId=${encodeURIComponent(examRow.exam.courseId)}&courseClassId=${encodeURIComponent(examRow.exam.courseClassId || "")}`,
+          { cache: "no-store" }
+        );
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.error || "Failed to load course students.");
+        setStudents(normalizeStudents(data?.students ?? data));
+        return;
+      }
+
       const batch =
         batches.find(
           (item: Batch) =>
@@ -1543,6 +1642,9 @@ export default function ExamsPage() {
     setExamProgrammeId("");
     setExamSemesterId("");
     setExamBatchId(batches[0]?.id ?? "");
+    setExamCourseId(courses[0]?.id ?? "");
+    setExamCourseClassId("");
+    setCourseClasses([]);
     setExamName("");
     setExamDate("");
     setSubjects([{ ...EMPTY_SUBJECT }]);
@@ -1643,7 +1745,7 @@ export default function ExamsPage() {
         });
         return;
       }
-    } else {
+    } else if (examMode === "PROGRAMME") {
       if (!examProgrammeId) {
         setNotice({
           type: "error",
@@ -1657,6 +1759,15 @@ export default function ExamsPage() {
           type: "error",
           message: "Please select a semester.",
         });
+        return;
+      }
+    } else {
+      if (!examCourseId) {
+        setNotice({ type: "error", message: "Please select a course." });
+        return;
+      }
+      if (!examCourseClassId) {
+        setNotice({ type: "error", message: "Please select a course class." });
         return;
       }
     }
@@ -1771,7 +1882,14 @@ export default function ExamsPage() {
               examMode === "PROGRAMME" ? examProgrammeId : null,
             semesterId:
               examMode === "PROGRAMME" ? examSemesterId : null,
-            batchId: examBatchId || null,
+            courseId:
+              examMode === "COURSE" ? examCourseId : null,
+            courseClassId:
+              examMode === "COURSE" ? examCourseClassId : null,
+            batchId:
+              examMode === "BATCH" || examMode === "PROGRAMME"
+                ? examBatchId || null
+                : null,
             name: trimmedName,
             examDate:
               examDate || null,
@@ -2222,7 +2340,9 @@ export default function ExamsPage() {
             }}
             disabled={
               loadingBatches ||
-              batches.length === 0
+              (examMode === "BATCH" && batches.length === 0) ||
+              (examMode === "PROGRAMME" && programmes.length === 0) ||
+              (examMode === "COURSE" && courses.length === 0)
             }
             className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
           >
@@ -2369,7 +2489,16 @@ export default function ExamsPage() {
                                       .name
                                   }
                                 </h3>
-                                 {item.mode === "PROGRAMME" ? (
+                                 {item.mode === "COURSE" ? (
+                                   <>
+                                     <p className="mt-1 text-sm font-medium text-blue-700">
+                                       Course: {item.courseName || "Not set"}
+                                     </p>
+                                     <p className="mt-1 text-sm text-purple-700">
+                                       Class: {item.courseClassNo ? `Class ${item.courseClassNo} — ` : ""}{item.courseClassTitle || "Not set"}
+                                     </p>
+                                   </>
+                                 ) : item.mode === "PROGRAMME" ? (
                                    <>
                                      <p className="mt-1 text-sm font-medium text-[#0f766e]">
                                        Programme: {item.programmeName || "Not set"}
@@ -2456,7 +2585,16 @@ export default function ExamsPage() {
                               .name
                           }
                         </h2>
-                         {selectedExam.mode === "PROGRAMME" ? (
+                         {selectedExam.mode === "COURSE" ? (
+                           <>
+                             <p className="mt-1 text-sm text-blue-700">
+                               Course: {selectedExamCourse?.name || selectedExam.courseName || "Not set"}
+                             </p>
+                             <p className="mt-1 text-sm text-purple-700">
+                               Class: {selectedExam.courseClassNo ? `Class ${selectedExam.courseClassNo} — ` : ""}{selectedExam.courseClassTitle || "Not set"}
+                             </p>
+                           </>
+                         ) : selectedExam.mode === "PROGRAMME" ? (
                            <>
                              <p className="mt-1 text-sm text-gray-600">
                                Programme: {selectedExamProgramme?.name || selectedExam.programmeName || "Not set"}
@@ -3103,12 +3241,27 @@ export default function ExamsPage() {
                         if (value === "BATCH") {
                           setExamProgrammeId("");
                           setExamSemesterId("");
+                          setExamCourseId("");
+                          setExamCourseClassId("");
+                          setCourseClasses([]);
                           setExamBatchId(batches[0]?.id ?? "");
-                        } else {
+                        } else if (value === "PROGRAMME") {
                           const firstProgramme = programmes[0];
                           setExamProgrammeId(firstProgramme?.id ?? "");
                           setExamSemesterId(firstProgramme?.semesters[0]?.id ?? "");
+                          setExamCourseId("");
+                          setExamCourseClassId("");
+                          setCourseClasses([]);
                           setExamBatchId("");
+                        } else {
+                          setExamProgrammeId("");
+                          setExamSemesterId("");
+                          const firstCourse = courses[0];
+                          setExamCourseId(firstCourse?.id ?? "");
+                          setExamCourseClassId("");
+                          setCourseClasses([]);
+                          setExamBatchId("");
+                          if (firstCourse?.id) void loadCourseClasses(firstCourse.id);
                         }
                       }}
                       disabled={submitting}
@@ -3116,10 +3269,53 @@ export default function ExamsPage() {
                     >
                       <option value="BATCH">Batch Exam</option>
                       <option value="PROGRAMME">Programme Exam</option>
+                      <option value="COURSE">Course Exam</option>
                     </select>
                   </div>
 
-                  {examMode === "PROGRAMME" ? (
+                  {examMode === "COURSE" ? (
+                    <>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-gray-700">Course</label>
+                        <select
+                          value={examCourseId}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setExamCourseId(value);
+                            void loadCourseClasses(value);
+                          }}
+                          disabled={submitting}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                        >
+                          <option value="">Select course</option>
+                          {courses.map((course) => (
+                            <option key={course.id} value={course.id}>
+                              {course.courseNo ? `${course.courseNo} — ` : ""}{course.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-gray-700">Course Class</label>
+                        <select
+                          value={examCourseClassId}
+                          onChange={(event) => setExamCourseClassId(event.target.value)}
+                          disabled={submitting || !examCourseId || courseClasses.length === 0}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                        >
+                          <option value="">Select course class</option>
+                          {courseClasses.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.classNo ? `Class ${item.classNo} — ` : ""}{item.title}
+                            </option>
+                          ))}
+                        </select>
+                        {examCourseId && courseClasses.length === 0 && (
+                          <p className="mt-1 text-xs text-amber-600">No course classes found. Create a class under Courses first.</p>
+                        )}
+                      </div>
+                    </>
+                  ) : examMode === "PROGRAMME" ? (
                     <>
                       <div>
                         <label className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -3393,8 +3589,9 @@ export default function ExamsPage() {
                     disabled={
                       submitting ||
                       loadingBatches ||
-                      batches.length ===
-                        0
+                      (examMode === "BATCH" && batches.length === 0) ||
+                      (examMode === "PROGRAMME" && programmes.length === 0) ||
+                      (examMode === "COURSE" && courses.length === 0)
                     }
                     className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                   >
