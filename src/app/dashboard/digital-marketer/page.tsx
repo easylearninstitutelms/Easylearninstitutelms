@@ -80,6 +80,7 @@ export default function DigitalMarketerPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [viewReport, setViewReport] = useState<Report | null>(null);
 
   async function loadReports() {
     setLoading(true);
@@ -212,9 +213,9 @@ export default function DigitalMarketerPage() {
           ["Ad Spend", money(totals.spent), "💰", `${budgetPercent}% of budget`],
         ].map(([label, value, icon, sub]) => (
           <div key={String(label)} className="relative overflow-hidden bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <div className="h-1 absolute left-0 top-0 w-full bg-blue-600 rounded-t-2xl" />
             <div className="flex items-start justify-between">
-              <span className="w-9 h-9 rounded-xl bg-blue-50 grid place-items-center">{icon}</span>
-              <span className="text-[11px] text-emerald-600 font-medium">{label === "Ad Spend" ? "" : "● Active"}</span>
+              <span className="w-9 h-9 rounded-xl bg-slate-100 grid place-items-center text-sm">{icon}</span>
             </div>
             <p className="text-xs font-semibold text-slate-500 mt-4">{label}</p>
             <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
@@ -302,7 +303,7 @@ export default function DigitalMarketerPage() {
                         <td className="font-medium">{new Date(r.report_date).toLocaleDateString("en-BD", { day: "2-digit", month: "short", year: "numeric" })}</td>
                         <td>{r.posts_count}</td><td>{r.videos_count}</td><td>{r.leads_count}</td><td>{r.enrollments_count}</td>
                         <td>{money(r.budget_spent)}</td>
-                        <td><button className="text-xs font-semibold text-blue-600 hover:underline" onClick={() => setExpanded(expanded === r.id ? null : r.id)}>{expanded === r.id ? "Hide" : "View"}</button></td>
+                        <td><button className="text-xs font-semibold text-blue-600 hover:underline" onClick={() => setViewReport(r)}>{expanded === r.id ? "Hide" : "View"}</button></td>
                       </tr>
                     ))}
                   </tbody>
