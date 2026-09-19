@@ -76,6 +76,8 @@ export async function GET(request: Request) {
         h.course_id AS "courseId",
         h.programme_id AS "programmeId",
         h.semester_id AS "semesterId",
+        h.course_class_id AS "courseClassId",
+        h.programme_class_id AS "programmeClassId",
         h.teacher_id AS "teacherId",
         h.title,
         h.description,
@@ -84,10 +86,20 @@ export async function GET(request: Request) {
         h.created_at AS "createdAt",
 
         COALESCE(b.name, '') AS "batchName",
+
         COALESCE(co.name, '') AS "courseName",
+
+        COALESCE(cc.title, '') AS "courseClassTitle",
+        cc.class_no AS "courseClassNo",
+
         COALESCE(p.name, '') AS "programmeName",
+
         COALESCE(ps.name, '') AS "semesterName",
         ps.semester_no AS "semesterNo",
+
+        COALESCE(pc.title, '') AS "programmeClassTitle",
+        pc.class_no AS "programmeClassNo",
+
         COALESCE(st.name, '') AS "teacherName",
 
         CASE
@@ -105,31 +117,41 @@ export async function GET(request: Request) {
       LEFT JOIN courses co
         ON co.id = h.course_id
 
+      LEFT JOIN course_syllabus_classes cc
+        ON cc.id = h.course_class_id
+
       LEFT JOIN programmes p
         ON p.id = h.programme_id
 
       LEFT JOIN programme_semesters ps
         ON ps.id = h.semester_id
 
+      LEFT JOIN programme_syllabus_classes pc
+        ON pc.id = h.programme_class_id
+
       LEFT JOIN staff st
         ON st.id = h.teacher_id
 
       WHERE h.institute_id = ${session.instituteId}
+
         ${
           courseId
             ? sql`AND h.course_id = ${courseId}`
             : sql``
         }
+
         ${
           programmeId
             ? sql`AND h.programme_id = ${programmeId}`
             : sql``
         }
+
         ${
           semesterId
             ? sql`AND h.semester_id = ${semesterId}`
             : sql``
         }
+
         ${
           batchId
             ? sql`AND h.batch_id = ${batchId}`
@@ -181,28 +203,36 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
+    const targetTypeFromBody = getTargetType(
+      body.targetType
+    );
+
+    const targetType: TargetType | "" =
+      targetTypeFromBody ||
+      (cleanText(body.courseId)
+        ? "course"
+        : cleanText(body.programmeId)
+        ? "programme"
+        : cleanText(body.batchId)
+        ? "batch"
+        : "");
+
     const batchId = cleanText(body.batchId);
     const courseId = cleanText(body.courseId);
     const programmeId = cleanText(body.programmeId);
     const semesterId = cleanText(body.semesterId);
+    const courseClassId = cleanText(
+      body.courseClassId
+    );
+    const programmeClassId = cleanText(
+      body.programmeClassId
+    );
     const teacherId = cleanText(body.teacherId);
 
     const title = cleanText(body.title);
     const description = cleanText(body.description);
     const deadline = cleanText(body.deadline);
     const attachmentUrl = cleanText(body.attachmentUrl);
-
-    const targetTypeFromBody = getTargetType(body.targetType);
-
-    const targetType: TargetType | "" =
-      targetTypeFromBody ||
-      (courseId
-        ? "course"
-        : programmeId
-        ? "programme"
-        : batchId
-        ? "batch"
-        : "");
 
     if (!title) {
       return NextResponse.json(
@@ -216,39 +246,46 @@ export async function POST(request: Request) {
     if (!targetType) {
       return NextResponse.json(
         {
-          error:
-            "Please select a homework target.",
+          error: "Please select a homework target.",
         },
         { status: 400 }
       );
     }
 
+    /*
+     * =========================================================
+     * COURSE + COURSE SYLLABUS CLASS
+     * =========================================================
+     */
     if (targetType === "course") {
       if (!courseId) {
         return NextResponse.json(
           {
-            error:
-              "Please select a course.",
+            error: "Please select a course.",
           },
           { status: 400 }
         );
       }
 
-      if (!batchId) {
+      if (!courseClassId) {
         return NextResponse.json(
           {
-            error:
-              "Please select a class/batch.",
+            error: "Please select a course class.",
           },
           { status: 400 }
         );
       }
 
-      if (programmeId || semesterId) {
+      if (
+        programmeId ||
+        semesterId ||
+        programmeClassId ||
+        batchId
+      ) {
         return NextResponse.json(
           {
             error:
-              "Course homework cannot contain programme or semester.",
+              "Course homework can only contain Course and Course Class.",
           },
           { status: 400 }
         );
@@ -277,49 +314,56 @@ export async function POST(request: Request) {
         );
       }
 
-      const batchResult = await db.execute(sql`
+      const classResult = await db.execute(sql`
         SELECT
           id,
-          name,
           course_id AS "courseId",
-          programme_id AS "programmeId",
-          semester_id AS "semesterId"
-        FROM batches
-        WHERE id = ${batchId}
+          class_no AS "classNo",
+          title,
+          status
+        FROM course_syllabus_classes
+        WHERE id = ${courseClassId}
+          AND course_id = ${courseId}
           AND institute_id = ${session.instituteId}
-          AND status = 'ACTIVE'
         LIMIT 1
       `);
 
-      const batch = rowsOf(batchResult)[0];
+      const courseClass =
+        rowsOf(classResult)[0];
 
-      if (!batch) {
+      if (!courseClass) {
         return NextResponse.json(
           {
             error:
-              "Selected class/batch was not found or is inactive.",
+              "Selected course class was not found.",
           },
           { status: 400 }
         );
       }
 
-      if (String(batch.courseId || "") !== courseId) {
+      if (
+        courseClass.status === "CANCELLED"
+      ) {
         return NextResponse.json(
           {
             error:
-              "Selected class/batch does not belong to this course.",
+              "Selected course class is cancelled.",
           },
           { status: 400 }
         );
       }
     }
 
+    /*
+     * =========================================================
+     * PROGRAMME + SEMESTER + PROGRAMME SYLLABUS CLASS
+     * =========================================================
+     */
     if (targetType === "programme") {
       if (!programmeId) {
         return NextResponse.json(
           {
-            error:
-              "Please select a programme.",
+            error: "Please select a programme.",
           },
           { status: 400 }
         );
@@ -328,45 +372,50 @@ export async function POST(request: Request) {
       if (!semesterId) {
         return NextResponse.json(
           {
-            error:
-              "Please select a semester.",
+            error: "Please select a semester.",
           },
           { status: 400 }
         );
       }
 
-      if (!batchId) {
+      if (!programmeClassId) {
         return NextResponse.json(
           {
             error:
-              "Please select a class/batch.",
+              "Please select a programme class.",
           },
           { status: 400 }
         );
       }
 
-      if (courseId) {
+      if (
+        courseId ||
+        courseClassId ||
+        batchId
+      ) {
         return NextResponse.json(
           {
             error:
-              "Programme homework cannot contain a course.",
+              "Programme homework can only contain Programme, Semester and Programme Class.",
           },
           { status: 400 }
         );
       }
 
-      const programmeResult = await db.execute(sql`
-        SELECT
-          id,
-          name
-        FROM programmes
-        WHERE id = ${programmeId}
-          AND institute_id = ${session.instituteId}
-          AND status = 'ACTIVE'
-        LIMIT 1
-      `);
+      const programmeResult =
+        await db.execute(sql`
+          SELECT
+            id,
+            name
+          FROM programmes
+          WHERE id = ${programmeId}
+            AND institute_id = ${session.instituteId}
+            AND status = 'ACTIVE'
+          LIMIT 1
+        `);
 
-      const programme = rowsOf(programmeResult)[0];
+      const programme =
+        rowsOf(programmeResult)[0];
 
       if (!programme) {
         return NextResponse.json(
@@ -378,20 +427,22 @@ export async function POST(request: Request) {
         );
       }
 
-      const semesterResult = await db.execute(sql`
-        SELECT
-          id,
-          programme_id AS "programmeId",
-          semester_no AS "semesterNo",
-          name
-        FROM programme_semesters
-        WHERE id = ${semesterId}
-          AND programme_id = ${programmeId}
-          AND institute_id = ${session.instituteId}
-        LIMIT 1
-      `);
+      const semesterResult =
+        await db.execute(sql`
+          SELECT
+            id,
+            programme_id AS "programmeId",
+            semester_no AS "semesterNo",
+            name
+          FROM programme_semesters
+          WHERE id = ${semesterId}
+            AND programme_id = ${programmeId}
+            AND institute_id = ${session.instituteId}
+          LIMIT 1
+        `);
 
-      const semester = rowsOf(semesterResult)[0];
+      const semester =
+        rowsOf(semesterResult)[0];
 
       if (!semester) {
         return NextResponse.json(
@@ -403,75 +454,78 @@ export async function POST(request: Request) {
         );
       }
 
-      const batchResult = await db.execute(sql`
-        SELECT
-          id,
-          name,
-          course_id AS "courseId",
-          programme_id AS "programmeId",
-          semester_id AS "semesterId"
-        FROM batches
-        WHERE id = ${batchId}
-          AND institute_id = ${session.instituteId}
-          AND status = 'ACTIVE'
-        LIMIT 1
-      `);
+      const classResult =
+        await db.execute(sql`
+          SELECT
+            id,
+            programme_id AS "programmeId",
+            semester_id AS "semesterId",
+            class_no AS "classNo",
+            title,
+            status
+          FROM programme_syllabus_classes
+          WHERE id = ${programmeClassId}
+            AND programme_id = ${programmeId}
+            AND semester_id = ${semesterId}
+            AND institute_id = ${session.instituteId}
+          LIMIT 1
+        `);
 
-      const batch = rowsOf(batchResult)[0];
+      const programmeClass =
+        rowsOf(classResult)[0];
 
-      if (!batch) {
+      if (!programmeClass) {
         return NextResponse.json(
           {
             error:
-              "Selected class/batch was not found or is inactive.",
+              "Selected programme class was not found.",
           },
           { status: 400 }
         );
       }
 
       if (
-        String(batch.programmeId || "") !==
-        programmeId
+        programmeClass.status ===
+        "CANCELLED"
       ) {
         return NextResponse.json(
           {
             error:
-              "Selected class/batch does not belong to this programme.",
-          },
-          { status: 400 }
-        );
-      }
-
-      if (
-        String(batch.semesterId || "") !==
-        semesterId
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Selected class/batch does not belong to this semester.",
+              "Selected programme class is cancelled.",
           },
           { status: 400 }
         );
       }
     }
 
+    /*
+     * =========================================================
+     * LEGACY BATCH HOMEWORK
+     * =========================================================
+     *
+     * Existing batch functionality remains available.
+     */
     if (targetType === "batch") {
       if (!batchId) {
         return NextResponse.json(
           {
-            error:
-              "Please select a class/batch.",
+            error: "Please select a batch.",
           },
           { status: 400 }
         );
       }
 
-      if (courseId || programmeId || semesterId) {
+      if (
+        courseId ||
+        programmeId ||
+        semesterId ||
+        courseClassId ||
+        programmeClassId
+      ) {
         return NextResponse.json(
           {
             error:
-              "Legacy batch homework cannot contain course, programme or semester.",
+              "Batch homework cannot contain course, programme, semester or syllabus class.",
           },
           { status: 400 }
         );
@@ -488,7 +542,8 @@ export async function POST(request: Request) {
         LIMIT 1
       `);
 
-      const batch = rowsOf(batchResult)[0];
+      const batch =
+        rowsOf(batchResult)[0];
 
       if (!batch) {
         return NextResponse.json(
@@ -501,19 +556,26 @@ export async function POST(request: Request) {
       }
     }
 
+    /*
+     * =========================================================
+     * TEACHER
+     * =========================================================
+     */
     let finalTeacherId: string | null = null;
 
     if (teacherId) {
-      const teacherResult = await db.execute(sql`
-        SELECT
-          id
-        FROM staff
-        WHERE id = ${teacherId}
-          AND institute_id = ${session.instituteId}
-        LIMIT 1
-      `);
+      const teacherResult =
+        await db.execute(sql`
+          SELECT
+            id
+          FROM staff
+          WHERE id = ${teacherId}
+            AND institute_id = ${session.instituteId}
+          LIMIT 1
+        `);
 
-      const teacher = rowsOf(teacherResult)[0];
+      const teacher =
+        rowsOf(teacherResult)[0];
 
       if (!teacher) {
         return NextResponse.json(
@@ -528,53 +590,69 @@ export async function POST(request: Request) {
       finalTeacherId = teacherId;
     }
 
-    const insertResult = await db.execute(sql`
-      INSERT INTO homework (
-        institute_id,
-        batch_id,
-        course_id,
-        programme_id,
-        semester_id,
-        teacher_id,
-        title,
-        description,
-        deadline,
-        attachment_url
-      )
-      VALUES (
-        ${session.instituteId},
-        ${batchId || null},
-        ${courseId || null},
-        ${programmeId || null},
-        ${semesterId || null},
-        ${finalTeacherId},
-        ${title},
-        ${description || null},
-        ${deadline || null},
-        ${attachmentUrl || null}
-      )
-      RETURNING
-        id,
-        institute_id AS "instituteId",
-        batch_id AS "batchId",
-        course_id AS "courseId",
-        programme_id AS "programmeId",
-        semester_id AS "semesterId",
-        teacher_id AS "teacherId",
-        title,
-        description,
-        deadline,
-        attachment_url AS "attachmentUrl",
-        created_at AS "createdAt"
-    `);
+    /*
+     * =========================================================
+     * INSERT
+     * =========================================================
+     */
+    const insertResult =
+      await db.execute(sql`
+        INSERT INTO homework (
+          institute_id,
+          batch_id,
+          course_id,
+          programme_id,
+          semester_id,
+          course_class_id,
+          programme_class_id,
+          teacher_id,
+          title,
+          description,
+          deadline,
+          attachment_url
+        )
+        VALUES (
+          ${session.instituteId},
+          ${batchId || null},
+          ${courseId || null},
+          ${programmeId || null},
+          ${semesterId || null},
+          ${courseClassId || null},
+          ${programmeClassId || null},
+          ${finalTeacherId},
+          ${title},
+          ${description || null},
+          ${deadline || null},
+          ${attachmentUrl || null}
+        )
+        RETURNING
+          id,
+          institute_id AS "instituteId",
+          batch_id AS "batchId",
+          course_id AS "courseId",
+          programme_id AS "programmeId",
+          semester_id AS "semesterId",
+          course_class_id AS "courseClassId",
+          programme_class_id AS "programmeClassId",
+          teacher_id AS "teacherId",
+          title,
+          description,
+          deadline,
+          attachment_url AS "attachmentUrl",
+          created_at AS "createdAt"
+      `);
 
-    const homework = rowsOf(insertResult)[0];
+    const homework =
+      rowsOf(insertResult)[0];
 
     return NextResponse.json({
       homework,
     });
   } catch (error) {
-    console.error("POST /api/homework error:", error);
+    console.error(
+      "POST /api/homework error:",
+      error
+    );
 
     return NextResponse.json(
       {
@@ -587,7 +665,9 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(
+  request: Request
+) {
   try {
     const session = await getSession();
 
@@ -610,9 +690,12 @@ export async function DELETE(request: Request) {
 
     await ensureAcademicSchema();
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } =
+      new URL(request.url);
 
-    const id = cleanText(searchParams.get("id"));
+    const id = cleanText(
+      searchParams.get("id")
+    );
 
     if (!id) {
       return NextResponse.json(
@@ -630,7 +713,8 @@ export async function DELETE(request: Request) {
       RETURNING id
     `);
 
-    const deleted = rowsOf(result)[0];
+    const deleted =
+      rowsOf(result)[0];
 
     if (!deleted) {
       return NextResponse.json(

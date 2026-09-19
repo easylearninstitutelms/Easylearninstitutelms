@@ -330,12 +330,12 @@ export function ensureAcademicSchema() {
 
         /* =========================================================
            HOMEWORK / ASSIGNMENT TARGETING
-           
+
            A homework can now belong to:
-           1. Course
-           2. Programme + Semester
+           1. Course + Course Syllabus Class
+           2. Programme + Semester + Programme Syllabus Class
            3. Legacy Batch
-           
+
            batch_id becomes optional for new Course/Programme homework.
         ========================================================= */
 
@@ -351,6 +351,12 @@ export function ensureAcademicSchema() {
         ALTER TABLE homework
           ADD COLUMN IF NOT EXISTS semester_id uuid;
 
+        ALTER TABLE homework
+          ADD COLUMN IF NOT EXISTS course_class_id uuid;
+
+        ALTER TABLE homework
+          ADD COLUMN IF NOT EXISTS programme_class_id uuid;
+
         CREATE INDEX IF NOT EXISTS homework_course_idx
           ON homework(course_id);
 
@@ -360,8 +366,17 @@ export function ensureAcademicSchema() {
         CREATE INDEX IF NOT EXISTS homework_semester_idx
           ON homework(semester_id);
 
+        CREATE INDEX IF NOT EXISTS homework_course_class_idx
+          ON homework(course_class_id);
+
+        CREATE INDEX IF NOT EXISTS homework_programme_class_idx
+          ON homework(programme_class_id);
+
         CREATE INDEX IF NOT EXISTS homework_target_idx
           ON homework(course_id, programme_id, semester_id);
+
+        CREATE INDEX IF NOT EXISTS homework_class_target_idx
+          ON homework(course_class_id, programme_class_id);
       `)
       .then(() => undefined);
   }

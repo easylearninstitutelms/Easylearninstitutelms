@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 import { formatDate } from "@/lib/utils";
@@ -20,9 +19,15 @@ interface HwRow {
   homework: HomeworkItem;
   batchName?: string | null;
   courseName?: string | null;
+  courseClassTitle?: string | null;
+  courseClassNo?: number | null;
   programmeName?: string | null;
   semesterName?: string | null;
+  semesterNo?: number | null;
+  programmeClassTitle?: string | null;
+  programmeClassNo?: number | null;
   teacherName?: string | null;
+  targetType?: string | null;
 }
 
 interface Course {
@@ -44,14 +49,6 @@ interface Programme {
   semesters?: ProgrammeSemester[];
 }
 
-interface Semester {
-  id: string;
-  name: string;
-  programmeId?: string | null;
-  programme_id?: string | null;
-  semesterNo?: number | null;
-}
-
 interface Batch {
   id: string;
   name: string;
@@ -63,18 +60,51 @@ interface Batch {
   courseName?: string | null;
 }
 
+interface CourseClass {
+  id: string;
+  classNo?: number | null;
+  title: string;
+  description?: string | null;
+  scheduledDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  status?: string | null;
+}
+
+interface ProgrammeClass {
+  id: string;
+  classNo?: number | null;
+  title: string;
+  description?: string | null;
+  scheduledDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  status?: string | null;
+  semesterId?: string | null;
+  semesterNo?: number | null;
+  semesterName?: string | null;
+}
+
 interface Staff {
   id: string;
   name: string;
 }
 
-type TargetType = "course" | "programme" | "batch";
+type TargetType =
+  | "course"
+  | "programme"
+  | "batch";
 
 interface FormState {
   courseId: string;
+  courseClassId: string;
+
   programmeId: string;
   semesterId: string;
+  programmeClassId: string;
+
   batchId: string;
+
   teacherId: string;
   title: string;
   description: string;
@@ -83,9 +113,14 @@ interface FormState {
 
 const initialForm: FormState = {
   courseId: "",
+  courseClassId: "",
+
   programmeId: "",
   semesterId: "",
+  programmeClassId: "",
+
   batchId: "",
+
   teacherId: "",
   title: "",
   description: "",
@@ -93,18 +128,46 @@ const initialForm: FormState = {
 };
 
 export default function HomeworkPage() {
-  const [hwList, setHwList] = useState<HwRow[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [programmes, setProgrammes] = useState<Programme[]>([]);
-  const [semesters, setSemesters] = useState<Semester[]>([]);
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [hwList, setHwList] =
+    useState<HwRow[]>([]);
 
-  const [loading, setLoading] = useState(true);
-  const [loadingOptions, setLoadingOptions] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [courses, setCourses] =
+    useState<Course[]>([]);
+
+  const [programmes, setProgrammes] =
+    useState<Programme[]>([]);
+
+  const [batches, setBatches] =
+    useState<Batch[]>([]);
+
+  const [staffList, setStaffList] =
+    useState<Staff[]>([]);
+
+  const [courseClasses, setCourseClasses] =
+    useState<CourseClass[]>([]);
+
+  const [
+    programmeClasses,
+    setProgrammeClasses,
+  ] = useState<ProgrammeClass[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [loadingOptions, setLoadingOptions] =
+    useState(true);
+
+  const [loadingClasses, setLoadingClasses] =
+    useState(false);
+
+  const [showModal, setShowModal] =
+    useState(false);
+
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
 
   const [targetType, setTargetType] =
     useState<TargetType>("course");
@@ -116,15 +179,19 @@ export default function HomeworkPage() {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/homework", {
-        cache: "no-store",
-      });
+      const res = await fetch(
+        "/api/homework",
+        {
+          cache: "no-store",
+        }
+      );
 
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(
-          data?.error || "Failed to load homework"
+          data?.error ||
+            "Failed to load homework"
         );
       }
 
@@ -137,201 +204,228 @@ export default function HomeworkPage() {
     }
   }, []);
 
-  const fetchOptions = useCallback(async () => {
-    try {
-      setLoadingOptions(true);
-      setError("");
+  const fetchOptions =
+    useCallback(async () => {
+      try {
+        setLoadingOptions(true);
+        setError("");
 
-      const results = await Promise.all([
-        fetch("/api/courses", {
-          cache: "no-store",
-        }),
-        fetch("/api/programmes", {
-          cache: "no-store",
-        }),
-        fetch("/api/batches", {
-          cache: "no-store",
-        }),
-        fetch("/api/staff", {
-          cache: "no-store",
-        }),
-      ]);
+        const results =
+          await Promise.all([
+            fetch("/api/courses", {
+              cache: "no-store",
+            }),
 
-      const courseData = await results[0].json();
-      const programmeData = await results[1].json();
-      const batchData = await results[2].json();
-      const staffData = await results[3].json();
+            fetch("/api/programmes", {
+              cache: "no-store",
+            }),
 
-      if (!results[0].ok) {
-        throw new Error(
-          courseData?.error || "Failed to load courses"
-        );
-      }
+            fetch("/api/batches", {
+              cache: "no-store",
+            }),
 
-      if (!results[1].ok) {
-        throw new Error(
-          programmeData?.error ||
-            "Failed to load programmes"
-        );
-      }
+            fetch("/api/staff", {
+              cache: "no-store",
+            }),
+          ]);
 
-      if (!results[2].ok) {
-        throw new Error(
-          batchData?.error || "Failed to load batches"
-        );
-      }
+        const courseData =
+          await results[0].json();
 
-      if (!results[3].ok) {
-        throw new Error(
-          staffData?.error || "Failed to load staff"
-        );
-      }
+        const programmeData =
+          await results[1].json();
 
-      const courseRows: Course[] =
-        courseData.courses || [];
+        const batchData =
+          await results[2].json();
 
-      const programmeRows: Programme[] =
-        programmeData.programmes || [];
+        const staffData =
+          await results[3].json();
 
-      const batchRows = batchData.batches || [];
+        if (!results[0].ok) {
+          throw new Error(
+            courseData?.error ||
+              "Failed to load courses"
+          );
+        }
 
-      const staffRows: Staff[] =
-        staffData.staff || [];
+        if (!results[1].ok) {
+          throw new Error(
+            programmeData?.error ||
+              "Failed to load programmes"
+          );
+        }
 
-      setCourses(courseRows);
-      setProgrammes(programmeRows);
-      setStaffList(staffRows);
+        if (!results[2].ok) {
+          throw new Error(
+            batchData?.error ||
+              "Failed to load batches"
+          );
+        }
 
-      const semesterRows: Semester[] =
-        programmeRows.flatMap((programme) =>
-          (programme.semesters || []).map(
-            (semester) => ({
-              id: semester.id,
-              name: semester.name,
-              semesterNo:
-                semester.semesterNo ?? null,
-              programmeId: programme.id,
-            })
-          )
+        if (!results[3].ok) {
+          throw new Error(
+            staffData?.error ||
+              "Failed to load staff"
+          );
+        }
+
+        setCourses(
+          courseData.courses || []
         );
 
-      setSemesters(semesterRows);
+        setProgrammes(
+          programmeData.programmes || []
+        );
 
-      const normalizedBatches: Batch[] =
-        batchRows.map(
-          (
-            item:
-              | Batch
-              | {
-                  batch: Batch;
-                }
-          ) => {
-            if ("batch" in item && item.batch) {
-              return item.batch;
+        const rawBatches =
+          batchData.batches || [];
+
+        const normalizedBatches: Batch[] =
+          rawBatches.map(
+            (
+              item:
+                | Batch
+                | { batch: Batch }
+            ) => {
+              if (
+                "batch" in item &&
+                item.batch
+              ) {
+                return item.batch;
+              }
+
+              return item as Batch;
             }
+          );
 
-            return item as Batch;
-          }
+        setBatches(
+          normalizedBatches
         );
 
-      setBatches(normalizedBatches);
-    } catch (err) {
-      console.error(
-        "Homework options load error:",
-        err
-      );
+        setStaffList(
+          staffData.staff || []
+        );
+      } catch (err) {
+        console.error(err);
 
-      if (err instanceof Error) {
         setError(
-          err.message ||
-            "Failed to load Course, Programme, Semester or Batch data."
+          err instanceof Error
+            ? err.message
+            : "Failed to load assignment options."
         );
-      } else {
-        setError(
-          "Failed to load Course, Programme, Semester or Batch data."
-        );
+      } finally {
+        setLoadingOptions(false);
       }
-    } finally {
-      setLoadingOptions(false);
-    }
-  }, []);
+    }, []);
 
   useEffect(() => {
-    fetchHw();
-  }, [fetchHw]);
-
-  useEffect(() => {
-    fetchOptions();
-  }, [fetchOptions]);
-
-  const filteredSemesters = useMemo(() => {
-    if (!form.programmeId) {
-      return [];
-    }
-
-    return semesters
-      .filter((semester) => {
-        const programmeId =
-          semester.programmeId ||
-          semester.programme_id ||
-          "";
-
-        return programmeId === form.programmeId;
-      })
-      .sort((a, b) => {
-        const aNo =
-          a.semesterNo ?? Number.MAX_SAFE_INTEGER;
-
-        const bNo =
-          b.semesterNo ?? Number.MAX_SAFE_INTEGER;
-
-        return aNo - bNo;
-      });
-  }, [semesters, form.programmeId]);
-
-  const filteredBatches = useMemo(() => {
-    if (targetType === "course") {
-      if (!form.courseId) {
-        return [];
-      }
-
-      return batches.filter(
-        (batch) =>
-          String(batch.courseId || "") ===
-          form.courseId
-      );
-    }
-
-    if (targetType === "programme") {
-      if (
-        !form.programmeId ||
-        !form.semesterId
-      ) {
-        return [];
-      }
-
-      return batches.filter(
-        (batch) =>
-          String(batch.programmeId || "") ===
-            form.programmeId &&
-          String(batch.semesterId || "") ===
-            form.semesterId
-      );
-    }
-
-    return batches;
+    void fetchHw();
+    void fetchOptions();
   }, [
-    batches,
-    targetType,
-    form.courseId,
-    form.programmeId,
-    form.semesterId,
+    fetchHw,
+    fetchOptions,
   ]);
 
+  async function loadCourseClasses(
+    courseId: string
+  ) {
+    setCourseClasses([]);
+    setForm((prev) => ({
+      ...prev,
+      courseClassId: "",
+    }));
+
+    if (!courseId) {
+      return;
+    }
+
+    try {
+      setLoadingClasses(true);
+      setError("");
+
+      const res = await fetch(
+        `/api/courses/${courseId}/classes`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data?.error ||
+            "Failed to load course classes."
+        );
+      }
+
+      setCourseClasses(
+        data.classes || []
+      );
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load course classes."
+      );
+    } finally {
+      setLoadingClasses(false);
+    }
+  }
+
+  async function loadProgrammeClasses(
+    programmeId: string
+  ) {
+    setProgrammeClasses([]);
+
+    if (!programmeId) {
+      return;
+    }
+
+    try {
+      setLoadingClasses(true);
+      setError("");
+
+      const res = await fetch(
+        `/api/programmes/${programmeId}/syllabus`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data?.error ||
+            "Failed to load programme classes."
+        );
+      }
+
+      setProgrammeClasses(
+        data.classes || []
+      );
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load programme classes."
+      );
+    } finally {
+      setLoadingClasses(false);
+    }
+  }
+
   function openModal() {
-    setError("");
-    setForm({ ...initialForm });
+    setForm(initialForm);
+    setCourseClasses([]);
+    setProgrammeClasses([]);
     setTargetType("course");
+    setError("");
     setShowModal(true);
   }
 
@@ -344,152 +438,122 @@ export default function HomeworkPage() {
     setError("");
   }
 
-  function changeTargetType(type: TargetType) {
+  function changeTargetType(
+    type: TargetType
+  ) {
     setTargetType(type);
 
-    setForm((previous) => ({
-      ...previous,
-      courseId: "",
-      programmeId: "",
-      semesterId: "",
-      batchId: "",
-    }));
+    setForm(initialForm);
+
+    setCourseClasses([]);
+    setProgrammeClasses([]);
 
     setError("");
   }
 
-  function changeCourse(courseId: string) {
-    setForm((previous) => ({
-      ...previous,
+  async function changeCourse(
+    courseId: string
+  ) {
+    setForm((prev) => ({
+      ...prev,
       courseId,
+      courseClassId: "",
       batchId: "",
     }));
 
-    setError("");
+    await loadCourseClasses(courseId);
   }
 
-  function changeProgramme(programmeId: string) {
-    setForm((previous) => ({
-      ...previous,
+  async function changeProgramme(
+    programmeId: string
+  ) {
+    setForm((prev) => ({
+      ...prev,
       programmeId,
       semesterId: "",
+      programmeClassId: "",
       batchId: "",
     }));
 
-    setError("");
+    setProgrammeClasses([]);
+
+    await loadProgrammeClasses(
+      programmeId
+    );
   }
 
-  function changeSemester(semesterId: string) {
-    setForm((previous) => ({
-      ...previous,
+  function changeSemester(
+    semesterId: string
+  ) {
+    setForm((prev) => ({
+      ...prev,
       semesterId,
+      programmeClassId: "",
       batchId: "",
     }));
-
-    setError("");
   }
 
-  function getTargetLabel(row: HwRow) {
-    if (row.courseName) {
-      let label = "Course: " + row.courseName;
+  const selectedProgramme =
+    programmes.find(
+      (programme) =>
+        programme.id ===
+        form.programmeId
+    );
 
-      if (row.batchName) {
-        label += " | Class: " + row.batchName;
-      }
+  const filteredSemesters =
+    selectedProgramme?.semesters || [];
 
-      return label;
-    }
-
-    if (row.programmeName) {
-      let label =
-        "Programme: " + row.programmeName;
-
-      if (row.semesterName) {
-        label +=
-          " | Semester: " + row.semesterName;
-      }
-
-      if (row.batchName) {
-        label +=
-          " | Class: " + row.batchName;
-      }
-
-      return label;
-    }
-
-    if (row.batchName) {
-      return "Batch: " + row.batchName;
-    }
-
-    return "General";
-  }
-
-  function getTargetIcon(row: HwRow) {
-    if (row.courseName) {
-      return "BOOK";
-    }
-
-    if (row.programmeName) {
-      return "PROGRAMME";
-    }
-
-    if (row.batchName) {
-      return "BATCH";
-    }
-
-    return "HW";
-  }
+  const filteredProgrammeClasses =
+    programmeClasses.filter(
+      (item) =>
+        item.semesterId ===
+        form.semesterId
+    );
 
   async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>
+    event: React.FormEvent
   ) {
     event.preventDefault();
 
     setError("");
 
     if (!form.title.trim()) {
-      setError("Homework title is required.");
+      setError(
+        "Homework title is required."
+      );
       return;
     }
 
-    if (targetType === "course") {
-      if (!form.courseId) {
-        setError("Please select a Course.");
-        return;
-      }
-
-      if (!form.batchId) {
-        setError(
-          "Please select a Class / Batch for the selected Course."
-        );
-        return;
-      }
+    if (
+      targetType === "course" &&
+      (!form.courseId ||
+        !form.courseClassId)
+    ) {
+      setError(
+        "Please select Course and Course Class."
+      );
+      return;
     }
 
-    if (targetType === "programme") {
-      if (!form.programmeId) {
-        setError("Please select a Programme.");
-        return;
-      }
-
-      if (!form.semesterId) {
-        setError("Please select a Semester.");
-        return;
-      }
-
-      if (!form.batchId) {
-        setError(
-          "Please select a Class / Batch for the selected Programme and Semester."
-        );
-        return;
-      }
+    if (
+      targetType === "programme" &&
+      (!form.programmeId ||
+        !form.semesterId ||
+        !form.programmeClassId)
+    ) {
+      setError(
+        "Please select Programme, Semester and Programme Class."
+      );
+      return;
     }
 
     if (
       targetType === "batch" &&
       !form.batchId
     ) {
-      setError("Please select a Batch.");
+      setError(
+        "Please select Batch."
+      );
       return;
     }
 
@@ -502,29 +566,38 @@ export default function HomeworkPage() {
         courseId:
           targetType === "course"
             ? form.courseId
-            : null,
+            : "",
+
+        courseClassId:
+          targetType === "course"
+            ? form.courseClassId
+            : "",
 
         programmeId:
           targetType === "programme"
             ? form.programmeId
-            : null,
+            : "",
 
         semesterId:
           targetType === "programme"
             ? form.semesterId
-            : null,
+            : "",
 
-        batchId: form.batchId || null,
+        programmeClassId:
+          targetType === "programme"
+            ? form.programmeClassId
+            : "",
 
-        teacherId: form.teacherId || null,
+        batchId:
+          targetType === "batch"
+            ? form.batchId
+            : "",
 
+        teacherId: form.teacherId,
         title: form.title.trim(),
-
         description:
           form.description.trim(),
-
-        deadline:
-          form.deadline || null,
+        deadline: form.deadline,
       };
 
       const res = await fetch(
@@ -544,128 +617,155 @@ export default function HomeworkPage() {
       if (!res.ok) {
         throw new Error(
           data?.error ||
-            "Failed to assign homework"
+            "Failed to assign homework."
         );
       }
 
       setShowModal(false);
-      setForm({ ...initialForm });
-      setTargetType("course");
+      setForm(initialForm);
 
       await fetchHw();
     } catch (err) {
       console.error(err);
 
-      if (err instanceof Error) {
-        setError(
-          err.message ||
-            "Homework assignment failed."
-        );
-      } else {
-        setError(
-          "Homework assignment failed."
-        );
-      }
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to assign homework."
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
+  function getTargetLabel(
+    row: HwRow
+  ) {
+    const type =
+      row.targetType?.toUpperCase();
+
+    if (type === "COURSE") {
+      return (
+        "Course: " +
+        (row.courseName || "-") +
+        " | Class " +
+        (row.courseClassNo || "-") +
+        ": " +
+        (row.courseClassTitle || "-")
+      );
+    }
+
+    if (type === "PROGRAMME") {
+      return (
+        "Programme: " +
+        (row.programmeName || "-") +
+        " | Semester " +
+        (row.semesterNo || "-") +
+        " | Class " +
+        (row.programmeClassNo || "-") +
+        ": " +
+        (row.programmeClassTitle || "-")
+      );
+    }
+
+    return (
+      "Batch: " +
+      (row.batchName || "-")
+    );
+  }
+
   return (
-    <div className="space-y-5">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">
-            Homework
-          </h1>
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 
-          <p className="text-sm text-slate-500">
-            {hwList.length} assignments
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={openModal}
-          className="btn btn-primary"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-
-          Assign Homework
-        </button>
-      </div>
-
-      {error && !showModal && (
-        <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {hwList.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <div className="text-4xl mb-3">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700 text-white font-bold">
                 HW
-              </div>
+              </span>
 
-              <p className="text-slate-500">
-                No homework assigned yet
-              </p>
-
-              <button
-                type="button"
-                onClick={openModal}
-                className="btn btn-primary btn-sm mt-4"
-              >
-                Assign Homework
-              </button>
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                ACADEMIC
+              </span>
             </div>
-          ) : (
-            hwList.map((row) => (
+
+            <h1 className="text-3xl font-bold text-slate-900">
+              Homework
+            </h1>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Assign homework directly to Course Classes or Programme Semester Classes.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={openModal}
+            className="btn btn-primary"
+          >
+            + Assign Homework
+          </button>
+        </div>
+
+        {error && !showModal && (
+          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          </div>
+        ) : hwList.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center shadow-sm">
+            <p className="font-semibold text-slate-700">
+              No homework found
+            </p>
+
+            <p className="mt-1 text-sm text-slate-400">
+              Create your first homework assignment.
+            </p>
+
+            <button
+              type="button"
+              onClick={openModal}
+              className="btn btn-primary btn-sm mt-5"
+            >
+              + Assign Homework
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {hwList.map((row) => (
               <div
                 key={row.homework.id}
-                className="card hover:shadow-md transition-shadow"
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
               >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-xs font-bold text-orange-600 flex-shrink-0">
-                    {getTargetIcon(row)}
-                  </div>
-
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-slate-800">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="font-bold text-slate-900">
                       {row.homework.title}
-                    </h3>
+                    </h2>
 
-                    <p className="text-xs text-blue-600 mt-1">
+                    <p className="mt-2 text-xs font-semibold text-blue-600">
                       {getTargetLabel(row)}
                     </p>
                   </div>
+
+                  <span className="rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">
+                    HW
+                  </span>
                 </div>
 
                 {row.homework.description && (
-                  <p className="text-sm text-slate-500 mb-3 line-clamp-2">
+                  <p className="mt-4 line-clamp-3 text-sm text-slate-500">
                     {row.homework.description}
                   </p>
                 )}
 
-                <div className="flex items-center justify-between gap-2 text-xs text-slate-400">
+                <div className="mt-5 flex items-center justify-between gap-2 border-t pt-3 text-xs text-slate-400">
                   <span>
                     Teacher:{" "}
                     {row.teacherName || "-"}
@@ -681,7 +781,6 @@ export default function HomeworkPage() {
                           : "font-medium text-orange-500"
                       }
                     >
-                      Deadline:{" "}
                       {formatDate(
                         row.homework.deadline
                       )}
@@ -689,558 +788,587 @@ export default function HomeworkPage() {
                   )}
                 </div>
               </div>
-            ))
-          )}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {showModal && (
-        <div
-          className="modal-overlay"
-          onClick={(event) => {
-            if (
-              event.target ===
-              event.currentTarget
-            ) {
-              closeModal();
-            }
-          }}
-        >
-          <div className="modal-box">
-            <div className="modal-header">
-              <h2 className="modal-title">
-                Assign Homework
-              </h2>
+        {showModal && (
+          <div
+            className="modal-overlay"
+            onClick={(event) => {
+              if (
+                event.target ===
+                event.currentTarget
+              ) {
+                closeModal();
+              }
+            }}
+          >
+            <div className="modal-box">
+              <div className="modal-header">
+                <div>
+                  <h2 className="modal-title">
+                    Assign Homework
+                  </h2>
 
-              <button
-                type="button"
-                onClick={closeModal}
-                className="btn btn-ghost btn-sm"
-                disabled={submitting}
+                  <p className="mt-1 text-xs text-slate-500">
+                    Select an actual syllabus class.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="btn btn-ghost btn-sm"
+                  disabled={submitting}
+                >
+                  X
+                </button>
+              </div>
+
+              <form
+                onSubmit={handleSubmit}
               >
-                X
-              </button>
-            </div>
+                <div className="modal-body space-y-4">
 
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body space-y-4">
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm">
-                    {error}
-                  </div>
-                )}
-
-                <div>
-                  <label className="form-label">
-                    Title *
-                  </label>
-
-                  <input
-                    className="form-input"
-                    placeholder="Homework title"
-                    value={form.title}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        title:
-                          event.target.value,
-                      })
-                    }
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">
-                    Assign To *
-                  </label>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        changeTargetType(
-                          "course"
-                        )
-                      }
-                      className={
-                        targetType === "course"
-                          ? "px-3 py-2 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 text-sm font-semibold"
-                          : "px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50"
-                      }
-                    >
-                      Course
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        changeTargetType(
-                          "programme"
-                        )
-                      }
-                      className={
-                        targetType === "programme"
-                          ? "px-3 py-2 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 text-sm font-semibold"
-                          : "px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50"
-                      }
-                    >
-                      Programme
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        changeTargetType(
-                          "batch"
-                        )
-                      }
-                      className={
-                        targetType === "batch"
-                          ? "px-3 py-2 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 text-sm font-semibold"
-                          : "px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50"
-                      }
-                    >
-                      Batch
-                    </button>
-                  </div>
-                </div>
-
-                {targetType === "course" && (
-                  <>
-                    <div>
-                      <label className="form-label">
-                        Course *
-                      </label>
-
-                      <select
-                        className="form-select"
-                        value={form.courseId}
-                        onChange={(event) =>
-                          changeCourse(
-                            event.target.value
-                          )
-                        }
-                        required
-                        disabled={
-                          loadingOptions
-                        }
-                      >
-                        <option value="">
-                          {loadingOptions
-                            ? "Loading courses..."
-                            : "Select course"}
-                        </option>
-
-                        {courses.map(
-                          (course) => (
-                            <option
-                              key={
-                                course.id
-                              }
-                              value={
-                                course.id
-                              }
-                            >
-                              {course.name}
-                              {course.code
-                                ? " (" +
-                                  course.code +
-                                  ")"
-                                : ""}
-                            </option>
-                          )
-                        )}
-                      </select>
-
-                      {!loadingOptions &&
-                        courses.length ===
-                          0 && (
-                          <p className="text-xs text-amber-600 mt-1">
-                            No course found.
-                          </p>
-                        )}
+                  {error && (
+                    <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600">
+                      {error}
                     </div>
+                  )}
 
-                    <div>
-                      <label className="form-label">
-                        Class / Batch *
-                      </label>
-
-                      <select
-                        className="form-select"
-                        value={form.batchId}
-                        onChange={(event) =>
-                          setForm({
-                            ...form,
-                            batchId:
-                              event.target.value,
-                          })
-                        }
-                        required
-                        disabled={
-                          loadingOptions ||
-                          !form.courseId
-                        }
-                      >
-                        <option value="">
-                          {!form.courseId
-                            ? "Select course first"
-                            : loadingOptions
-                            ? "Loading classes..."
-                            : "Select class / batch"}
-                        </option>
-
-                        {filteredBatches.map(
-                          (batch) => (
-                            <option
-                              key={
-                                batch.id
-                              }
-                              value={
-                                batch.id
-                              }
-                            >
-                              {batch.name}
-                            </option>
-                          )
-                        )}
-                      </select>
-
-                      {form.courseId &&
-                        !loadingOptions &&
-                        filteredBatches.length ===
-                          0 && (
-                          <p className="text-xs text-amber-600 mt-1">
-                            No active Class / Batch found for this Course.
-                          </p>
-                        )}
-                    </div>
-                  </>
-                )}
-
-                {targetType === "programme" && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="form-label">
-                        Programme *
-                      </label>
-
-                      <select
-                        className="form-select"
-                        value={
-                          form.programmeId
-                        }
-                        onChange={(event) =>
-                          changeProgramme(
-                            event.target.value
-                          )
-                        }
-                        required
-                        disabled={
-                          loadingOptions
-                        }
-                      >
-                        <option value="">
-                          {loadingOptions
-                            ? "Loading programmes..."
-                            : "Select programme"}
-                        </option>
-
-                        {programmes.map(
-                          (programme) => (
-                            <option
-                              key={
-                                programme.id
-                              }
-                              value={
-                                programme.id
-                              }
-                            >
-                              {programme.name}
-                              {programme.code
-                                ? " (" +
-                                  programme.code +
-                                  ")"
-                                : ""}
-                            </option>
-                          )
-                        )}
-                      </select>
-
-                      {!loadingOptions &&
-                        programmes.length ===
-                          0 && (
-                          <p className="text-xs text-amber-600 mt-1">
-                            No programme found.
-                          </p>
-                        )}
-                    </div>
-
-                    <div>
-                      <label className="form-label">
-                        Semester *
-                      </label>
-
-                      <select
-                        className="form-select"
-                        value={
-                          form.semesterId
-                        }
-                        onChange={(event) =>
-                          changeSemester(
-                            event.target.value
-                          )
-                        }
-                        required
-                        disabled={
-                          !form.programmeId ||
-                          loadingOptions
-                        }
-                      >
-                        <option value="">
-                          {!form.programmeId
-                            ? "Select programme first"
-                            : "Select semester"}
-                        </option>
-
-                        {filteredSemesters.map(
-                          (semester) => (
-                            <option
-                              key={
-                                semester.id
-                              }
-                              value={
-                                semester.id
-                              }
-                            >
-                              {semester.name}
-                            </option>
-                          )
-                        )}
-                      </select>
-
-                      {form.programmeId &&
-                        filteredSemesters.length ===
-                          0 && (
-                          <p className="text-xs text-amber-600 mt-1">
-                            No Semester found for this Programme.
-                          </p>
-                        )}
-                    </div>
-
-                    <div>
-                      <label className="form-label">
-                        Class / Batch *
-                      </label>
-
-                      <select
-                        className="form-select"
-                        value={form.batchId}
-                        onChange={(event) =>
-                          setForm({
-                            ...form,
-                            batchId:
-                              event.target.value,
-                          })
-                        }
-                        required
-                        disabled={
-                          loadingOptions ||
-                          !form.programmeId ||
-                          !form.semesterId
-                        }
-                      >
-                        <option value="">
-                          {!form.programmeId
-                            ? "Select programme first"
-                            : !form.semesterId
-                            ? "Select semester first"
-                            : loadingOptions
-                            ? "Loading classes..."
-                            : "Select class / batch"}
-                        </option>
-
-                        {filteredBatches.map(
-                          (batch) => (
-                            <option
-                              key={
-                                batch.id
-                              }
-                              value={
-                                batch.id
-                              }
-                            >
-                              {batch.name}
-                            </option>
-                          )
-                        )}
-                      </select>
-
-                      {form.programmeId &&
-                        form.semesterId &&
-                        !loadingOptions &&
-                        filteredBatches.length ===
-                          0 && (
-                          <p className="text-xs text-amber-600 mt-1">
-                            No active Class / Batch found for this Programme and Semester.
-                          </p>
-                        )}
-                    </div>
-                  </div>
-                )}
-
-                {targetType === "batch" && (
                   <div>
                     <label className="form-label">
-                      Batch *
+                      Homework Title *
                     </label>
 
-                    <select
-                      className="form-select"
-                      value={form.batchId}
+                    <input
+                      className="form-input"
+                      placeholder="Homework title"
+                      value={form.title}
                       onChange={(event) =>
                         setForm({
                           ...form,
-                          batchId:
+                          title:
                             event.target.value,
                         })
                       }
                       required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">
+                      Assign To *
+                    </label>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          changeTargetType(
+                            "course"
+                          )
+                        }
+                        className={
+                          targetType ===
+                          "course"
+                            ? "rounded-xl border-2 border-blue-600 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700"
+                            : "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600"
+                        }
+                      >
+                        Course Class
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          changeTargetType(
+                            "programme"
+                          )
+                        }
+                        className={
+                          targetType ===
+                          "programme"
+                            ? "rounded-xl border-2 border-blue-600 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700"
+                            : "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600"
+                        }
+                      >
+                        Programme Class
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          changeTargetType(
+                            "batch"
+                          )
+                        }
+                        className={
+                          targetType ===
+                          "batch"
+                            ? "rounded-xl border-2 border-blue-600 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700"
+                            : "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600"
+                        }
+                      >
+                        Batch
+                      </button>
+                    </div>
+                  </div>
+
+                  {targetType ===
+                    "course" && (
+                    <>
+                      <div>
+                        <label className="form-label">
+                          Course *
+                        </label>
+
+                        <select
+                          className="form-select"
+                          value={
+                            form.courseId
+                          }
+                          onChange={(event) =>
+                            void changeCourse(
+                              event.target.value
+                            )
+                          }
+                          required
+                          disabled={
+                            loadingOptions
+                          }
+                        >
+                          <option value="">
+                            {loadingOptions
+                              ? "Loading courses..."
+                              : "Select course"}
+                          </option>
+
+                          {courses.map(
+                            (course) => (
+                              <option
+                                key={
+                                  course.id
+                                }
+                                value={
+                                  course.id
+                                }
+                              >
+                                {course.name}
+                                {course.code
+                                  ? " (" +
+                                    course.code +
+                                    ")"
+                                  : ""}
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="form-label">
+                          Course Class *
+                        </label>
+
+                        <select
+                          className="form-select"
+                          value={
+                            form.courseClassId
+                          }
+                          onChange={(event) =>
+                            setForm({
+                              ...form,
+                              courseClassId:
+                                event.target
+                                  .value,
+                            })
+                          }
+                          required
+                          disabled={
+                            !form.courseId ||
+                            loadingClasses
+                          }
+                        >
+                          <option value="">
+                            {!form.courseId
+                              ? "Select course first"
+                              : loadingClasses
+                              ? "Loading classes..."
+                              : "Select course class"}
+                          </option>
+
+                          {courseClasses.map(
+                            (item) => (
+                              <option
+                                key={
+                                  item.id
+                                }
+                                value={
+                                  item.id
+                                }
+                              >
+                                Class{" "}
+                                {item.classNo ||
+                                  "-"}{" "}
+                                -{" "}
+                                {item.title}
+                              </option>
+                            )
+                          )}
+                        </select>
+
+                        {form.courseId &&
+                          !loadingClasses &&
+                          courseClasses.length ===
+                            0 && (
+                            <p className="mt-1 text-xs text-amber-600">
+                              No syllabus class found for this Course.
+                            </p>
+                          )}
+                      </div>
+                    </>
+                  )}
+
+                  {targetType ===
+                    "programme" && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="form-label">
+                          Programme *
+                        </label>
+
+                        <select
+                          className="form-select"
+                          value={
+                            form.programmeId
+                          }
+                          onChange={(event) =>
+                            void changeProgramme(
+                              event.target
+                                .value
+                            )
+                          }
+                          required
+                          disabled={
+                            loadingOptions
+                          }
+                        >
+                          <option value="">
+                            {loadingOptions
+                              ? "Loading programmes..."
+                              : "Select programme"}
+                          </option>
+
+                          {programmes.map(
+                            (programme) => (
+                              <option
+                                key={
+                                  programme.id
+                                }
+                                value={
+                                  programme.id
+                                }
+                              >
+                                {programme.name}
+                                {programme.code
+                                  ? " (" +
+                                    programme.code +
+                                    ")"
+                                  : ""}
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="form-label">
+                          Semester *
+                        </label>
+
+                        <select
+                          className="form-select"
+                          value={
+                            form.semesterId
+                          }
+                          onChange={(event) =>
+                            changeSemester(
+                              event.target
+                                .value
+                            )
+                          }
+                          required
+                          disabled={
+                            !form.programmeId ||
+                            loadingOptions
+                          }
+                        >
+                          <option value="">
+                            {!form.programmeId
+                              ? "Select programme first"
+                              : "Select semester"}
+                          </option>
+
+                          {filteredSemesters.map(
+                            (semester) => (
+                              <option
+                                key={
+                                  semester.id
+                                }
+                                value={
+                                  semester.id
+                                }
+                              >
+                                Semester{" "}
+                                {semester.semesterNo ||
+                                  "-"}{" "}
+                                -{" "}
+                                {semester.name}
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="form-label">
+                          Programme Class *
+                        </label>
+
+                        <select
+                          className="form-select"
+                          value={
+                            form.programmeClassId
+                          }
+                          onChange={(event) =>
+                            setForm({
+                              ...form,
+                              programmeClassId:
+                                event.target
+                                  .value,
+                            })
+                          }
+                          required
+                          disabled={
+                            !form.semesterId ||
+                            loadingClasses
+                          }
+                        >
+                          <option value="">
+                            {!form.programmeId
+                              ? "Select programme first"
+                              : !form.semesterId
+                              ? "Select semester first"
+                              : loadingClasses
+                              ? "Loading classes..."
+                              : "Select programme class"}
+                          </option>
+
+                          {filteredProgrammeClasses.map(
+                            (item) => (
+                              <option
+                                key={
+                                  item.id
+                                }
+                                value={
+                                  item.id
+                                }
+                              >
+                                Class{" "}
+                                {item.classNo ||
+                                  "-"}{" "}
+                                -{" "}
+                                {item.title}
+                              </option>
+                            )
+                          )}
+                        </select>
+
+                        {form.semesterId &&
+                          !loadingClasses &&
+                          filteredProgrammeClasses.length ===
+                            0 && (
+                            <p className="mt-1 text-xs text-amber-600">
+                              No syllabus class found for this Semester.
+                            </p>
+                          )}
+                      </div>
+                    </div>
+                  )}
+
+                  {targetType ===
+                    "batch" && (
+                    <div>
+                      <label className="form-label">
+                        Batch *
+                      </label>
+
+                      <select
+                        className="form-select"
+                        value={
+                          form.batchId
+                        }
+                        onChange={(event) =>
+                          setForm({
+                            ...form,
+                            batchId:
+                              event.target
+                                .value,
+                          })
+                        }
+                        required
+                        disabled={
+                          loadingOptions
+                        }
+                      >
+                        <option value="">
+                          {loadingOptions
+                            ? "Loading batches..."
+                            : "Select batch"}
+                        </option>
+
+                        {batches.map(
+                          (batch) => (
+                            <option
+                              key={
+                                batch.id
+                              }
+                              value={
+                                batch.id
+                              }
+                            >
+                              {batch.name}
+                            </option>
+                          )
+                        )}
+                      </select>
+
+                      {!loadingOptions &&
+                        batches.length ===
+                          0 && (
+                          <p className="mt-1 text-xs text-amber-600">
+                            No batch found.
+                          </p>
+                        )}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="form-label">
+                      Teacher
+                    </label>
+
+                    <select
+                      className="form-select"
+                      value={
+                        form.teacherId
+                      }
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          teacherId:
+                            event.target
+                              .value,
+                        })
+                      }
                       disabled={
                         loadingOptions
                       }
                     >
                       <option value="">
-                        {loadingOptions
-                          ? "Loading batches..."
-                          : "Select batch"}
+                        Select teacher
                       </option>
 
-                      {batches.map(
-                        (batch) => (
+                      {staffList.map(
+                        (staff) => (
                           <option
-                            key={batch.id}
-                            value={batch.id}
+                            key={
+                              staff.id
+                            }
+                            value={
+                              staff.id
+                            }
                           >
-                            {batch.name}
+                            {staff.name}
                           </option>
                         )
                       )}
                     </select>
-
-                    {!loadingOptions &&
-                      batches.length ===
-                        0 && (
-                        <p className="text-xs text-amber-600 mt-1">
-                          No batch found.
-                        </p>
-                      )}
                   </div>
-                )}
 
-                <div>
-                  <label className="form-label">
-                    Teacher
-                  </label>
+                  <div>
+                    <label className="form-label">
+                      Description
+                    </label>
 
-                  <select
-                    className="form-select"
-                    value={form.teacherId}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        teacherId:
-                          event.target.value,
-                      })
-                    }
-                    disabled={
-                      loadingOptions
-                    }
+                    <textarea
+                      className="form-input"
+                      rows={3}
+                      placeholder="Homework details..."
+                      value={
+                        form.description
+                      }
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          description:
+                            event.target
+                              .value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">
+                      Deadline
+                    </label>
+
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={
+                        form.deadline
+                      }
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          deadline:
+                            event.target
+                              .value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="btn btn-outline"
+                    disabled={submitting}
                   >
-                    <option value="">
-                      Select teacher
-                    </option>
+                    Cancel
+                  </button>
 
-                    {staffList.map(
-                      (staff) => (
-                        <option
-                          key={staff.id}
-                          value={staff.id}
-                        >
-                          {staff.name}
-                        </option>
-                      )
-                    )}
-                  </select>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="btn btn-primary"
+                  >
+                    {submitting
+                      ? "Assigning..."
+                      : "Assign Homework"}
+                  </button>
                 </div>
-
-                <div>
-                  <label className="form-label">
-                    Description
-                  </label>
-
-                  <textarea
-                    className="form-input"
-                    rows={3}
-                    placeholder="Homework details..."
-                    value={
-                      form.description
-                    }
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        description:
-                          event.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">
-                    Deadline
-                  </label>
-
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={form.deadline}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        deadline:
-                          event.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="btn btn-outline"
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="btn btn-primary"
-                >
-                  {submitting
-                    ? "Assigning..."
-                    : "Assign Homework"}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
