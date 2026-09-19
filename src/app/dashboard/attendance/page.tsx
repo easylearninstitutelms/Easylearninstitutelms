@@ -515,7 +515,6 @@ export default function AttendancePage() {
                   Select all students
                 </label>
               </div>
-
               <div className="space-y-2">
                 {/* Quick mark all buttons */}
                 <div className="flex gap-2 mb-4 p-3 bg-slate-50 rounded-xl">
