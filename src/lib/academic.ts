@@ -591,7 +591,12 @@ export function ensureAcademicCoreSchema() {
         CREATE INDEX IF NOT EXISTS programme_syllabus_classes_programme_idx
           ON programme_syllabus_classes(programme_id);
         CREATE INDEX IF NOT EXISTS programme_syllabus_classes_semester_idx
-          ON programme_syllabus_classes(semester_id);\
+          ON programme_syllabus_classes(semester_id);
+
+        ALTER TABLE attendance ADD COLUMN IF NOT EXISTS class_id uuid;
+        ALTER TABLE attendance ADD COLUMN IF NOT EXISTS class_type varchar(20);
+        CREATE INDEX IF NOT EXISTS attendance_class_idx
+          ON attendance(class_id);\
       `);
     })().then(() => undefined);
   }
