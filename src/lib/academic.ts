@@ -589,16 +589,19 @@ export function ensureCourseSchema() {
           AND d.rn > 1;
 
         WITH missing AS (
-          SELECT id,
-                 COALESCE(
-                   MAX(course_no) OVER (PARTITION BY institute_id),
-                   210
-                 ) + ROW_NUMBER() OVER (
-                   PARTITION BY institute_id
-                   ORDER BY created_at, id
+          SELECT c.id,
+                 COALESCE(mx.max_no, 210) +
+                 ROW_NUMBER() OVER (
+                   PARTITION BY c.institute_id
+                   ORDER BY c.created_at, c.id
                  ) AS next_no
-          FROM courses
-          WHERE course_no IS NULL
+          FROM courses c
+          LEFT JOIN (
+            SELECT institute_id, MAX(course_no) AS max_no
+            FROM courses
+            GROUP BY institute_id
+          ) mx ON mx.institute_id = c.institute_id
+          WHERE c.course_no IS NULL
         )
         UPDATE courses c
         SET course_no = m.next_no
