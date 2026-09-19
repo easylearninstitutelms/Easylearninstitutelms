@@ -258,12 +258,27 @@ export async function POST(request: Request) {
     const dob = cleanText(body.dob);
     const admissionDate = cleanText(body.admissionDate);
     const batchId = cleanText(body.batchId);
+    const selectedCourseId = cleanText(body.courseId);
+    const selectedProgrammeId = cleanText(body.programmeId);
     const gender = validGender(body.gender);
     const photoUrl = cleanPhotoUrl(body.photoUrl);
 
-    if (!name || !admissionDate || !batchId) {
+    if (!name || !admissionDate) {
       return Response.json(
-        { error: "Name, admission date and batch are required." },
+        { error: "Name and admission date are required." },
+        { status: 400 },
+      );
+    }
+
+    const enrollmentChoices = [
+      Boolean(selectedCourseId),
+      Boolean(selectedProgrammeId),
+      Boolean(batchId),
+    ].filter(Boolean).length;
+
+    if (enrollmentChoices !== 1) {
+      return Response.json(
+        { error: "Please select exactly one: Course or Programme. Batch is only for legacy enrollment." },
         { status: 400 },
       );
     }
@@ -275,39 +290,92 @@ export async function POST(request: Request) {
       );
     }
 
-    const batchRows = await db.execute(sql`
-      SELECT
-        b.id,
-        b.batch_no AS "batchNo",
-        p.code AS "programmeCode",
-        p.name AS "programmeName"
-      FROM batches b
-      LEFT JOIN programmes p ON p.id = b.programme_id
-      WHERE b.id = ${batchId}
-        AND b.institute_id = ${instituteId}
-      LIMIT 1
-    `);
+    let prefix = "";
 
-    const batch = (batchRows as any).rows?.[0];
+    if (selectedCourseId) {
+      const courseRows = await db.execute(sql`
+        SELECT id, name, course_no AS "courseNo"
+        FROM courses
+        WHERE id = ${selectedCourseId}
+          AND institute_id = ${instituteId}
+          AND status = 'ACTIVE'
+        LIMIT 1
+      `);
+      const course = (courseRows as any).rows?.[0];
 
-    if (!batch) {
-      return Response.json({ error: "Invalid batch" }, { status: 400 });
+      if (!course) {
+        return Response.json({ error: "Invalid or inactive course." }, { status: 400 });
+      }
+
+      const courseNo = Number(course.courseNo);
+      if (!Number.isInteger(courseNo) || courseNo < 211) {
+        return Response.json(
+          { error: "This course is missing a valid course number. Please edit/save the course first." },
+          { status: 400 },
+        );
+      }
+
+      prefix = `C${suggestProgrammeCode(String(course.name))}${courseNo}`;
+    } else if (selectedProgrammeId) {
+      const programmeRows = await db.execute(sql`
+        SELECT id, name, code, programme_no AS "programmeNo"
+        FROM programmes
+        WHERE id = ${selectedProgrammeId}
+          AND institute_id = ${instituteId}
+          AND status = 'ACTIVE'
+        LIMIT 1
+      `);
+      const programme = (programmeRows as any).rows?.[0];
+
+      if (!programme) {
+        return Response.json({ error: "Invalid or inactive programme." }, { status: 400 });
+      }
+
+      const programmeNo = Number(programme.programmeNo);
+      const programmeCode =
+        cleanText(programme.code) || suggestProgrammeCode(String(programme.name));
+
+      if (!Number.isInteger(programmeNo) || programmeNo < 211 || !programmeCode) {
+        return Response.json(
+          { error: "This programme is missing a valid programme number or code." },
+          { status: 400 },
+        );
+      }
+
+      prefix = `${programmeCode}${programmeNo}`;
+    } else {
+      const batchRows = await db.execute(sql`
+        SELECT
+          b.id,
+          b.batch_no AS "batchNo",
+          p.code AS "programmeCode",
+          p.name AS "programmeName"
+        FROM batches b
+        LEFT JOIN programmes p ON p.id = b.programme_id
+        WHERE b.id = ${batchId}
+          AND b.institute_id = ${instituteId}
+        LIMIT 1
+      `);
+
+      const batch = (batchRows as any).rows?.[0];
+
+      if (!batch) {
+        return Response.json({ error: "Invalid batch." }, { status: 400 });
+      }
+
+      const programmeCode =
+        cleanText(batch.programmeCode) || suggestProgrammeCode(cleanText(batch.programmeName));
+      const batchNo = Number(batch.batchNo);
+
+      if (!programmeCode || !Number.isInteger(batchNo) || batchNo < 211) {
+        return Response.json(
+          { error: "This batch is missing a valid programme code or batch number. Please update the batch first." },
+          { status: 400 },
+        );
+      }
+
+      prefix = `${programmeCode}${batchNo}`;
     }
-
-    const programmeCode = suggestProgrammeCode(cleanText(batch.programmeName));
-    const batchNo = Number(batch.batchNo);
-
-    if (!programmeCode || !Number.isInteger(batchNo) || batchNo < 211) {
-      return Response.json(
-        {
-          error:
-            "This batch is missing a valid programme code or batch number. Please update the batch first.",
-        },
-        { status: 400 },
-      );
-    }
-
-    const prefix = `${programmeCode}${batchNo}`;
 
     const existingStudentIds = await db.execute(sql`
       SELECT student_id
@@ -371,8 +439,24 @@ export async function POST(request: Request) {
       if (!student) throw new Error("Failed to create student.");
 
       await tx.execute(sql`
-        INSERT INTO enrollments (institute_id, student_id, batch_id, course_id, programme_id, enrollment_date, status)
-        VALUES (${instituteId}, ${student.id}, ${batchId || null}, ${selectedCourseId}, ${selectedProgrammeId}, ${admissionDate}, 'ACTIVE')
+        INSERT INTO enrollments (
+          institute_id,
+          student_id,
+          batch_id,
+          course_id,
+          programme_id,
+          enrollment_date,
+          status
+        )
+        VALUES (
+          ${instituteId},
+          ${student.id},
+          ${batchId || null},
+          ${selectedCourseId || null},
+          ${selectedProgrammeId || null},
+          ${admissionDate},
+          'ACTIVE'
+        )
       `);
 
       return { student, userId: user.id };
