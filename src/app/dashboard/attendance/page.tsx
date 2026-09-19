@@ -223,7 +223,7 @@ export default function AttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedBatch, selectedDate]);
+  }, [selectedBatch, selectedDate, activeClassId]);
 
   useEffect(() => {
     loadBatchData();
