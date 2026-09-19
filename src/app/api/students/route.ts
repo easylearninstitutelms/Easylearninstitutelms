@@ -370,15 +370,10 @@ export async function POST(request: Request) {
 
       if (!student) throw new Error("Failed to create student.");
 
-      await tx
-        .insert(enrollments)
-        .values({
-          instituteId,
-          studentId: student.id,
-          batchId,
-          enrollmentDate: admissionDate,
-          status: "ACTIVE",
-        });
+      await tx.execute(sql`
+        INSERT INTO enrollments (institute_id, student_id, batch_id, course_id, programme_id, enrollment_date, status)
+        VALUES (${instituteId}, ${student.id}, ${batchId || null}, ${selectedCourseId}, ${selectedProgrammeId}, ${admissionDate}, 'ACTIVE')
+      `);
 
       return { student, userId: user.id };
     });
