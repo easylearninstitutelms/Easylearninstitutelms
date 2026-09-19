@@ -513,6 +513,8 @@ export const attendance = pgTable(
     batchId: uuid("batch_id")
       .notNull()
       .references(() => batches.id, { onDelete: "cascade" }),
+    classId: uuid("class_id"),
+    classType: varchar("class_type", { length: 20 }),
     date: date("date").notNull(),
     status: attendanceStatusEnum("status").notNull(),
     recordedBy: uuid("recorded_by").references(() => users.id),
