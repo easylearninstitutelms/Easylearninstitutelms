@@ -1,0 +1,2301 @@
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  numeric,
+  boolean,
+  timestamp,
+  date,
+  time,
+  jsonb,
+  pgEnum,
+  unique,
+  index,
+} from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+export const roleEnum = pgEnum("role", [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "MANAGER",
+  "ADMIN",
+  "INSTITUTE",
+  "TEACHER",
+  "STAFF",
+  "ACCOUNTANT",
+  "STUDENT",
+]);
+
+export const statusEnum = pgEnum("status", [
+  "ACTIVE",
+  "INACTIVE",
+  "PENDING",
+  "SUSPENDED",
+  "COMPLETED",
+]);
+
+export const genderEnum = pgEnum("gender", [
+  "MALE",
+  "FEMALE",
+  "OTHER",
+]);
+
+export const attendanceStatusEnum = pgEnum("attendance_status", [
+  "PRESENT",
+  "ABSENT",
+  "LATE",
+  "EXCUSED",
+]);
+
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "PAID",
+  "PENDING",
+  "PARTIAL",
+  "CANCELLED",
+  "APPROVED",
+]);
+
+export const feeTypeEnum = pgEnum("fee_type", [
+  "ADMISSION",
+  "TUITION",
+  "EXAM",
+  "LIBRARY",
+  "TRANSPORT",
+  "HOSTEL",
+  "OTHER",
+]);
+
+// ─── Plans ────────────────────────────────────────────────────────────────────
+
+export const plans = pgTable(
+  "plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    name: varchar("name", {
+      length: 100,
+    }).notNull(),
+
+    description: text("description"),
+
+    price: numeric("price", {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+
+    durationDays: integer("duration_days").notNull(),
+
+    maxStudents: integer("max_students"),
+
+    maxStaff: integer("max_staff"),
+
+    maxStorageMb: integer("max_storage_mb"),
+
+    features: jsonb("features"),
+
+    isActive: boolean("is_active")
+      .notNull()
+      .default(true),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("plans_active_idx").on(t.isActive),
+  ]
+);
+
+// ─── Institutes ───────────────────────────────────────────────────────────────
+
+export const institutes = pgTable(
+  "institutes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    name: varchar("name", {
+      length: 255,
+    }).notNull(),
+
+    code: varchar("code", {
+      length: 100,
+    }),
+
+    email: varchar("email", {
+      length: 255,
+    }),
+
+    phone: varchar("phone", {
+      length: 50,
+    }),
+
+    address: text("address"),
+
+    logoUrl: text("logo_url"),
+
+    website: text("website"),
+
+    status: statusEnum("status")
+      .notNull()
+      .default("ACTIVE"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("institutes_status_idx").on(t.status),
+  ]
+);
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id").references(
+      () => institutes.id,
+      {
+        onDelete: "cascade",
+      }
+    ),
+
+    email: varchar("email", {
+      length: 255,
+    }).notNull(),
+
+    passwordHash: text("password_hash"),
+
+    name: varchar("name", {
+      length: 255,
+    }).notNull(),
+
+    phone: varchar("phone", {
+      length: 50,
+    }),
+
+    role: roleEnum("role")
+      .notNull()
+      .default("STUDENT"),
+
+    photoUrl: text("photo_url"),
+
+    isActive: boolean("is_active")
+      .notNull()
+      .default(true),
+
+    lastLoginAt: timestamp("last_login_at"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("users_email_unique").on(t.email),
+
+    index("users_institute_idx").on(
+      t.instituteId
+    ),
+
+    index("users_role_idx").on(t.role),
+  ]
+);
+
+// ─── Subscriptions ─────────────────────────────────────────────────────────────
+
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id),
+
+    startDate: date("start_date")
+      .notNull(),
+
+    endDate: date("end_date")
+      .notNull(),
+
+    status: statusEnum("status")
+      .notNull()
+      .default("ACTIVE"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "subscriptions_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "subscriptions_plan_idx"
+    ).on(t.planId),
+
+    index(
+      "subscriptions_status_idx"
+    ).on(t.status),
+  ]
+);
+
+// ─── Subscription Payments ────────────────────────────────────────────────────
+
+export const subscriptionPayments = pgTable(
+  "subscription_payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    subscriptionId: uuid("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, {
+        onDelete: "cascade",
+      }),
+
+    amount: numeric("amount", {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+
+    paymentDate: date("payment_date")
+      .notNull(),
+
+    method: varchar("method", {
+      length: 100,
+    }),
+
+    transactionId: varchar("transaction_id", {
+      length: 255,
+    }),
+
+    notes: text("notes"),
+
+status: paymentStatusEnum("status")
+  .notNull()
+  .default("PENDING"),
+
+reviewedBy: uuid("reviewed_by")
+  .references(() => users.id, {
+    onDelete: "set null",
+  }),
+
+reviewedAt: timestamp("reviewed_at"),
+
+createdAt: timestamp("created_at")
+  .notNull()
+  .defaultNow(),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "subscription_payments_subscription_idx"
+    ).on(t.subscriptionId),
+
+    index(
+      "subscription_payments_status_idx"
+    ).on(t.status),
+  ]
+);
+
+// ─── Students ─────────────────────────────────────────────────────────────────
+
+export const students = pgTable(
+  "students",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    userId: uuid("user_id").references(
+      () => users.id,
+      {
+        onDelete: "set null",
+      }
+    ),
+
+    studentId: varchar("student_id", {
+      length: 100,
+    }).notNull(),
+
+    name: varchar("name", {
+      length: 255,
+    }).notNull(),
+
+    photoUrl: text("photo_url"),
+
+    phone: varchar("phone", {
+      length: 50,
+    }),
+
+    email: varchar("email", {
+      length: 255,
+    }),
+
+    dateOfBirth: date("date_of_birth"),
+
+    gender: genderEnum("gender"),
+
+    address: text("address"),
+
+    guardianName: varchar("guardian_name", {
+      length: 255,
+    }),
+
+    guardianPhone: varchar("guardian_phone", {
+      length: 50,
+    }),
+
+    guardianRelation: varchar(
+      "guardian_relation",
+      {
+        length: 100,
+      }
+    ),
+
+    admissionDate: date("admission_date"),
+
+    status: statusEnum("status")
+      .notNull()
+      .default("ACTIVE"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique(
+      "students_institute_student_id_unique"
+    ).on(
+      t.instituteId,
+      t.studentId
+    ),
+
+    index("students_institute_idx").on(
+      t.instituteId
+    ),
+
+    index("students_user_idx").on(
+      t.userId
+    ),
+
+    index("students_status_idx").on(
+      t.status
+    ),
+  ]
+);
+
+// ─── Staff ────────────────────────────────────────────────────────────────────
+
+export const staff = pgTable(
+  "staff",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    userId: uuid("user_id").references(
+      () => users.id,
+      {
+        onDelete: "set null",
+      }
+    ),
+
+    employeeId: varchar("employee_id", {
+      length: 100,
+    }),
+
+    name: varchar("name", {
+      length: 255,
+    }).notNull(),
+
+    photoUrl: text("photo_url"),
+
+    phone: varchar("phone", {
+      length: 50,
+    }),
+
+    email: varchar("email", {
+      length: 255,
+    }),
+
+    designation: varchar("designation", {
+      length: 255,
+    }),
+
+    department: varchar("department", {
+      length: 255,
+    }),
+
+    joiningDate: date("joining_date"),
+
+    salary: numeric("salary", {
+      precision: 10,
+      scale: 2,
+    }),
+
+    status: statusEnum("status")
+      .notNull()
+      .default("ACTIVE"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("staff_institute_idx").on(
+      t.instituteId
+    ),
+
+    index("staff_user_idx").on(
+      t.userId
+    ),
+
+    index("staff_status_idx").on(
+      t.status
+    ),
+  ]
+);
+
+// ─── Programmes ───────────────────────────────────────────────────────────────
+
+export const programmes = pgTable(
+  "programmes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    name: varchar("name", {
+      length: 255,
+    }).notNull(),
+
+    code: varchar("code", {
+      length: 100,
+    }),
+
+    description: text("description"),
+
+    duration: varchar("duration", {
+      length: 100,
+    }),
+
+    fee: numeric("fee", {
+      precision: 10,
+      scale: 2,
+    }),
+
+    status: statusEnum("status")
+      .notNull()
+      .default("ACTIVE"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "programmes_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "programmes_status_idx"
+    ).on(t.status),
+  ]
+);
+
+// ─── Programme Semesters ──────────────────────────────────────────────────────
+
+export const programmeSemesters = pgTable(
+  "programme_semesters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    programmeId: uuid("programme_id")
+      .notNull()
+      .references(() => programmes.id, {
+        onDelete: "cascade",
+      }),
+
+    semesterNo: integer("semester_no")
+      .notNull(),
+
+    name: varchar("name", {
+      length: 255,
+    }).notNull(),
+
+    description: text("description"),
+
+    status: statusEnum("status")
+      .notNull()
+      .default("ACTIVE"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "programme_semesters_programme_idx"
+    ).on(t.programmeId),
+
+    unique(
+      "programme_semesters_programme_no_unique"
+    ).on(
+      t.programmeId,
+      t.semesterNo
+    ),
+  ]
+);
+
+// ─── Courses ─────────────────────────────────────────────────────────────────
+
+export const courses = pgTable(
+  "courses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    name: varchar("name", {
+      length: 255,
+    }).notNull(),
+
+    description: text("description"),
+
+    duration: varchar("duration", {
+      length: 100,
+    }),
+
+    fee: numeric("fee", {
+      precision: 10,
+      scale: 2,
+    }),
+
+    status: statusEnum("status")
+      .notNull()
+      .default("ACTIVE"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "courses_institute_idx"
+    ).on(t.instituteId),
+  ]
+);
+
+// ─── Batches ──────────────────────────────────────────────────────────────────
+
+export const batches = pgTable(
+  "batches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    name: varchar("name", {
+      length: 255,
+    }).notNull(),
+
+    batchNo: integer("batch_no"),
+
+    programmeId: uuid("programme_id")
+      .references(() => programmes.id),
+
+    semesterId: uuid("semester_id")
+      .references(() => programmeSemesters.id),
+
+    courseId: uuid("course_id")
+      .references(() => courses.id),
+
+    startDate: date("start_date"),
+
+    endDate: date("end_date"),
+
+    status: statusEnum("status")
+      .notNull()
+      .default("ACTIVE"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("batches_institute_idx").on(
+      t.instituteId
+    ),
+
+    index("batches_programme_idx").on(
+      t.programmeId
+    ),
+
+    index("batches_semester_idx").on(
+      t.semesterId
+    ),
+
+    index("batches_course_idx").on(
+      t.courseId
+    ),
+  ]
+);
+
+// ─── Enrollments ──────────────────────────────────────────────────────────────
+
+export const enrollments = pgTable(
+  "enrollments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, {
+        onDelete: "cascade",
+      }),
+
+    batchId: uuid("batch_id")
+      .references(() => batches.id, {
+        onDelete: "cascade",
+      }),
+
+    courseId: uuid("course_id")
+      .references(() => courses.id),
+
+    programmeId: uuid("programme_id")
+      .references(() => programmes.id),
+
+    semesterId: uuid("semester_id")
+      .references(() => programmeSemesters.id),
+
+    enrollmentDate: date("enrollment_date"),
+
+    status: statusEnum("status")
+      .notNull()
+      .default("ACTIVE"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "enrollments_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "enrollments_student_idx"
+    ).on(t.studentId),
+
+    index(
+      "enrollments_batch_idx"
+    ).on(t.batchId),
+
+    index(
+      "enrollments_course_idx"
+    ).on(t.courseId),
+
+    index(
+      "enrollments_programme_idx"
+    ).on(t.programmeId),
+
+    index(
+      "enrollments_semester_idx"
+    ).on(t.semesterId),
+  ]
+);
+
+// ─── Guardian Students ────────────────────────────────────────────────────────
+
+export const guardianStudents = pgTable(
+  "guardian_students",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    guardianId: uuid("guardian_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "cascade",
+      }),
+
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, {
+        onDelete: "cascade",
+      }),
+
+    relation: varchar("relation", {
+      length: 100,
+    }),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique(
+      "guardian_students_unique"
+    ).on(
+      t.guardianId,
+      t.studentId
+    ),
+  ]
+);
+
+// ─── Attendance ────────────────────────────────────────────────────────────────
+
+export const attendance = pgTable(
+  "attendance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, {
+        onDelete: "cascade",
+      }),
+
+    batchId: uuid("batch_id")
+      .references(() => batches.id, {
+        onDelete: "cascade",
+      }),
+
+    attendanceDate: date("attendance_date")
+      .notNull(),
+
+    status: attendanceStatusEnum(
+      "status"
+    ).notNull(),
+
+    remarks: text("remarks"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "attendance_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "attendance_student_idx"
+    ).on(t.studentId),
+
+    index(
+      "attendance_batch_idx"
+    ).on(t.batchId),
+
+    index(
+      "attendance_date_idx"
+    ).on(t.attendanceDate),
+  ]
+);
+
+// ─── Fees ─────────────────────────────────────────────────────────────────────
+
+export const fees = pgTable(
+  "fees",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, {
+        onDelete: "cascade",
+      }),
+
+    batchId: uuid("batch_id")
+      .references(() => batches.id, {
+        onDelete: "set null",
+      }),
+
+    feeType: feeTypeEnum("fee_type")
+      .notNull(),
+
+    amount: numeric("amount", {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+
+    dueDate: date("due_date"),
+
+    status: paymentStatusEnum("status")
+      .notNull()
+      .default("PENDING"),
+
+    description: text("description"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("fees_institute_idx").on(
+      t.instituteId
+    ),
+
+    index("fees_student_idx").on(
+      t.studentId
+    ),
+
+    index("fees_batch_idx").on(
+      t.batchId
+    ),
+  ]
+);
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    studentId: uuid("student_id")
+      .references(() => students.id, {
+        onDelete: "set null",
+      }),
+
+    feeId: uuid("fee_id")
+      .references(() => fees.id, {
+        onDelete: "set null",
+      }),
+
+    amount: numeric("amount", {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+
+    paymentDate: date("payment_date")
+      .notNull(),
+
+    method: varchar("method", {
+      length: 100,
+    }),
+
+    transactionId: varchar("transaction_id", {
+      length: 255,
+    }),
+
+    notes: text("notes"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "payments_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "payments_student_idx"
+    ).on(t.studentId),
+
+    index(
+      "payments_fee_idx"
+    ).on(t.feeId),
+  ]
+);
+
+// ─── Expenses ─────────────────────────────────────────────────────────────────
+
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    title: varchar("title", {
+      length: 255,
+    }).notNull(),
+
+    amount: numeric("amount", {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+
+    expenseDate: date("expense_date")
+      .notNull(),
+
+    category: varchar("category", {
+      length: 100,
+    }),
+
+    description: text("description"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "expenses_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "expenses_date_idx"
+    ).on(t.expenseDate),
+  ]
+);
+
+// ─── Salaries ─────────────────────────────────────────────────────────────────
+
+export const salaries = pgTable(
+  "salaries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    staffId: uuid("staff_id")
+      .notNull()
+      .references(() => staff.id, {
+        onDelete: "cascade",
+      }),
+
+    amount: numeric("amount", {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+
+    month: integer("month").notNull(),
+
+    year: integer("year").notNull(),
+
+    paymentDate: date("payment_date"),
+
+    status: paymentStatusEnum("status")
+      .notNull()
+      .default("PENDING"),
+
+    notes: text("notes"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "salaries_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "salaries_staff_idx"
+    ).on(t.staffId),
+
+    index(
+      "salaries_month_year_idx"
+    ).on(
+      t.month,
+      t.year
+    ),
+  ]
+);
+
+// ─── Routines ─────────────────────────────────────────────────────────────────
+
+export const routines = pgTable(
+  "routines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    batchId: uuid("batch_id")
+      .references(() => batches.id, {
+        onDelete: "cascade",
+      }),
+
+    teacherId: uuid("teacher_id")
+      .references(() => staff.id, {
+        onDelete: "set null",
+      }),
+
+    dayOfWeek: integer("day_of_week")
+      .notNull(),
+
+    startTime: time("start_time")
+      .notNull(),
+
+    endTime: time("end_time")
+      .notNull(),
+
+    subject: varchar("subject", {
+      length: 255,
+    }),
+
+    room: varchar("room", {
+      length: 100,
+    }),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "routines_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "routines_batch_idx"
+    ).on(t.batchId),
+
+    index(
+      "routines_teacher_idx"
+    ).on(t.teacherId),
+  ]
+);
+
+// ─── Homework ─────────────────────────────────────────────────────────────────
+
+export const homework = pgTable(
+  "homework",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    batchId: uuid("batch_id")
+      .notNull()
+      .references(() => batches.id, {
+        onDelete: "cascade",
+      }),
+
+    teacherId: uuid("teacher_id")
+      .references(() => staff.id, {
+        onDelete: "set null",
+      }),
+
+    title: varchar("title", {
+      length: 255,
+    }).notNull(),
+
+    description: text("description"),
+
+    deadline: timestamp("deadline"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "homework_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "homework_batch_idx"
+    ).on(t.batchId),
+
+    index(
+      "homework_teacher_idx"
+    ).on(t.teacherId),
+  ]
+);
+
+// ─── Assignments ──────────────────────────────────────────────────────────────
+
+export const assignments = pgTable(
+  "assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, {
+        onDelete: "cascade",
+      }),
+
+    homeworkId: uuid("homework_id")
+      .references(() => homework.id, {
+        onDelete: "cascade",
+      }),
+
+    title: varchar("title", {
+      length: 255,
+    }).notNull(),
+
+    description: text("description"),
+
+    fileUrl: text("file_url"),
+
+    submittedAt: timestamp("submitted_at"),
+
+    grade: varchar("grade", {
+      length: 50,
+    }),
+
+    feedback: text("feedback"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "assignments_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "assignments_student_idx"
+    ).on(t.studentId),
+
+    index(
+      "assignments_homework_idx"
+    ).on(t.homeworkId),
+  ]
+);
+
+// ─── Exams ────────────────────────────────────────────────────────────────────
+
+export const exams = pgTable(
+  "exams",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    // Nullable because an exam can belong to
+    // a Course or Programme without a Batch.
+    batchId: uuid("batch_id").references(
+      () => batches.id,
+      {
+        onDelete: "cascade",
+      }
+    ),
+
+    programmeId: uuid("programme_id")
+      .references(() => programmes.id),
+
+    semesterId: uuid("semester_id")
+      .references(() => programmeSemesters.id),
+
+    // Course exam support
+    courseId: uuid("course_id")
+      .references(() => courses.id),
+
+    // References the dynamic
+    // course_syllabus_classes table.
+    courseClassId: uuid(
+      "course_class_id"
+    ),
+
+    name: varchar("name", {
+      length: 255,
+    }).notNull(),
+
+    examDate: date("exam_date"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "exams_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "exams_programme_semester_idx"
+    ).on(
+      t.programmeId,
+      t.semesterId
+    ),
+
+    index(
+      "exams_course_idx"
+    ).on(t.courseId),
+
+    index(
+      "exams_course_class_idx"
+    ).on(t.courseClassId),
+  ]
+);
+
+// ─── Exam Subjects ────────────────────────────────────────────────────────────
+
+export const examSubjects = pgTable(
+  "exam_subjects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    examId: uuid("exam_id")
+      .notNull()
+      .references(() => exams.id, {
+        onDelete: "cascade",
+      }),
+
+    subjectName: varchar(
+      "subject_name",
+      {
+        length: 255,
+      }
+    ).notNull(),
+
+    totalMarks: numeric(
+      "total_marks",
+      {
+        precision: 10,
+        scale: 2,
+      }
+    ).notNull(),
+
+    passMarks: numeric(
+      "pass_marks",
+      {
+        precision: 10,
+        scale: 2,
+      }
+    ),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "exam_subjects_exam_idx"
+    ).on(t.examId),
+  ]
+);
+
+// ─── Results ──────────────────────────────────────────────────────────────────
+
+export const results = pgTable(
+  "results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    examId: uuid("exam_id")
+      .notNull()
+      .references(() => exams.id, {
+        onDelete: "cascade",
+      }),
+
+    examSubjectId: uuid(
+      "exam_subject_id"
+    )
+      .notNull()
+      .references(() => examSubjects.id, {
+        onDelete: "cascade",
+      }),
+
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, {
+        onDelete: "cascade",
+      }),
+
+    marks: numeric("marks", {
+      precision: 10,
+      scale: 2,
+    }),
+
+    grade: varchar("grade", {
+      length: 20,
+    }),
+
+    remarks: text("remarks"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "results_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "results_exam_idx"
+    ).on(t.examId),
+
+    index(
+      "results_subject_idx"
+    ).on(t.examSubjectId),
+
+    index(
+      "results_student_idx"
+    ).on(t.studentId),
+
+    unique(
+      "results_exam_subject_student_unique"
+    ).on(
+      t.examId,
+      t.examSubjectId,
+      t.studentId
+    ),
+  ]
+);
+
+// ─── Enquiries ────────────────────────────────────────────────────────────────
+
+export const enquiries = pgTable(
+  "enquiries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    name: varchar("name", {
+      length: 255,
+    }).notNull(),
+
+    phone: varchar("phone", {
+      length: 50,
+    }),
+
+    email: varchar("email", {
+      length: 255,
+    }),
+
+    course: varchar("course", {
+      length: 255,
+    }),
+
+    message: text("message"),
+
+    status: statusEnum("status")
+      .notNull()
+      .default("PENDING"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "enquiries_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "enquiries_status_idx"
+    ).on(t.status),
+  ]
+);
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    userId: uuid("user_id")
+      .references(() => users.id, {
+        onDelete: "cascade",
+      }),
+
+    title: varchar("title", {
+      length: 255,
+    }).notNull(),
+
+    message: text("message").notNull(),
+
+    isRead: boolean("is_read")
+      .notNull()
+      .default(false),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "notifications_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "notifications_user_idx"
+    ).on(t.userId),
+
+    index(
+      "notifications_read_idx"
+    ).on(t.isRead),
+  ]
+);
+
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+
+    instituteId: uuid("institute_id")
+      .references(() => institutes.id, {
+        onDelete: "cascade",
+      }),
+
+    userId: uuid("user_id")
+      .references(() => users.id, {
+        onDelete: "set null",
+      }),
+
+    action: varchar("action", {
+      length: 255,
+    }).notNull(),
+
+    entity: varchar("entity", {
+      length: 255,
+    }),
+
+    entityId: uuid("entity_id"),
+
+    metadata: jsonb("metadata"),
+
+    createdAt: timestamp("created_at")
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index(
+      "audit_logs_institute_idx"
+    ).on(t.instituteId),
+
+    index(
+      "audit_logs_user_idx"
+    ).on(t.userId),
+
+    index(
+      "audit_logs_entity_idx"
+    ).on(
+      t.entity,
+      t.entityId
+    ),
+  ]
+);
+
+// ─── Relations ────────────────────────────────────────────────────────────────
+
+export const institutesRelations =
+  relations(
+    institutes,
+    ({ many }) => ({
+      users: many(users),
+      students: many(students),
+      staff: many(staff),
+      programmes: many(programmes),
+      courses: many(courses),
+      batches: many(batches),
+      enrollments: many(enrollments),
+      attendance: many(attendance),
+      fees: many(fees),
+      payments: many(payments),
+      expenses: many(expenses),
+      salaries: many(salaries),
+      routines: many(routines),
+      homework: many(homework),
+      assignments: many(assignments),
+      exams: many(exams),
+      results: many(results),
+      enquiries: many(enquiries),
+      notifications: many(notifications),
+      auditLogs: many(auditLogs),
+    })
+  );
+
+export const usersRelations =
+  relations(
+    users,
+    ({ one, many }) => ({
+      institute: one(institutes, {
+        fields: [users.instituteId],
+        references: [institutes.id],
+      }),
+
+      student: one(students, {
+        fields: [users.id],
+        references: [students.userId],
+      }),
+
+      staff: one(staff, {
+        fields: [users.id],
+        references: [staff.userId],
+      }),
+
+      notifications: many(
+        notifications
+      ),
+
+      auditLogs: many(auditLogs),
+    })
+  );
+
+export const studentsRelations =
+  relations(
+    students,
+    ({ one, many }) => ({
+      institute: one(institutes, {
+        fields: [students.instituteId],
+        references: [institutes.id],
+      }),
+
+      user: one(users, {
+        fields: [students.userId],
+        references: [users.id],
+      }),
+
+      enrollments: many(
+        enrollments
+      ),
+
+      attendance: many(attendance),
+
+      fees: many(fees),
+
+      payments: many(payments),
+
+      assignments: many(
+        assignments
+      ),
+
+      results: many(results),
+
+      guardianLinks: many(
+        guardianStudents
+      ),
+    })
+  );
+
+export const staffRelations =
+  relations(
+    staff,
+    ({ one, many }) => ({
+      institute: one(institutes, {
+        fields: [staff.instituteId],
+        references: [institutes.id],
+      }),
+
+      user: one(users, {
+        fields: [staff.userId],
+        references: [users.id],
+      }),
+
+      salaries: many(salaries),
+
+      routines: many(routines),
+
+      homework: many(homework),
+    })
+  );
+
+export const programmesRelations =
+  relations(
+    programmes,
+    ({ one, many }) => ({
+      institute: one(institutes, {
+        fields: [
+          programmes.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+
+      semesters: many(
+        programmeSemesters
+      ),
+
+      batches: many(batches),
+
+      enrollments: many(
+        enrollments
+      ),
+
+      exams: many(exams),
+    })
+  );
+
+export const programmeSemestersRelations =
+  relations(
+    programmeSemesters,
+    ({ one, many }) => ({
+      programme: one(programmes, {
+        fields: [
+          programmeSemesters.programmeId,
+        ],
+        references: [
+          programmes.id,
+        ],
+      }),
+
+      batches: many(batches),
+
+      enrollments: many(
+        enrollments
+      ),
+
+      exams: many(exams),
+    })
+  );
+
+export const coursesRelations =
+  relations(
+    courses,
+    ({ one, many }) => ({
+      institute: one(institutes, {
+        fields: [courses.instituteId],
+        references: [institutes.id],
+      }),
+
+      batches: many(batches),
+
+      enrollments: many(
+        enrollments
+      ),
+
+      exams: many(exams),
+    })
+  );
+
+export const batchesRelations =
+  relations(
+    batches,
+    ({ one, many }) => ({
+      institute: one(institutes, {
+        fields: [batches.instituteId],
+        references: [institutes.id],
+      }),
+
+      programme: one(programmes, {
+        fields: [batches.programmeId],
+        references: [programmes.id],
+      }),
+
+      semester: one(
+        programmeSemesters,
+        {
+          fields: [
+            batches.semesterId,
+          ],
+          references: [
+            programmeSemesters.id,
+          ],
+        }
+      ),
+
+      course: one(courses, {
+        fields: [batches.courseId],
+        references: [courses.id],
+      }),
+
+      enrollments: many(
+        enrollments
+      ),
+
+      attendance: many(attendance),
+
+      fees: many(fees),
+
+      routines: many(routines),
+
+      homework: many(homework),
+
+      exams: many(exams),
+    })
+  );
+
+export const enrollmentsRelations =
+  relations(
+    enrollments,
+    ({ one }) => ({
+      institute: one(institutes, {
+        fields: [
+          enrollments.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+
+      student: one(students, {
+        fields: [
+          enrollments.studentId,
+        ],
+        references: [
+          students.id,
+        ],
+      }),
+
+      batch: one(batches, {
+        fields: [
+          enrollments.batchId,
+        ],
+        references: [
+          batches.id,
+        ],
+      }),
+
+      course: one(courses, {
+        fields: [
+          enrollments.courseId,
+        ],
+        references: [
+          courses.id,
+        ],
+      }),
+
+      programme: one(programmes, {
+        fields: [
+          enrollments.programmeId,
+        ],
+        references: [
+          programmes.id,
+        ],
+      }),
+
+      semester: one(
+        programmeSemesters,
+        {
+          fields: [
+            enrollments.semesterId,
+          ],
+          references: [
+            programmeSemesters.id,
+          ],
+        }
+      ),
+    })
+  );
+
+export const attendanceRelations =
+  relations(
+    attendance,
+    ({ one }) => ({
+      institute: one(institutes, {
+        fields: [
+          attendance.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+
+      student: one(students, {
+        fields: [
+          attendance.studentId,
+        ],
+        references: [
+          students.id,
+        ],
+      }),
+
+      batch: one(batches, {
+        fields: [attendance.batchId],
+        references: [batches.id],
+      }),
+    })
+  );
+
+export const feesRelations =
+  relations(
+    fees,
+    ({ one, many }) => ({
+      institute: one(institutes, {
+        fields: [fees.instituteId],
+        references: [institutes.id],
+      }),
+
+      student: one(students, {
+        fields: [fees.studentId],
+        references: [students.id],
+      }),
+
+      batch: one(batches, {
+        fields: [fees.batchId],
+        references: [batches.id],
+      }),
+
+      payments: many(payments),
+    })
+  );
+
+export const paymentsRelations =
+  relations(
+    payments,
+    ({ one }) => ({
+      institute: one(institutes, {
+        fields: [
+          payments.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+
+      student: one(students, {
+        fields: [
+          payments.studentId,
+        ],
+        references: [
+          students.id,
+        ],
+      }),
+
+      fee: one(fees, {
+        fields: [payments.feeId],
+        references: [fees.id],
+      }),
+    })
+  );
+
+export const expensesRelations =
+  relations(
+    expenses,
+    ({ one }) => ({
+      institute: one(institutes, {
+        fields: [
+          expenses.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+    })
+  );
+
+export const salariesRelations =
+  relations(
+    salaries,
+    ({ one }) => ({
+      institute: one(institutes, {
+        fields: [
+          salaries.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+
+      staff: one(staff, {
+        fields: [salaries.staffId],
+        references: [staff.id],
+      }),
+    })
+  );
+
+export const routinesRelations =
+  relations(
+    routines,
+    ({ one }) => ({
+      institute: one(institutes, {
+        fields: [
+          routines.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+
+      batch: one(batches, {
+        fields: [routines.batchId],
+        references: [batches.id],
+      }),
+
+      teacher: one(staff, {
+        fields: [routines.teacherId],
+        references: [staff.id],
+      }),
+    })
+  );
+
+export const homeworkRelations =
+  relations(
+    homework,
+    ({ one, many }) => ({
+      institute: one(institutes, {
+        fields: [
+          homework.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+
+      batch: one(batches, {
+        fields: [homework.batchId],
+        references: [batches.id],
+      }),
+
+      teacher: one(staff, {
+        fields: [
+          homework.teacherId,
+        ],
+        references: [staff.id],
+      }),
+
+      assignments: many(
+        assignments
+      ),
+    })
+  );
+
+export const assignmentsRelations =
+  relations(
+    assignments,
+    ({ one }) => ({
+      institute: one(institutes, {
+        fields: [
+          assignments.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+
+      student: one(students, {
+        fields: [
+          assignments.studentId,
+        ],
+        references: [
+          students.id,
+        ],
+      }),
+
+      homework: one(homework, {
+        fields: [
+          assignments.homeworkId,
+        ],
+        references: [
+          homework.id,
+        ],
+      }),
+    })
+  );
+
+export const examsRelations =
+  relations(
+    exams,
+    ({ one, many }) => ({
+      institute: one(institutes, {
+        fields: [exams.instituteId],
+        references: [institutes.id],
+      }),
+
+      batch: one(batches, {
+        fields: [exams.batchId],
+        references: [batches.id],
+      }),
+
+      programme: one(programmes, {
+        fields: [
+          exams.programmeId,
+        ],
+        references: [
+          programmes.id,
+        ],
+      }),
+
+      semester: one(
+        programmeSemesters,
+        {
+          fields: [
+            exams.semesterId,
+          ],
+          references: [
+            programmeSemesters.id,
+          ],
+        }
+      ),
+
+      course: one(courses, {
+        fields: [exams.courseId],
+        references: [courses.id],
+      }),
+
+      subjects: many(
+        examSubjects
+      ),
+
+      results: many(results),
+    })
+  );
+
+export const examSubjectsRelations =
+  relations(
+    examSubjects,
+    ({ one, many }) => ({
+      exam: one(exams, {
+        fields: [
+          examSubjects.examId,
+        ],
+        references: [exams.id],
+      }),
+
+      results: many(results),
+    })
+  );
+
+export const resultsRelations =
+  relations(
+    results,
+    ({ one }) => ({
+      institute: one(institutes, {
+        fields: [
+          results.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+
+      exam: one(exams, {
+        fields: [results.examId],
+        references: [exams.id],
+      }),
+
+      examSubject: one(
+        examSubjects,
+        {
+          fields: [
+            results.examSubjectId,
+          ],
+          references: [
+            examSubjects.id,
+          ],
+        }
+      ),
+
+      student: one(students, {
+        fields: [
+          results.studentId,
+        ],
+        references: [
+          students.id,
+        ],
+      }),
+    })
+  );
+
+export const enquiriesRelations =
+  relations(
+    enquiries,
+    ({ one }) => ({
+      institute: one(institutes, {
+        fields: [
+          enquiries.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+    })
+  );
+
+export const notificationsRelations =
+  relations(
+    notifications,
+    ({ one }) => ({
+      institute: one(institutes, {
+        fields: [
+          notifications.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+
+      user: one(users, {
+        fields: [
+          notifications.userId,
+        ],
+        references: [users.id],
+      }),
+    })
+  );
+
+export const auditLogsRelations =
+  relations(
+    auditLogs,
+    ({ one }) => ({
+      institute: one(institutes, {
+        fields: [
+          auditLogs.instituteId,
+        ],
+        references: [
+          institutes.id,
+        ],
+      }),
+
+      user: one(users, {
+        fields: [auditLogs.userId],
+        references: [users.id],
+      }),
+    })
+  );
