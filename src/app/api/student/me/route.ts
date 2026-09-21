@@ -72,11 +72,6 @@ export async function GET() {
       );
     }
 
-    /*
-     * Homework has its own isolated schema repair.
-     * This prevents the whole academic migration from
-     * breaking the student dashboard.
-     */
     await ensureHomeworkSchema();
 
     const student = await getStudent({
@@ -120,15 +115,6 @@ export async function GET() {
     /* ---------------------------------------------------------
        ENROLLMENTS
     --------------------------------------------------------- */
-
-    /*
-     * IMPORTANT:
-     * enrollments does NOT use enrolled_at.
-     * Use enrollment id for stable ordering.
-     *
-     * Course / Programme can come directly from enrollment,
-     * or from the legacy batch relationship.
-     */
 
     let enrollmentsData: unknown[] = [];
 
@@ -195,10 +181,11 @@ export async function GET() {
           a.id,
           a.date,
           a.status,
-          a.batch_id,
-          a.class_id,
-          a.class_type,
-          b.name AS batch_name
+          a.batch_id AS "batchId",
+          a.class_id AS "classId",
+          a.class_type AS "classType",
+          a.note,
+          b.name AS "batchName"
         FROM attendance a
         LEFT JOIN batches b
           ON b.id = a.batch_id
@@ -215,12 +202,6 @@ export async function GET() {
 
     /* ---------------------------------------------------------
        HOMEWORK
-
-       IMPORTANT:
-       Do NOT depend on e.course_id / e.programme_id.
-       Old enrollment records may not contain those fields.
-
-       Student -> Enrollment -> Batch -> Course/Programme
     --------------------------------------------------------- */
 
     let homeworkData: unknown[] = [];
@@ -299,26 +280,22 @@ export async function GET() {
               AND e.status = 'ACTIVE'
 
               AND (
-                /* Legacy batch homework */
                 (
                   h.batch_id IS NOT NULL
                   AND e.batch_id = h.batch_id
                 )
 
-                /* Course homework */
                 OR (
                   h.course_id IS NOT NULL
                   AND COALESCE(e.course_id, eb.course_id) = h.course_id
                 )
 
-                /* Programme homework */
                 OR (
                   h.programme_id IS NOT NULL
                   AND COALESCE(e.programme_id, eb.programme_id) = h.programme_id
                 )
               )
 
-              /* Semester restriction for programme homework */
               AND (
                 h.semester_id IS NULL
                 OR eb.semester_id = h.semester_id
@@ -368,99 +345,118 @@ export async function GET() {
       }));
     } catch (error) {
       console.error("Student homework load error:", error);
-
-      /*
-       * Do not crash the entire student dashboard.
-       * If homework has an unexpected legacy DB problem,
-       * return an empty homework list instead of HTTP 500.
-       */
       homeworkData = [];
     }
 
     /* ---------------------------------------------------------
-       EXAMS
+       EXAM RESULTS  (this was completely missing before —
+       the frontend needs a "results" field, not "exams")
     --------------------------------------------------------- */
 
-    let examData: unknown[] = [];
+    let resultsData: unknown[] = [];
 
     try {
-      const examRows = await db.execute(sql`
+      const resultRows = await db.execute(sql`
         SELECT
-          e.id,
-          e.name,
-          e.exam_date,
-          e.batch_id,
-          e.course_id,
-          e.programme_id,
-          e.semester_id,
-          e.course_class_id,
-          e.programme_class_id
-        FROM exams e
+          r.id,
+          r.exam_id AS "examId",
+          r.exam_subject_id AS "examSubjectId",
+          r.marks,
+          r.grade,
+          r.remarks,
+          r.created_at AS "createdAt",
 
-        WHERE e.institute_id = ${session.instituteId}
+          ex.name AS "examName",
+          ex.batch_id AS "examBatchId",
+          ex.exam_date AS "examDate",
 
-          AND EXISTS (
-            SELECT 1
-            FROM enrollments en
+          es.subject_name AS "subjectName",
+          es.total_marks AS "totalMarks"
 
-            LEFT JOIN batches eb
-              ON eb.id = en.batch_id
+        FROM results r
 
-            WHERE en.student_id = ${studentId}
-              AND en.institute_id = ${session.instituteId}
-              AND en.status = 'ACTIVE'
+        LEFT JOIN exams ex
+          ON ex.id = r.exam_id
 
-              AND (
-                (
-                  e.batch_id IS NOT NULL
-                  AND en.batch_id = e.batch_id
-                )
+        LEFT JOIN exam_subjects es
+          ON es.id = r.exam_subject_id
 
-                OR (
-                  e.course_id IS NOT NULL
-                  AND COALESCE(en.course_id, eb.course_id) = e.course_id
-                )
+        WHERE r.student_id = ${studentId}
+          AND r.institute_id = ${session.instituteId}
 
-                OR (
-                  e.programme_id IS NOT NULL
-                  AND COALESCE(en.programme_id, eb.programme_id) = e.programme_id
-
-                  AND (
-                    e.semester_id IS NULL
-                    OR eb.semester_id = e.semester_id
-                  )
-                )
-              )
-          )
-
-        ORDER BY e.exam_date DESC NULLS LAST, e.created_at DESC
+        ORDER BY r.created_at DESC
       `);
 
-      examData = rowsOf(examRows);
+      resultsData = rowsOf(resultRows).map((row: any) => ({
+        id: row.id,
+        examId: row.examId,
+        examSubjectId: row.examSubjectId,
+        marks: row.marks,
+        grade: row.grade,
+        remarks: row.remarks,
+        createdAt: row.createdAt,
+        exam: row.examId
+          ? {
+              id: row.examId,
+              name: row.examName,
+              batchId: row.examBatchId,
+              examDate: row.examDate,
+            }
+          : null,
+        subject: row.examSubjectId
+          ? {
+              id: row.examSubjectId,
+              subjectName: row.subjectName,
+              totalMarks: Number(row.totalMarks),
+            }
+          : null,
+      }));
     } catch (error) {
-      console.error("Student exam load error:", error);
-      examData = [];
+      console.error("Student results load error:", error);
+      resultsData = [];
     }
 
     /* ---------------------------------------------------------
        FEES
     --------------------------------------------------------- */
 
-    let feeData: unknown[] = [];
+    let feeRecords: any[] = [];
 
     try {
       const feeRows = await db.execute(sql`
-        SELECT *
+        SELECT
+          id,
+          fee_type AS "feeType",
+          amount,
+          discount,
+          due_amount AS "dueAmount",
+          due_date AS "dueDate",
+          status,
+          created_at AS "createdAt"
         FROM fees
         WHERE student_id = ${studentId}
           AND institute_id = ${session.instituteId}
         ORDER BY created_at DESC
       `);
 
-      feeData = rowsOf(feeRows);
+      feeRecords = rowsOf(feeRows);
     } catch {
-      feeData = [];
+      feeRecords = [];
     }
+
+    const totalFees = feeRecords.reduce(
+      (sum, f) => sum + Number(f.amount || 0),
+      0,
+    );
+    const totalDiscount = feeRecords.reduce(
+      (sum, f) => sum + Number(f.discount || 0),
+      0,
+    );
+    const totalDue = feeRecords.reduce(
+      (sum, f) => sum + Number(f.dueAmount || 0),
+      0,
+    );
+    const totalPaid = totalFees - totalDiscount - totalDue;
 
     /* ---------------------------------------------------------
        PAYMENTS
@@ -470,7 +466,14 @@ export async function GET() {
 
     try {
       const paymentRows = await db.execute(sql`
-        SELECT *
+        SELECT
+          id,
+          fee_id AS "feeId",
+          amount,
+          method,
+          transaction_reference AS "transactionReference",
+          receipt_number AS "receiptNumber",
+          paid_at AS "paidAt"
         FROM payments
         WHERE student_id = ${studentId}
           AND institute_id = ${session.instituteId}
@@ -491,8 +494,16 @@ export async function GET() {
       enrollments: enrollmentsData,
       attendance: attendanceData,
       homework: homeworkData,
-      exams: examData,
-      fees: feeData,
+      results: resultsData,
+      fees: {
+        records: feeRecords,
+        summary: {
+          totalFees,
+          totalDiscount,
+          totalDue,
+          totalPaid,
+        },
+      },
       payments: paymentData,
     });
   } catch (error) {

@@ -26,11 +26,19 @@ export async function POST(request: Request) {
 
     const loginEmail = email.toLowerCase().trim();
 
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, loginEmail))
-      .limit(1);
+const [user] = await db
+  .select({
+    id: users.id,
+    email: users.email,
+    name: users.name,
+    role: users.role,
+    passwordHash: users.passwordHash,
+    instituteId: users.instituteId,
+  })
+  .from(users)
+  .where(eq(users.email, loginEmail))
+  .limit(1);
+
 
     if (!user) {
       return Response.json(
@@ -74,11 +82,16 @@ export async function POST(request: Request) {
     let institute = null;
 
     if (user.instituteId) {
-      [institute] = await db
-        .select()
-        .from(institutes)
-        .where(eq(institutes.id, user.instituteId))
-        .limit(1);
+[institute] = await db
+  .select({
+    id: institutes.id,
+    name: institutes.name,
+    status: institutes.status,
+  })
+  .from(institutes)
+  .where(eq(institutes.id, user.instituteId))
+  .limit(1);
+
     }
 
     const sessionData = {
@@ -91,8 +104,9 @@ export async function POST(request: Request) {
       instituteStatus: institute?.status,
     };
 
+    // FIX: Properly await cookies() and then set
     const cookieStore = await cookies();
-
+    
     cookieStore.set("session", JSON.stringify(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

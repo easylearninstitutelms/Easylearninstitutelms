@@ -15,10 +15,14 @@ export const pool =
   globalForDb.__arenaNextJsPostgresqlPool ??
   new Pool({
     connectionString: databaseUrl,
+    ssl: {
+      rejectUnauthorized: false,
+    },
+    max: 1,
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__arenaNextJsPostgresqlPool = pool;
-}
+// Serverless (Vercel)-এও pool reuse করা দরকার,
+// তাই এটা আর শুধু non-production-এ সীমাবদ্ধ না
+globalForDb.__arenaNextJsPostgresqlPool = pool;
 
 export const db = drizzle(pool);
