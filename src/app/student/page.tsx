@@ -238,7 +238,7 @@ export default function StudentPage() {
   const [classesLoading, setClassesLoading] = useState(false);
   const [recordings, setRecordings] = useState<StudentRecording[]>([]);
   const [recordingsLoading, setRecordingsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState
+  const [activeTab, setActiveTab] = useState<
     "overview" | "classes" | "recordings" | "attendance" | "homework" | "results" | "fees"
   >("overview");
   const [selectedHomework, setSelectedHomework] = useState<HomeworkItem | null>(null);
@@ -441,18 +441,8 @@ export default function StudentPage() {
                 title="Logout"
                 className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
               >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
               </button>
             </div>
@@ -538,7 +528,7 @@ export default function StudentPage() {
                 }, {})
               ).map(([batchId, batchClasses]) => {
                 const first = batchClasses[0];
-                const groupedBySemester = batchClasses.reduce
+                const groupedBySemester = batchClasses.reduce<
                   Record<string, StudentClass[]>
                 >((groups, item) => {
                   const key = item.semester_name || "Semester";
@@ -572,7 +562,7 @@ export default function StudentPage() {
                                   item.session_status === "COMPLETED"
                                     ? "COMPLETED"
                                     : item.scheduled_date &&
-                                      item.scheduled_date 
+                                      item.scheduled_date <
                                         new Date().toISOString().slice(0, 10)
                                       ? "PENDING"
                                       : item.scheduled_date ===
@@ -627,7 +617,7 @@ export default function StudentPage() {
                                               </p>
                                             )}
                                           </div>
-                                          
+                                          <a
                                             href={item.recording_url}
                                             target="_blank"
                                             rel="noreferrer"
@@ -736,7 +726,7 @@ export default function StudentPage() {
                             </div>
 
                             <div className="mt-4">
-                              
+                              <a
                                 href={item.videoUrl}
                                 target="_blank"
                                 rel="noreferrer"
@@ -1024,7 +1014,7 @@ export default function StudentPage() {
                       )}
 
                       {item.attachmentUrl && (
-                        
+                        <a
                           href={item.attachmentUrl}
                           target="_blank"
                           rel="noreferrer"
