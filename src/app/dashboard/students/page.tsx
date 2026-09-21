@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useState,
@@ -17,6 +17,7 @@ interface Student {
   id: string;
   studentId: string;
   name: string;
+  email?: string | null;
   photoUrl?: string | null;
   phone: string;
   guardianName: string;
@@ -84,6 +85,7 @@ interface StudentDetails {
 
 interface FormData {
   name: string;
+  email: string;
   phone: string;
   guardianName: string;
   guardianPhone: string;
@@ -113,6 +115,7 @@ const MAX_PHOTO_SIZE =
 const EMPTY_FORM: FormData = {
   name: "",
   phone: "",
+  email: "",
   guardianName: "",
   guardianPhone: "",
   address: "",
@@ -639,6 +642,8 @@ export default function StudentsPage() {
 
         phone:
           form.phone.trim(),
+        email:
+          form.email.trim().toLowerCase(),
 
         guardianName:
           form.guardianName.trim(),
@@ -1021,7 +1026,7 @@ export default function StudentsPage() {
             0 ? (
             <div className="text-center py-12">
               <div className="text-4xl mb-3">
-                ðŸ‘¨â€ðŸŽ“
+                Ã°Å¸â€˜Â¨Ã¢â‚¬ÂÃ°Å¸Å½â€œ
               </div>
 
               <p className="text-slate-500 font-medium">
@@ -1097,7 +1102,7 @@ export default function StudentsPage() {
 
                               <p className="text-xs text-slate-400">
                                 {s.gender ||
-                                  "â€”"}
+                                  "Ã¢â‚¬â€"}
                               </p>
                             </div>
                           </button>
@@ -1111,14 +1116,14 @@ export default function StudentsPage() {
 
                         <td className="text-slate-500">
                           {s.phone ||
-                            "â€”"}
+                            "Ã¢â‚¬â€"}
                         </td>
 
                         <td>
                           <div>
                             <p className="text-sm text-slate-600">
                               {s.guardianName ||
-                                "â€”"}
+                                "Ã¢â‚¬â€"}
                             </p>
 
                             <p className="text-xs text-slate-400">
@@ -1316,7 +1321,7 @@ export default function StudentsPage() {
                       }
                       className="btn btn-ghost btn-sm"
                     >
-                      âœ•
+                      Ã¢Å“â€¢
                     </button>
                   </div>
 
@@ -1429,7 +1434,7 @@ export default function StudentsPage() {
                                     .student
                                     .dob
                                 )
-                              : "â€”"
+                              : "Ã¢â‚¬â€"
                           }
                         />
 
@@ -1509,7 +1514,7 @@ export default function StudentsPage() {
                                     : item.course
                                       ? "Course"
                                       : "Batch"}
-                                  {item.batch?.name ? " · Batch: " + item.batch.name : ""}
+                                  {item.batch?.name ? " Â· Batch: " + item.batch.name : ""}
                                 </p>
 
                                 <p className="text-xs text-slate-400 mt-1">
@@ -1573,7 +1578,7 @@ export default function StudentsPage() {
 
                                     <td className="text-slate-500">
                                       {a.note ||
-                                        "â€”"}
+                                        "Ã¢â‚¬â€"}
                                     </td>
                                   </tr>
                                 )
@@ -1622,14 +1627,14 @@ export default function StudentsPage() {
                                     </td>
 
                                     <td>
-                                      à§³{" "}
+                                      Ã Â§Â³{" "}
                                       {
                                         fee.amount
                                       }
                                     </td>
 
                                     <td>
-                                      à§³{" "}
+                                      Ã Â§Â³{" "}
                                       {
                                         fee.dueAmount
                                       }
@@ -1689,7 +1694,7 @@ export default function StudentsPage() {
                                     </td>
 
                                     <td>
-                                      à§³{" "}
+                                      Ã Â§Â³{" "}
                                       {
                                         payment.amount
                                       }
@@ -1767,7 +1772,7 @@ export default function StudentsPage() {
                             .student
                             .name
                         }{" "}
-                        Â·{" "}
+                        Ã‚Â·{" "}
                         {
                           idCardStudent
                             .student
@@ -1782,7 +1787,7 @@ export default function StudentsPage() {
                       }
                       className="btn btn-ghost btn-sm"
                     >
-                      âœ•
+                      Ã¢Å“â€¢
                     </button>
                   </div>
 
@@ -1800,7 +1805,7 @@ export default function StudentsPage() {
                         }
                         className="btn btn-primary"
                       >
-                        ðŸ–¨ Print Student ID
+                        Ã°Å¸â€“Â¨ Print Student ID
                         Card
                       </button>
 
@@ -1951,7 +1956,7 @@ export default function StudentsPage() {
                                                 enrollment
                                                   ?.batch
                                                   ?.name ||
-                                                "â€”"
+                                                "Ã¢â‚¬â€"
                                               }
                                             </p>
                                           </div>
@@ -1966,7 +1971,7 @@ export default function StudentsPage() {
                                                 enrollment
                                                   ?.course
                                                   ?.name ||
-                                                "â€”"
+                                                "Ã¢â‚¬â€"
                                               }
                                             </p>
                                           </div>
@@ -1983,7 +1988,7 @@ export default function StudentsPage() {
                                         <strong>
                                           {
                                             student.phone ||
-                                            "â€”"
+                                            "Ã¢â‚¬â€"
                                           }
                                         </strong>
                                       </div>
@@ -2069,7 +2074,7 @@ export default function StudentsPage() {
                                         <p className="id-card-value">
                                           {
                                             student.guardianName ||
-                                            "â€”"
+                                            "Ã¢â‚¬â€"
                                           }
                                         </p>
                                       </div>
@@ -2082,7 +2087,7 @@ export default function StudentsPage() {
                                         <p className="id-card-value">
                                           {
                                             student.guardianPhone ||
-                                            "â€”"
+                                            "Ã¢â‚¬â€"
                                           }
                                         </p>
                                       </div>
@@ -2096,7 +2101,7 @@ export default function StudentsPage() {
                                       <p>
                                         {
                                           student.address ||
-                                          "â€”"
+                                          "Ã¢â‚¬â€"
                                         }
                                       </p>
                                     </div>
@@ -2123,7 +2128,7 @@ export default function StudentsPage() {
                                         <p className="id-card-value">
                                           {
                                             student.gender ||
-                                            "â€”"
+                                            "Ã¢â‚¬â€"
                                           }
                                         </p>
                                       </div>
@@ -2239,7 +2244,7 @@ export default function StudentsPage() {
                   disabled={submitting}
                   className="btn btn-ghost btn-sm"
                 >
-                  âœ•
+                  Ã¢Å“â€¢
                 </button>
               </div>
 
@@ -2270,7 +2275,7 @@ export default function StudentsPage() {
                               ? getInitials(
                                   form.name
                                 )
-                              : "ðŸ‘¤"}
+                              : "Ã°Å¸â€˜Â¤"}
                           </span>
                         )}
                       </div>
@@ -2281,7 +2286,7 @@ export default function StudentsPage() {
                         </label>
 
                         <p className="text-xs text-slate-400 mb-3">
-                          JPG, PNG or WEBP â€¢
+                          JPG, PNG or WEBP Ã¢â‚¬Â¢
                           Maximum 2 MB
                         </p>
 
@@ -2358,7 +2363,32 @@ export default function StudentsPage() {
                           })
                         }
                       />
+                    </div>                    <div>
+                      <label className="form-label">
+                        Gmail / Email *
+                      </label>
+
+                      <input
+                        type="email"
+                        className="form-input"
+                        placeholder="student@gmail.com"
+                        value={form.email}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            email: e.target.value,
+                          })
+                        }
+                        required={!editingStudentId}
+                      />
+
+                      {!editingStudentId && (
+                        <p className="text-xs text-slate-400 mt-1">
+                          This email will be used for student login and password reset.
+                        </p>
+                      )}
                     </div>
+
 
                     <div>
                       <label className="form-label">
@@ -2679,7 +2709,7 @@ export default function StudentsPage() {
                   }}
                   className="btn btn-ghost btn-sm"
                 >
-                  âœ•
+                  Ã¢Å“â€¢
                 </button>
               </div>
 
@@ -2756,7 +2786,7 @@ export default function StudentsPage() {
                     "copied" && (
                     <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
                       <p className="text-xs font-semibold text-emerald-700">
-                        âœ“ Credentials copied successfully.
+                        Ã¢Å“â€œ Credentials copied successfully.
                       </p>
                     </div>
                   )}
@@ -2780,7 +2810,7 @@ export default function StudentsPage() {
                   className="btn btn-outline"
                 >
                   {copyStatus === "copied"
-                    ? "âœ“ Copied"
+                    ? "Ã¢Å“â€œ Copied"
                     : copyStatus === "error"
                       ? "Copy Failed"
                       : "Copy Credentials"}
@@ -3302,8 +3332,9 @@ function InfoItem({
       </p>
 
       <p className="text-sm font-medium text-slate-700">
-        {value || "â€”"}
+        {value || "Ã¢â‚¬â€"}
       </p>
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+﻿import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "@/db";
 import {
@@ -309,6 +309,7 @@ export async function POST(request: Request) {
 
     const name = cleanText(body.name);
     const phone = cleanText(body.phone);
+    const email = cleanText(body.email).toLowerCase();
     const guardianName = cleanText(body.guardianName);
     const guardianPhone = cleanText(body.guardianPhone);
     const address = cleanText(body.address);
@@ -320,10 +321,43 @@ export async function POST(request: Request) {
     const gender = validGender(body.gender);
     const photoUrl = cleanPhotoUrl(body.photoUrl);
 
-    if (!name || !admissionDate) {
+    if (!name || !email || !admissionDate) {
       return Response.json(
-        { error: "Name and admission date are required." },
+        {
+          error:
+            "Name, Gmail/email and admission date are required.",
+        },
         { status: 400 },
+      );
+    }
+
+    const emailPattern =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(email)) {
+      return Response.json(
+        {
+          error:
+            "Please enter a valid Gmail/email address.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const existingEmailRows = await db.execute(sql`
+      SELECT id
+      FROM users
+      WHERE LOWER(email) = LOWER(${email})
+      LIMIT 1
+    `);
+
+    if ((existingEmailRows as any).rows?.length > 0) {
+      return Response.json(
+        {
+          error:
+            "This Gmail/email is already registered.",
+        },
+        { status: 409 },
       );
     }
 
@@ -520,8 +554,7 @@ export async function POST(request: Request) {
       "0",
     )}`;
 
-    const loginEmail =
-      await generateStudentLoginIdentifier(studentId);
+    const loginEmail = email;
 
     const temporaryPassword =
       generateTemporaryPassword();
