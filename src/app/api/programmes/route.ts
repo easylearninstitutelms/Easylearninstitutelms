@@ -49,10 +49,11 @@ export async function GET(request: Request) {
     const teacherRows =
       forStudentAdd && session.role === "TEACHER"
         ? rowsOf(await db.execute(sql`
-            SELECT id
-            FROM staff
-            WHERE user_id = ${session.userId}
-              AND institute_id = ${session.instituteId}
+            SELECT ta.id
+            FROM teacher_assignments ta
+            INNER JOIN staff s ON s.id = ta.teacher_id
+            WHERE s.user_id = ${session.userId}
+              AND ta.institute_id = ${session.instituteId}
             LIMIT 1
           `))
         : [];
