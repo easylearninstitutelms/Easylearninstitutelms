@@ -36,6 +36,7 @@ async function nextBatchNo(instituteId: string) {
     FROM batches
     WHERE institute_id = ${instituteId}
   `);
+
   const rows = rowsOf(result);
   return Number(rows[0]?.next_no || 211);
 }
@@ -55,13 +56,15 @@ export async function GET() {
 
     const teacherId =
       session.role === "TEACHER"
-        ? rowsOf(await db.execute(sql`
-            SELECT id
-            FROM staff
-            WHERE user_id = ${session.userId}
-              AND institute_id = ${session.instituteId}
-            LIMIT 1
-          `))[0]?.id
+        ? rowsOf(
+            await db.execute(sql`
+              SELECT id
+              FROM staff
+              WHERE user_id = ${session.userId}
+                AND institute_id = ${session.instituteId}
+              LIMIT 1
+            `),
+          )[0]?.id
         : null;
 
     if (session.role === "TEACHER" && !teacherId) {
@@ -158,19 +161,16 @@ export async function POST(request: Request) {
     const courseId = body.courseId || null;
     const teacherId = body.teacherId || null;
     const programmeId = body.programmeId || null;
-    const semesterId = body.semesterId || null;
+    const semesterId = programmeId ? body.semesterId || null : null;
     const room = String(body.room || "").trim() || null;
     const startDate = body.startDate || null;
     const endDate = body.endDate || null;
-    const fee = body.fee === "" || body.fee == null ? null : String(body.fee);
+    const fee =
+      body.fee === "" || body.fee == null ? null : String(body.fee);
 
     if (!name) {
-      return Response.json({ error: "Batch name is required" }, { status: 400 });
-    }
-
-    if (!programmeId) {
       return Response.json(
-        { error: "Programme is required for a new batch" },
+        { error: "Batch name is required" },
         { status: 400 },
       );
     }
@@ -187,13 +187,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const duplicateNo = rowsOf(await db.execute(sql`
-      SELECT id
-      FROM batches
-      WHERE institute_id = ${session.instituteId}
-        AND batch_no = ${batchNo}
-      LIMIT 1
-    `));
+    const duplicateNo = rowsOf(
+      await db.execute(sql`
+        SELECT id
+        FROM batches
+        WHERE institute_id = ${session.instituteId}
+          AND batch_no = ${batchNo}
+        LIMIT 1
+      `),
+    );
 
     if (duplicateNo.length > 0) {
       return Response.json(
@@ -202,92 +204,129 @@ export async function POST(request: Request) {
       );
     }
 
-    const programme = rowsOf(await db.execute(sql`
-      SELECT id, name, code, programme_no AS "programmeNo"
-      FROM programmes
-      WHERE id = ${programmeId}
-        AND institute_id = ${session.instituteId}
-      LIMIT 1
-    `))[0];
+    let programme: Row | null = null;
 
-    if (!programme) {
-      return Response.json({ error: "Invalid programme" }, { status: 400 });
-    }
+    if (programmeId) {
+      programme =
+        rowsOf(
+          await db.execute(sql`
+            SELECT
+              id,
+              name,
+              code,
+              programme_no AS "programmeNo"
+            FROM programmes
+            WHERE id = ${programmeId}
+              AND institute_id = ${session.instituteId}
+            LIMIT 1
+          `),
+        )[0] || null;
 
-    if (semesterId) {
-      const semester = rowsOf(await db.execute(sql`
-        SELECT id
-        FROM programme_semesters
-        WHERE id = ${semesterId}
-          AND programme_id = ${programmeId}
-          AND institute_id = ${session.instituteId}
-        LIMIT 1
-      `))[0];
+      if (!programme) {
+        return Response.json(
+          { error: "Invalid programme" },
+          { status: 400 },
+        );
+      }
 
-      if (!semester) {
-        return Response.json({ error: "Invalid semester" }, { status: 400 });
+      if (semesterId) {
+        const semester = rowsOf(
+          await db.execute(sql`
+            SELECT id
+            FROM programme_semesters
+            WHERE id = ${semesterId}
+              AND programme_id = ${programmeId}
+              AND institute_id = ${session.instituteId}
+            LIMIT 1
+          `),
+        )[0];
+
+        if (!semester) {
+          return Response.json(
+            { error: "Invalid semester" },
+            { status: 400 },
+          );
+        }
       }
     }
 
     if (courseId) {
-      const course = rowsOf(await db.execute(sql`
-        SELECT id
-        FROM courses
-        WHERE id = ${courseId}
-          AND institute_id = ${session.instituteId}
-        LIMIT 1
-      `))[0];
+      const course = rowsOf(
+        await db.execute(sql`
+          SELECT id
+          FROM courses
+          WHERE id = ${courseId}
+            AND institute_id = ${session.instituteId}
+          LIMIT 1
+        `),
+      )[0];
 
       if (!course) {
-        return Response.json({ error: "Invalid course" }, { status: 400 });
+        return Response.json(
+          { error: "Invalid course" },
+          { status: 400 },
+        );
       }
     }
 
     if (teacherId) {
-      const teacher = rowsOf(await db.execute(sql`
-        SELECT id
-        FROM staff
-        WHERE id = ${teacherId}
-          AND institute_id = ${session.instituteId}
-        LIMIT 1
-      `))[0];
+      const teacher = rowsOf(
+        await db.execute(sql`
+          SELECT id
+          FROM staff
+          WHERE id = ${teacherId}
+            AND institute_id = ${session.instituteId}
+          LIMIT 1
+        `),
+      )[0];
 
       if (!teacher) {
-        return Response.json({ error: "Invalid teacher" }, { status: 400 });
+        return Response.json(
+          { error: "Invalid teacher" },
+          { status: 400 },
+        );
       }
     }
 
-    const created = rowsOf(await db.execute(sql`
-      INSERT INTO batches (
-        institute_id,
-        name,
-        course_id,
-        teacher_id,
-        programme_id,
-        semester_id,
-        batch_no,
-        room,
-        start_date,
-        end_date,
-        fee,
-        status
-      )
-      VALUES (
-        ${session.instituteId},
-        ${name},
-        ${courseId},
-        ${teacherId},
-        ${programmeId},
-        ${semesterId},
-        ${batchNo},
-        ${room},
-        ${startDate},
-        ${endDate},
-        ${fee},
-        'ACTIVE'
-      )
-      RETURNING id, name, batch_no AS "batchNo", programme_id AS "programmeId", semester_id AS "semesterId"
-    `))[0];
+    const created = rowsOf(
+      await db.execute(sql`
+        INSERT INTO batches (
+          institute_id,
+          name,
+          course_id,
+          teacher_id,
+          programme_id,
+          semester_id,
+          batch_no,
+          room,
+          start_date,
+          end_date,
+          fee,
+          status
+        )
+        VALUES (
+          ${session.instituteId},
+          ${name},
+          ${courseId},
+          ${teacherId},
+          ${programmeId},
+          ${semesterId},
+          ${batchNo},
+          ${room},
+          ${startDate},
+          ${endDate},
+          ${fee},
+          'ACTIVE'
+        )
+        RETURNING
+          id,
+          name,
+          batch_no AS "batchNo",
+          programme_id AS "programmeId",
+          semester_id AS "semesterId",
+          course_id AS "courseId"
+      `),
+    )[0];
 
     return Response.json(
       {
@@ -299,6 +338,9 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Batches POST error:", error);
-    return Response.json({ error: "Failed to create batch" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to create batch" },
+      { status: 500 },
+    );
   }
 }
