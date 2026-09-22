@@ -21,6 +21,7 @@ import {
   requireRoles,
 } from "@/lib/session";
 import { ensureAcademicCoreSchema } from "@/lib/academic";
+import { ensureTeacherAssignmentSchema } from "@/lib/teacher-assignment";
 
 const MAX_PHOTO_CHARS = 5_000_000;
 
