@@ -311,31 +311,6 @@ export const staff = pgTable(
   ]
 );
 
-// ─── Teacher Academic Assignments ─────────────────────────────────────────────
-
-export const teacherAssignments = pgTable(
-  "teacher_assignments",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    instituteId: uuid("institute_id")
-      .notNull()
-      .references(() => institutes.id, { onDelete: "cascade" }),
-    teacherId: uuid("teacher_id")
-      .notNull()
-      .references(() => staff.id, { onDelete: "cascade" }),
-    courseId: uuid("course_id").references(() => courses.id, { onDelete: "cascade" }),
-    programmeId: uuid("programme_id").references(() => programmes.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  },
-  (t) => [
-    unique("teacher_assignments_teacher_unique").on(t.teacherId),
-    index("teacher_assignments_institute_idx").on(t.instituteId),
-    index("teacher_assignments_course_idx").on(t.courseId),
-    index("teacher_assignments_programme_idx").on(t.programmeId),
-  ]
-);
-
 // ─── Programmes ──────────────────────────────────────────────────────────────
 
 export const programmes = pgTable(
@@ -400,6 +375,31 @@ export const courses = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => [index("courses_institute_idx").on(t.instituteId)]
+);
+
+// ─── Teacher Academic Assignments ─────────────────────────────────────────────
+
+export const teacherAssignments = pgTable(
+  "teacher_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, { onDelete: "cascade" }),
+    teacherId: uuid("teacher_id")
+      .notNull()
+      .references(() => staff.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id").references(() => courses.id, { onDelete: "cascade" }),
+    programmeId: uuid("programme_id").references(() => programmes.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique("teacher_assignments_teacher_unique").on(t.teacherId),
+    index("teacher_assignments_institute_idx").on(t.instituteId),
+    index("teacher_assignments_course_idx").on(t.courseId),
+    index("teacher_assignments_programme_idx").on(t.programmeId),
+  ]
 );
 
 // ─── Syllabus & Classes Tables ────────────────────────────────────────────────
