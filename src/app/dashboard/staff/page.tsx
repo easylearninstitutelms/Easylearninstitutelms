@@ -756,12 +756,12 @@ export default function StaffPage() {
                           {form.assignmentType === "COURSE"
                             ? courses.map((course) => (
                                 <option key={course.id} value={course.id}>
-                                  {course.name}{course.courseNo ? \` — \${course.courseNo}\` : ""}
+                                  {course.name}{course.courseNo ? ` — ${course.courseNo}` : ""}
                                 </option>
                               ))
                             : programmes.map((programme) => (
                                 <option key={programme.id} value={programme.id}>
-                                  {programme.name}{programme.programmeNo ? \` — \${programme.code || ""}\${programme.programmeNo}\` : ""}
+                                  {programme.name}{programme.programmeNo ? ` — ${programme.code || ""}${programme.programmeNo}` : ""}
                                 </option>
                               ))}
                         </select>
