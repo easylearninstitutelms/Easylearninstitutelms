@@ -101,20 +101,20 @@ export async function GET(request: Request) {
         ) AS semesters
       FROM programmes p
       WHERE p.institute_id = ${session.instituteId}
-        AND (
-          ${!forStudentAdd || session.role !== "TEACHER"}
-          OR (
-            ${teacherId || null} IS NOT NULL
-            AND EXISTS (
-              SELECT 1
-              FROM batches b
-              WHERE b.institute_id = ${session.instituteId}
-                AND b.teacher_id = ${teacherId || null}
-                AND b.status = 'ACTIVE'
-                AND b.programme_id = p.id
-            )
-          )
-        )
+AND (
+  ${!forStudentAdd || session.role !== "TEACHER"}
+  OR (
+    ${teacherId !== null}
+    AND EXISTS (
+      SELECT 1
+      FROM batches b
+      WHERE b.institute_id = ${session.instituteId}
+        AND b.teacher_id = ${teacherId}
+        AND b.status = 'ACTIVE'
+        AND b.programme_id = p.id
+    )
+  )
+)
       ORDER BY p.created_at DESC NULLS LAST, p.name ASC
     `);
 
