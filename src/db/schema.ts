@@ -311,6 +311,31 @@ export const staff = pgTable(
   ]
 );
 
+// ─── Teacher Academic Assignments ─────────────────────────────────────────────
+
+export const teacherAssignments = pgTable(
+  "teacher_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, { onDelete: "cascade" }),
+    teacherId: uuid("teacher_id")
+      .notNull()
+      .references(() => staff.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id").references(() => courses.id, { onDelete: "cascade" }),
+    programmeId: uuid("programme_id").references(() => programmes.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique("teacher_assignments_teacher_unique").on(t.teacherId),
+    index("teacher_assignments_institute_idx").on(t.instituteId),
+    index("teacher_assignments_course_idx").on(t.courseId),
+    index("teacher_assignments_programme_idx").on(t.programmeId),
+  ]
+);
+
 // ─── Programmes ──────────────────────────────────────────────────────────────
 
 export const programmes = pgTable(
@@ -981,6 +1006,25 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
     references: [institutes.id],
   }),
   batches: many(batches),
+}));
+
+export const teacherAssignmentsRelations = relations(teacherAssignments, ({ one }) => ({
+  institute: one(institutes, {
+    fields: [teacherAssignments.instituteId],
+    references: [institutes.id],
+  }),
+  teacher: one(staff, {
+    fields: [teacherAssignments.teacherId],
+    references: [staff.id],
+  }),
+  course: one(courses, {
+    fields: [teacherAssignments.courseId],
+    references: [courses.id],
+  }),
+  programme: one(programmes, {
+    fields: [teacherAssignments.programmeId],
+    references: [programmes.id],
+  }),
 }));
 
 export const batchesRelations = relations(batches, ({ one, many }) => ({
