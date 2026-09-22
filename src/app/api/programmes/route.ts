@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { sql } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { ensureAcademicCoreSchema } from "@/lib/academic";
+import { ensureTeacherAssignmentSchema } from "@/lib/teacher-assignment";
 
 type DbRow = Record<string, unknown>;
 
@@ -42,6 +43,7 @@ export async function GET(request: Request) {
     const session = await getSession();
     if (!session?.instituteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     await ensureAcademicCoreSchema();
+    await ensureTeacherAssignmentSchema();
 
     const url = new URL(request.url);
     const forStudentAdd = url.searchParams.get("forStudentAdd") === "true";
