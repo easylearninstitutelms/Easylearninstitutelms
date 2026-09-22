@@ -293,7 +293,6 @@ export const staff = pgTable(
       .notNull()
       .references(() => institutes.id, { onDelete: "cascade" }),
     userId: uuid("user_id").references(() => users.id),
-    employeeId: varchar("employee_id", { length: 50 }),
     name: varchar("name", { length: 255 }).notNull(),
     photoUrl: text("photo_url"),
     phone: varchar("phone", { length: 20 }),
