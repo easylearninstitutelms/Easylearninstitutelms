@@ -283,8 +283,8 @@ export default function StudentsPage() {
   useEffect(() => {
     Promise.all([
       fetch("/api/batches", { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/courses", { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/programmes", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/courses?forStudentAdd=true", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/programmes?forStudentAdd=true", { cache: "no-store" }).then((r) => r.json()),
     ])
       .then(([batchData, courseData, programmeData]) => {
         setBatches(batchData.batches || []);
