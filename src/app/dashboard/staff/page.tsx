@@ -43,6 +43,9 @@ export default function StaffPage() {
   const [createdAccount, setCreatedAccount] =
     useState<CreatedAccount | null>(null);
 
+  const [courses, setCourses] = useState<Array<{ id: string; name: string; courseNo?: number | null }>>([]);
+  const [programmes, setProgrammes] = useState<Array<{ id: string; name: string; code?: string | null; programmeNo?: number | null }>>([]);
+
   const [form, setForm] = useState({
     name: "",
     photoUrl: "",
@@ -53,6 +56,8 @@ export default function StaffPage() {
     joiningDate: new Date().toISOString().split("T")[0],
     salary: "",
     address: "",
+    assignmentType: "COURSE",
+    assignmentId: "",
   });
 
   const fetchStaff = useCallback(async () => {
@@ -81,6 +86,24 @@ export default function StaffPage() {
   useEffect(() => {
     fetchStaff();
   }, [fetchStaff]);
+
+  useEffect(() => {
+    if (form.accountRole !== "TEACHER") return;
+
+    Promise.all([
+      fetch("/api/courses?forStudentAdd=true", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/programmes?forStudentAdd=true", { cache: "no-store" }).then((r) => r.json()),
+    ])
+      .then(([courseData, programmeData]) => {
+        setCourses(courseData.courses || []);
+        setProgrammes(programmeData.programmes || []);
+      })
+      .catch((err) => {
+        console.error("Failed to load teacher academic options:", err);
+        setCourses([]);
+        setProgrammes([]);
+      });
+  }, [form.accountRole]);
 
   function resetForm() {
     setForm({
@@ -701,6 +724,50 @@ export default function StaffPage() {
                       </option>
                     </select>
                   </div>
+
+                  {form.accountRole === "TEACHER" && (
+                    <>
+                      <div className="col-span-2 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                        <p className="text-sm font-semibold text-blue-800">Teacher Academic Assignment *</p>
+                        <p className="text-xs text-blue-700 mt-1">Select the Course or Programme this teacher will manage. Students added by this teacher will be enrolled only here.</p>
+                      </div>
+
+                      <div>
+                        <label className="form-label">Assignment Type *</label>
+                        <select
+                          className="form-input"
+                          value={form.assignmentType}
+                          onChange={(e) => setForm({ ...form, assignmentType: e.target.value, assignmentId: "" })}
+                        >
+                          <option value="COURSE">Course</option>
+                          <option value="PROGRAMME">Programme</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="form-label">{form.assignmentType === "COURSE" ? "Select Course *" : "Select Programme *"}</label>
+                        <select
+                          className="form-input"
+                          value={form.assignmentId}
+                          onChange={(e) => setForm({ ...form, assignmentId: e.target.value })}
+                          required
+                        >
+                          <option value="">Select {form.assignmentType === "COURSE" ? "course" : "programme"}</option>
+                          {form.assignmentType === "COURSE"
+                            ? courses.map((course) => (
+                                <option key={course.id} value={course.id}>
+                                  {course.name}{course.courseNo ? \` — \${course.courseNo}\` : ""}
+                                </option>
+                              ))
+                            : programmes.map((programme) => (
+                                <option key={programme.id} value={programme.id}>
+                                  {programme.name}{programme.programmeNo ? \` — \${programme.code || ""}\${programme.programmeNo}\` : ""}
+                                </option>
+                              ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label className="form-label">
