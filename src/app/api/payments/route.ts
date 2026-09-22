@@ -376,22 +376,48 @@ export async function POST(request: Request) {
   // Insert payment
   // ─────────────────────────────────────────────
 
-  const [payment] = await db
-    .insert(payments)
-    .values({
-      instituteId,
-      studentId: student.id,
-      feeId: cleanFeeId,
-      amount: paymentAmount.toFixed(2),
-      method:
-        cleanMethod as PaymentMethod,
-      transactionReference:
-        cleanTransactionReference,
-      receiptNumber:
-        cleanReceiptNumber,
-      collectedBy: null,
-    })
-    .returning({ id: payments.id, studentId: payments.studentId, feeId: payments.feeId, amount: payments.amount, method: payments.method, transactionReference: payments.transactionReference, receiptNumber: payments.receiptNumber, collectedBy: payments.collectedBy, paidAt: payments.paidAt, createdAt: payments.createdAt });
+  const paymentResult = await db.execute(sql`
+    INSERT INTO payments (
+      institute_id,
+      student_id,
+      fee_id,
+      amount,
+      method,
+      transaction_reference,
+      receipt_number,
+      collected_by
+    )
+    VALUES (
+      ${instituteId},
+      ${student.id},
+      ${cleanFeeId},
+      ${paymentAmount.toFixed(2)},
+      ${cleanMethod},
+      ${cleanTransactionReference},
+      ${cleanReceiptNumber},
+      ${null}
+    )
+    RETURNING
+      id,
+      student_id AS "studentId",
+      fee_id AS "feeId",
+      amount,
+      method,
+      transaction_reference AS "transactionReference",
+      receipt_number AS "receiptNumber",
+      collected_by AS "collectedBy",
+      paid_at AS "paidAt",
+      created_at AS "createdAt"
+  `);
+
+  const payment = rowsOf(paymentResult)[0];
+
+  if (!payment) {
+    return errorResponse(
+      "Failed to create payment",
+      500,
+    );
+  }
 
   // ─────────────────────────────────────────────
   // Update linked fee
@@ -486,4 +512,5 @@ export async function POST(request: Request) {
     { status: 201 },
   );
 }
+
 
