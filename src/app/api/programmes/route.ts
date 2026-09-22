@@ -37,11 +37,27 @@ async function nextProgrammeNo(instituteId: string) {
 
 const MANAGE_ROLES = ["INSTITUTE_ADMIN", "SUPER_ADMIN", "MANAGER", "TEACHER", "DIGITAL_MARKETER"];
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getSession();
     if (!session?.instituteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     await ensureAcademicCoreSchema();
+
+    const url = new URL(request.url);
+    const forStudentAdd = url.searchParams.get("forStudentAdd") === "true";
+
+    const teacherRows =
+      forStudentAdd && session.role === "TEACHER"
+        ? rowsOf(await db.execute(sql`
+            SELECT id
+            FROM staff
+            WHERE user_id = ${session.userId}
+              AND institute_id = ${session.instituteId}
+            LIMIT 1
+          `))
+        : [];
+
+    const teacherId = teacherRows[0]?.id;
 
     // Attendance and other dropdowns only need the programme identity.
     // Keep this query independent from legacy enrollment/semester columns so
@@ -75,6 +91,20 @@ export async function GET() {
         ) AS semesters
       FROM programmes p
       WHERE p.institute_id = ${session.instituteId}
+        AND (
+          ${!forStudentAdd || session.role !== "TEACHER"}
+          OR (
+            ${teacherId || null} IS NOT NULL
+            AND EXISTS (
+              SELECT 1
+              FROM batches b
+              WHERE b.institute_id = ${session.instituteId}
+                AND b.teacher_id = ${teacherId || null}
+                AND b.status = 'ACTIVE'
+                AND b.programme_id = p.id
+            )
+          )
+        )
       ORDER BY p.created_at DESC NULLS LAST, p.name ASC
     `);
 
