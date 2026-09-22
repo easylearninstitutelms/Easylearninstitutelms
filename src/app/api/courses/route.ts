@@ -57,7 +57,7 @@ export async function GET(request: Request) {
           )
         `)
         .orderBy(desc(courses.createdAt));
- else {
+    } else {
       rows = await db
         .select()
         .from(courses)
