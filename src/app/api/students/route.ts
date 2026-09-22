@@ -303,6 +303,7 @@ export async function POST(request: Request) {
     // This avoids running unrelated homework/exam schema repairs
     // when creating a student.
     await ensureAcademicCoreSchema();
+    await ensureTeacherAssignmentSchema();
 
     const body = await request.json();
 
