@@ -127,6 +127,8 @@ export async function GET(request: Request) {
   if (permissionError) return permissionError;
 
   try {
+    await ensureTeacherAssignmentSchema();
+
     const instituteId = session.instituteId;
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
