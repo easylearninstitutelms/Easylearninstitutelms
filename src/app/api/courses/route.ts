@@ -37,23 +37,6 @@ export async function GET(request: Request) {
     let rows;
 
     if (forStudentAdd && session.role === "TEACHER") {
-      const teacherRows = await db.execute(sql`
-        SELECT id
-        FROM staff
-        WHERE user_id = ${session.userId}
-          AND institute_id = ${session.instituteId}
-        LIMIT 1
-      `);
-
-      const teacherId = rowsOf(teacherRows)[0]?.id;
-
-      if (!teacherId) {
-        return Response.json(
-          { courses: [] },
-          { status: 200 },
-        );
-      }
-
       rows = await db
         .select()
         .from(courses)
@@ -62,15 +45,19 @@ export async function GET(request: Request) {
           AND ${courses.status} = 'ACTIVE'
           AND EXISTS (
             SELECT 1
-            FROM batches b
-            WHERE b.institute_id = ${session.instituteId}
-              AND b.teacher_id = ${teacherId}
-              AND b.status = 'ACTIVE'
-              AND b.course_id = ${courses.id}
+            FROM teacher_assignments ta
+            WHERE ta.institute_id = ${session.instituteId}
+              AND ta.course_id = ${courses.id}
+              AND EXISTS (
+                SELECT 1
+                FROM staff s
+                WHERE s.id = ta.teacher_id
+                  AND s.user_id = ${session.userId}
+            )
           )
         `)
         .orderBy(desc(courses.createdAt));
-    } else {
+ else {
       rows = await db
         .select()
         .from(courses)
