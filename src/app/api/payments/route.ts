@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { fees, payments, students } from "@/db/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 
 type PaymentMethod =
@@ -16,6 +16,21 @@ type FeeStatus =
   | "DUE"
   | "WAIVED";
 
+
+type Row = Record<string, unknown>;
+
+function rowsOf(result: unknown): Row[] {
+  if (
+    result &&
+    typeof result === "object" &&
+    "rows" in result &&
+    Array.isArray((result as { rows?: unknown }).rows)
+  ) {
+    return (result as { rows: Row[] }).rows;
+  }
+
+  return Array.isArray(result) ? (result as Row[]) : [];
+}
 const PAYMENT_METHODS: readonly PaymentMethod[] = [
   "CASH",
   "BKASH",
@@ -471,3 +486,4 @@ export async function POST(request: Request) {
     { status: 201 },
   );
 }
+
