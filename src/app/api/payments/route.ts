@@ -376,7 +376,7 @@ export async function POST(request: Request) {
         cleanReceiptNumber,
       collectedBy: null,
     })
-    .returning();
+    .returning({ id: payments.id, studentId: payments.studentId, feeId: payments.feeId, amount: payments.amount, method: payments.method, transactionReference: payments.transactionReference, receiptNumber: payments.receiptNumber, collectedBy: payments.collectedBy, paidAt: payments.paidAt, createdAt: payments.createdAt });
 
   // ─────────────────────────────────────────────
   // Update linked fee

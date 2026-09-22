@@ -659,6 +659,173 @@ export default function FeesPage() {
     }
   }
 
+  function handleGenerateReceipt() {
+    if (!receipt) return;
+
+    const popup = window.open(
+      "",
+      "_blank",
+      "width=700,height=900"
+    );
+
+    if (!popup) {
+      setError(
+        "Please allow pop-ups to generate the receipt."
+      );
+      return;
+    }
+
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    popup.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Payment Receipt - ${escapeHtml(receipt.receiptNumber)}</title>
+          <meta charset="utf-8" />
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 0;
+              padding: 40px;
+              color: #111827;
+              background: #ffffff;
+            }
+
+            .receipt {
+              max-width: 620px;
+              margin: 0 auto;
+              border: 1px solid #d1d5db;
+              padding: 32px;
+            }
+
+            .title {
+              text-align: center;
+              font-size: 28px;
+              font-weight: 700;
+              margin-bottom: 8px;
+            }
+
+            .subtitle {
+              text-align: center;
+              color: #6b7280;
+              margin-bottom: 30px;
+            }
+
+            .line {
+              display: flex;
+              justify-content: space-between;
+              gap: 20px;
+              padding: 12px 0;
+              border-bottom: 1px solid #e5e7eb;
+            }
+
+            .label {
+              font-weight: 600;
+              color: #4b5563;
+            }
+
+            .value {
+              font-weight: 600;
+              text-align: right;
+            }
+
+            .amount {
+              margin-top: 24px;
+              padding: 18px;
+              background: #f0fdf4;
+              border: 1px solid #bbf7d0;
+              text-align: center;
+            }
+
+            .amount-label {
+              color: #166534;
+              font-size: 14px;
+            }
+
+            .amount-value {
+              color: #166534;
+              font-size: 30px;
+              font-weight: 700;
+              margin-top: 6px;
+            }
+
+            .footer {
+              margin-top: 32px;
+              text-align: center;
+              color: #6b7280;
+              font-size: 12px;
+            }
+
+            @media print {
+              body {
+                padding: 0;
+              }
+
+              .receipt {
+                border: none;
+              }
+            }
+          </style>
+        </head>
+
+        <body>
+          <div class="receipt">
+            <div class="title">Payment Receipt</div>
+            <div class="subtitle">Easylearn Institute</div>
+
+            <div class="line">
+              <span class="label">Receipt Number</span>
+              <span class="value">
+                ${escapeHtml(receipt.receiptNumber)}
+              </span>
+            </div>
+
+            <div class="line">
+              <span class="label">Student</span>
+              <span class="value">
+                ${escapeHtml(receipt.studentName)}
+              </span>
+            </div>
+
+            <div class="line">
+              <span class="label">Payment Method</span>
+              <span class="value">
+                ${escapeHtml(
+                  getPaymentMethodLabel(receipt.method)
+                )}
+              </span>
+            </div>
+
+            <div class="amount">
+              <div class="amount-label">Amount Paid</div>
+              <div class="amount-value">
+                ${escapeHtml(formatCurrency(receipt.amount))}
+              </div>
+            </div>
+
+            <div class="footer">
+              Payment collected successfully.
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+
+    popup.document.close();
+
+    setTimeout(() => {
+      popup.focus();
+      popup.print();
+    }, 300);
+  }
+
   function handlePaymentStudentChange(
     studentId: string
   ) {
@@ -942,6 +1109,16 @@ export default function FeesPage() {
                     receipt.method
                   )}
                 </p>
+              </div>
+
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={handleGenerateReceipt}
+                  className="btn btn-primary"
+                >
+                  Generate Receipt
+                </button>
               </div>
             </div>
 
