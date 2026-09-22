@@ -18,7 +18,7 @@ async function nextCourseNo(instituteId: string) {
   return Number(rowsOf(result)[0]?.next_no || 211);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
 
   if (!session?.instituteId) {
@@ -31,11 +31,52 @@ export async function GET() {
   try {
     await ensureCourseSchema();
 
-    const rows = await db
-      .select()
-      .from(courses)
-      .where(eq(courses.instituteId, session.instituteId))
-      .orderBy(desc(courses.createdAt));
+    const url = new URL(request.url);
+    const forStudentAdd = url.searchParams.get("forStudentAdd") === "true";
+
+    let rows;
+
+    if (forStudentAdd && session.role === "TEACHER") {
+      const teacherRows = await db.execute(sql`
+        SELECT id
+        FROM staff
+        WHERE user_id = ${session.userId}
+          AND institute_id = ${session.instituteId}
+        LIMIT 1
+      `);
+
+      const teacherId = rowsOf(teacherRows)[0]?.id;
+
+      if (!teacherId) {
+        return Response.json(
+          { courses: [] },
+          { status: 200 },
+        );
+      }
+
+      rows = await db
+        .select()
+        .from(courses)
+        .where(sql`
+          ${courses.instituteId} = ${session.instituteId}
+          AND ${courses.status} = 'ACTIVE'
+          AND EXISTS (
+            SELECT 1
+            FROM batches b
+            WHERE b.institute_id = ${session.instituteId}
+              AND b.teacher_id = ${teacherId}
+              AND b.status = 'ACTIVE'
+              AND b.course_id = ${courses.id}
+          )
+        `)
+        .orderBy(desc(courses.createdAt));
+    } else {
+      rows = await db
+        .select()
+        .from(courses)
+        .where(eq(courses.instituteId, session.instituteId))
+        .orderBy(desc(courses.createdAt));
+    }
 
     const counts = await db.execute(sql`
       SELECT course_id AS "courseId", COUNT(*)::int AS "classCount"
