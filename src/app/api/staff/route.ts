@@ -9,6 +9,7 @@ import {
 } from "@/lib/session";
 import { ensureStaffSchema } from "@/lib/staff";
 import { ensureMarketingSchema } from "@/lib/marketing";
+import { ensureTeacherAssignmentSchema } from "@/lib/teacher-assignment";
 
 const ALLOWED_ACCOUNT_ROLES = [
   "TEACHER",
@@ -165,6 +166,7 @@ export async function POST(request: Request) {
 
   await ensureStaffSchema();
   await ensureMarketingSchema();
+  await ensureTeacherAssignmentSchema();
 
   try {
     const body = await request.json();
