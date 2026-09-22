@@ -222,7 +222,7 @@ export async function GET(request: Request) {
     }
 
     if (session.role === "TEACHER" && !batchId) {
-      const teacherRows = await db.execute(sql\`
+      const teacherRows = await db.execute(sql`
         SELECT ta.course_id AS "courseId", ta.programme_id AS "programmeId"
         FROM teacher_assignments ta
         INNER JOIN staff s ON s.id = ta.teacher_id
@@ -239,7 +239,7 @@ export async function GET(request: Request) {
         );
       }
 
-      conditions.push(sql\`
+      conditions.push(sql`
         EXISTS (
           SELECT 1
           FROM \${enrollments} e
@@ -393,7 +393,7 @@ export async function POST(request: Request) {
     let prefix = "";
 
     if (session.role === "TEACHER") {
-      const assignmentRows = await db.execute(sql\`
+      const assignmentRows = await db.execute(sql`
         SELECT ta.course_id AS "courseId", ta.programme_id AS "programmeId"
         FROM teacher_assignments ta
         INNER JOIN staff s ON s.id = ta.teacher_id
