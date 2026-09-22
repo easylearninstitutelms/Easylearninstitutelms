@@ -330,7 +330,6 @@ export const programmes = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => [
-    unique("programmes_institute_name_unique").on(t.instituteId, t.name),
     index("programmes_institute_idx").on(t.instituteId),
   ]
 );
