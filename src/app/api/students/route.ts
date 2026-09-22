@@ -226,10 +226,11 @@ export async function GET(request: Request) {
         SELECT ta.course_id AS "courseId", ta.programme_id AS "programmeId"
         FROM teacher_assignments ta
         INNER JOIN staff s ON s.id = ta.teacher_id
-        WHERE s.user_id = \${session.userId}
-          AND ta.institute_id = \${instituteId}
+        WHERE s.user_id = ${session.userId}
+          AND ta.institute_id = ${instituteId}
         LIMIT 1
-      \`);
+      `);
+
       const assignment = (teacherRows as any).rows?.[0];
 
       if (!assignment) {
@@ -242,17 +243,23 @@ export async function GET(request: Request) {
       conditions.push(sql`
         EXISTS (
           SELECT 1
-          FROM \${enrollments} e
-          WHERE e.student_id = \${students.id}
+          FROM ${enrollments} e
+          WHERE e.student_id = ${students.id}
             AND e.status = 'ACTIVE'
-            AND e.institute_id = \${instituteId}
+            AND e.institute_id = ${instituteId}
             AND (
-              (\${assignment.courseId || null}::uuid IS NOT NULL AND e.course_id = \${assignment.courseId || null})
+              (
+                ${assignment.courseId || null}::uuid IS NOT NULL
+                AND e.course_id = ${assignment.courseId || null}
+              )
               OR
-              (\${assignment.programmeId || null}::uuid IS NOT NULL AND e.programme_id = \${assignment.programmeId || null})
+              (
+                ${assignment.programmeId || null}::uuid IS NOT NULL
+                AND e.programme_id = ${assignment.programmeId || null}
+              )
             )
         )
-      \`);
+      `);
     }
 
     const [{ total }] = await db
@@ -397,10 +404,11 @@ export async function POST(request: Request) {
         SELECT ta.course_id AS "courseId", ta.programme_id AS "programmeId"
         FROM teacher_assignments ta
         INNER JOIN staff s ON s.id = ta.teacher_id
-        WHERE s.user_id = \${session.userId}
-          AND ta.institute_id = \${instituteId}
+        WHERE s.user_id = ${session.userId}
+          AND ta.institute_id = ${instituteId}
         LIMIT 1
-      \`);
+      `);
+
       const assignment = (assignmentRows as any).rows?.[0];
 
       if (!assignment) {
@@ -411,12 +419,17 @@ export async function POST(request: Request) {
       }
 
       const allowed =
-        (selectedCourseId && String(assignment.courseId || "") === selectedCourseId) ||
-        (selectedProgrammeId && String(assignment.programmeId || "") === selectedProgrammeId);
+        (selectedCourseId &&
+          String(assignment.courseId || "") === selectedCourseId) ||
+        (selectedProgrammeId &&
+          String(assignment.programmeId || "") === selectedProgrammeId);
 
       if (!allowed) {
         return Response.json(
-          { error: "You can only add students to your assigned Course or Programme." },
+          {
+            error:
+              "You can only add students to your assigned Course or Programme.",
+          },
           { status: 403 },
         );
       }
