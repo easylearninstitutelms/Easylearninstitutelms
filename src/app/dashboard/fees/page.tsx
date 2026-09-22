@@ -7,6 +7,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+
 import {
   formatCurrency,
   formatDate,
@@ -69,36 +70,60 @@ const PAYMENT_METHODS = [
   { value: "BANK", label: "Bank" },
 ];
 
-function toNumber(value: string | number | null | undefined) {
+function toNumber(
+  value: string | number | null | undefined
+) {
   const number = Number(value);
 
-  return Number.isFinite(number) ? number : 0;
+  return Number.isFinite(number)
+    ? number
+    : 0;
 }
 
-function normalizeFeeRow(row: any): FeeRow | null {
+function normalizeFeeRow(
+  row: any
+): FeeRow | null {
   const rawFee = row?.fee ?? row;
 
-  if (!rawFee || typeof rawFee !== "object" || !rawFee.id) {
+  if (
+    !rawFee ||
+    typeof rawFee !== "object" ||
+    !rawFee.id
+  ) {
     return null;
   }
 
   return {
     fee: {
       id: String(rawFee.id),
-      feeType: String(rawFee.feeType ?? "OTHER"),
-      amount: String(rawFee.amount ?? "0"),
-      discount: String(rawFee.discount ?? "0"),
-      dueAmount: String(rawFee.dueAmount ?? "0"),
+      feeType: String(
+        rawFee.feeType ?? "OTHER"
+      ),
+      amount: String(
+        rawFee.amount ?? "0"
+      ),
+      discount: String(
+        rawFee.discount ?? "0"
+      ),
+      dueAmount: String(
+        rawFee.dueAmount ?? "0"
+      ),
       dueDate: rawFee.dueDate ?? null,
-      status: String(rawFee.status ?? "DUE"),
-      createdAt: String(rawFee.createdAt ?? ""),
+      status: String(
+        rawFee.status ?? "DUE"
+      ),
+      createdAt: String(
+        rawFee.createdAt ?? ""
+      ),
     },
+
     studentName: String(
       row?.studentName ??
         row?.student?.name ??
         rawFee.studentName ??
         ""
     ),
+
     studentCode: String(
       row?.studentCode ??
         row?.student?.studentId ??
@@ -108,23 +133,31 @@ function normalizeFeeRow(row: any): FeeRow | null {
   };
 }
 
-function normalizeFeeRows(data: any): FeeRow[] {
-  const source: any[] = Array.isArray(data?.fees)
-    ? data.fees
-    : Array.isArray(data)
-      ? data
-      : [];
+function normalizeFeeRows(
+  data: any
+): FeeRow[] {
+  const source: any[] =
+    Array.isArray(data?.fees)
+      ? data.fees
+      : Array.isArray(data)
+        ? data
+        : [];
 
   return source
     .map(normalizeFeeRow)
     .filter(
-      (row: FeeRow | null): row is FeeRow =>
+      (
+        row: FeeRow | null
+      ): row is FeeRow =>
         row !== null
     );
 }
 
-function normalizePaymentRow(row: any): PaymentRow | null {
-  const rawPayment = row?.payment ?? row;
+function normalizePaymentRow(
+  row: any
+): PaymentRow | null {
+  const rawPayment =
+    row?.payment ?? row;
 
   if (
     !rawPayment ||
@@ -137,19 +170,37 @@ function normalizePaymentRow(row: any): PaymentRow | null {
   return {
     payment: {
       id: String(rawPayment.id),
-      amount: String(rawPayment.amount ?? "0"),
-      method: String(rawPayment.method ?? "CASH"),
+
+      amount: String(
+        rawPayment.amount ?? "0"
+      ),
+
+      method: String(
+        rawPayment.method ?? "CASH"
+      ),
+
       receiptNumber: String(
         rawPayment.receiptNumber ?? "-"
       ),
-      paidAt: String(rawPayment.paidAt ?? ""),
+
+      paidAt: String(
+        rawPayment.paidAt ?? ""
+      ),
+
       transactionReference:
-        rawPayment.transactionReference ?? null,
-      feeId: rawPayment.feeId ?? null,
+        rawPayment.transactionReference ??
+        null,
+
+      feeId:
+        rawPayment.feeId ?? null,
     },
+
     studentName: String(
-      row?.studentName ?? row?.student?.name ?? ""
+      row?.studentName ??
+        row?.student?.name ??
+        ""
     ),
+
     studentCode: String(
       row?.studentCode ??
         row?.student?.studentId ??
@@ -158,92 +209,131 @@ function normalizePaymentRow(row: any): PaymentRow | null {
   };
 }
 
-function normalizePaymentRows(data: any): PaymentRow[] {
-  const source: any[] = Array.isArray(data?.payments)
-    ? data.payments
-    : Array.isArray(data)
-      ? data
-      : [];
+function normalizePaymentRows(
+  data: any
+): PaymentRow[] {
+  const source: any[] =
+    Array.isArray(data?.payments)
+      ? data.payments
+      : Array.isArray(data)
+        ? data
+        : [];
 
   return source
     .map(normalizePaymentRow)
     .filter(
-      (row: PaymentRow | null): row is PaymentRow =>
+      (
+        row: PaymentRow | null
+      ): row is PaymentRow =>
         row !== null
     );
 }
 
-function getFeeTypeLabel(type: string) {
+function getFeeTypeLabel(
+  type: string
+) {
   return (
-    FEE_TYPES.find((item) => item.value === type)?.label ||
+    FEE_TYPES.find(
+      (item) =>
+        item.value === type
+    )?.label ||
     type.replaceAll("_", " ")
   );
 }
 
-function getPaymentMethodLabel(method: string) {
+function getPaymentMethodLabel(
+  method: string
+) {
   return (
     PAYMENT_METHODS.find(
-      (item) => item.value === method
+      (item) =>
+        item.value === method
     )?.label || method
   );
 }
 
 export default function FeesPage() {
-  const [activeTab, setActiveTab] = useState<
+  const [
+    activeTab,
+    setActiveTab,
+  ] = useState<
     "fees" | "payments" | "collect"
   >("fees");
 
-  const [fees, setFees] = useState<FeeRow[]>([]);
-  const [payments, setPayments] = useState<PaymentRow[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [studentFees, setStudentFees] = useState<FeeRow[]>([]);
+  const [fees, setFees] =
+    useState<FeeRow[]>([]);
 
-  const [loading, setLoading] = useState(true);
-  const [loadingStudentFees, setLoadingStudentFees] =
+  const [payments, setPayments] =
+    useState<PaymentRow[]>([]);
+
+  const [students, setStudents] =
+    useState<Student[]>([]);
+
+  const [studentFees, setStudentFees] =
+    useState<FeeRow[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [
+    loadingStudentFees,
+    setLoadingStudentFees,
+  ] = useState(false);
+
+  const [submitting, setSubmitting] =
     useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
-  const [showFeeModal, setShowFeeModal] = useState(false);
+  const [
+    showFeeModal,
+    setShowFeeModal,
+  ] = useState(false);
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] =
+    useState("");
 
-  const [receipt, setReceipt] = useState<{
-    receiptNumber: string;
-    amount: string;
-    method: string;
-    studentName: string;
-  } | null>(null);
+  const [success, setSuccess] =
+    useState("");
 
-  const [feeForm, setFeeForm] = useState({
-    studentId: "",
-    feeType: "MONTHLY",
-    amount: "",
-    discount: "",
-    dueDate: "",
-  });
+  const [receipt, setReceipt] =
+    useState<any>(null);
 
-  const [payForm, setPayForm] = useState({
-    studentId: "",
-    feeId: "",
-    amount: "",
-    method: "CASH",
-    transactionReference: "",
-  });
+  const [feeForm, setFeeForm] =
+    useState({
+      studentId: "",
+      feeType: "MONTHLY",
+      amount: "",
+      discount: "",
+      dueDate: "",
+    });
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
+  const [payForm, setPayForm] =
+    useState({
+      studentId: "",
+      feeId: "",
+      amount: "",
+      method: "CASH",
+      transactionReference: "",
+    });
 
-      const [feesRes, paymentsRes, studentsRes] =
-        await Promise.all([
+  const fetchData =
+    useCallback(async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const [
+          feesRes,
+          paymentsRes,
+          studentsRes,
+        ] = await Promise.all([
           fetch("/api/fees", {
             cache: "no-store",
           }),
+
           fetch("/api/payments", {
             cache: "no-store",
           }),
+
           fetch(
             "/api/students?status=ACTIVE&limit=1000",
             {
@@ -252,53 +342,66 @@ export default function FeesPage() {
           ),
         ]);
 
-      const [
-        feesData,
-        paymentsData,
-        studentsData,
-      ] = await Promise.all([
-        feesRes.json(),
-        paymentsRes.json(),
-        studentsRes.json(),
-      ]);
+        const [
+          feesData,
+          paymentsData,
+          studentsData,
+        ] = await Promise.all([
+          feesRes.json(),
+          paymentsRes.json(),
+          studentsRes.json(),
+        ]);
 
-      if (!feesRes.ok) {
-        throw new Error(
-          feesData.error || "Failed to load fees."
+        if (!feesRes.ok) {
+          throw new Error(
+            feesData.error ||
+              "Failed to load fees."
+          );
+        }
+
+        if (!paymentsRes.ok) {
+          throw new Error(
+            paymentsData.error ||
+              "Failed to load payments."
+          );
+        }
+
+        if (!studentsRes.ok) {
+          throw new Error(
+            studentsData.error ||
+              "Failed to load students."
+          );
+        }
+
+        setFees(
+          normalizeFeeRows(
+            feesData
+          )
         );
-      }
 
-      if (!paymentsRes.ok) {
-        throw new Error(
-          paymentsData.error ||
-            "Failed to load payments."
+        setPayments(
+          normalizePaymentRows(
+            paymentsData
+          )
         );
-      }
 
-      if (!studentsRes.ok) {
-        throw new Error(
-          studentsData.error ||
-            "Failed to load students."
+        setStudents(
+          Array.isArray(
+            studentsData?.students
+          )
+            ? studentsData.students
+            : []
         );
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load fee information."
+        );
+      } finally {
+        setLoading(false);
       }
-
-      setFees(normalizeFeeRows(feesData));
-      setPayments(normalizePaymentRows(paymentsData));
-      setStudents(
-        Array.isArray(studentsData?.students)
-          ? studentsData.students
-          : []
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to load fee information."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    }, []);
 
   useEffect(() => {
     fetchData();
@@ -325,15 +428,15 @@ export default function FeesPage() {
       setLoadingStudentFees(true);
 
       const res = await fetch(
-        `/api/fees?studentId=${encodeURIComponent(
-          studentId
-        )}`,
+        "/api/fees?studentId=" +
+          encodeURIComponent(studentId),
         {
           cache: "no-store",
         }
       );
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
       if (!res.ok) {
         throw new Error(
@@ -342,23 +445,33 @@ export default function FeesPage() {
         );
       }
 
-      const rows = normalizeFeeRows(data);
+      const rows =
+        normalizeFeeRows(data);
 
       setStudentFees(rows);
 
-      const firstDueFee = rows.find(
-        (row) =>
-          (row.fee.status === "DUE" ||
-            row.fee.status === "PARTIAL") &&
-          toNumber(row.fee.dueAmount) > 0
-      );
+      const firstDueFee =
+        rows.find(
+          (row) =>
+            (
+              row.fee.status ===
+                "DUE" ||
+              row.fee.status ===
+                "PARTIAL"
+            ) &&
+            toNumber(
+              row.fee.dueAmount
+            ) > 0
+        );
 
       if (firstDueFee) {
         setPayForm((prev) => ({
           ...prev,
           studentId,
-          feeId: firstDueFee.fee.id,
-          amount: firstDueFee.fee.dueAmount,
+          feeId:
+            firstDueFee.fee.id,
+          amount:
+            firstDueFee.fee.dueAmount,
         }));
       }
     } catch (err) {
@@ -381,11 +494,16 @@ export default function FeesPage() {
     setError("");
     setSuccess("");
 
-    const amount = toNumber(feeForm.amount);
-    const discount = toNumber(feeForm.discount);
+    const amount =
+      toNumber(feeForm.amount);
+
+    const discount =
+      toNumber(feeForm.discount);
 
     if (!feeForm.studentId) {
-      setError("Please select a student.");
+      setError(
+        "Please select a student."
+      );
       setSubmitting(false);
       return;
     }
@@ -399,7 +517,9 @@ export default function FeesPage() {
     }
 
     if (discount < 0) {
-      setError("Discount cannot be negative.");
+      setError(
+        "Discount cannot be negative."
+      );
       setSubmitting(false);
       return;
     }
@@ -413,23 +533,30 @@ export default function FeesPage() {
     }
 
     try {
-      const res = await fetch("/api/fees", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...feeForm,
-          amount: String(amount),
-          discount: String(discount),
-        }),
-      });
+      const res = await fetch(
+        "/api/fees",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            ...feeForm,
+            amount: String(amount),
+            discount:
+              String(discount),
+          }),
+        }
+      );
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
       if (!res.ok) {
         throw new Error(
-          data.error || "Failed to add fee."
+          data.error ||
+            "Failed to add fee."
         );
       }
 
@@ -469,10 +596,13 @@ export default function FeesPage() {
     setSuccess("");
     setReceipt(null);
 
-    const amount = toNumber(payForm.amount);
+    const amount =
+      toNumber(payForm.amount);
 
     if (!payForm.studentId) {
-      setError("Please select a student.");
+      setError(
+        "Please select a student."
+      );
       setSubmitting(false);
       return;
     }
@@ -486,13 +616,19 @@ export default function FeesPage() {
     }
 
     if (payForm.feeId) {
-      const selectedFee = studentFees.find(
-        (row) => row.fee.id === payForm.feeId
-      );
+      const selectedFee =
+        studentFees.find(
+          (row) =>
+            row.fee.id ===
+            payForm.feeId
+        );
 
       if (
         selectedFee &&
-        amount > toNumber(selectedFee.fee.dueAmount)
+        amount >
+          toNumber(
+            selectedFee.fee.dueAmount
+          )
       ) {
         setError(
           "Payment cannot be greater than the selected fee due."
@@ -503,19 +639,26 @@ export default function FeesPage() {
     }
 
     try {
-      const res = await fetch("/api/payments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...payForm,
-          amount: String(amount),
-          feeId: payForm.feeId || null,
-        }),
-      });
+      const res = await fetch(
+        "/api/payments",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            ...payForm,
+            amount: String(amount),
+            feeId:
+              payForm.feeId ||
+              null,
+          }),
+        }
+      );
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
       if (!res.ok) {
         throw new Error(
@@ -524,19 +667,46 @@ export default function FeesPage() {
         );
       }
 
-      const studentName =
-        students.find(
-          (student) =>
-            student.id === payForm.studentId
-        )?.name || "Student";
+      const paymentId =
+        data?.payment?.id;
 
-      setReceipt({
-        receiptNumber:
-          data.receiptNumber || "-",
-        amount: String(amount),
-        method: payForm.method,
-        studentName,
-      });
+      if (!paymentId) {
+        throw new Error(
+          "Payment was saved, but receipt details could not be loaded."
+        );
+      }
+
+      const receiptRes =
+        await fetch(
+          "/api/payments/" +
+            paymentId +
+            "/receipt",
+          {
+            cache: "no-store",
+          }
+        );
+
+      const receiptData =
+        await receiptRes.json();
+
+      if (!receiptRes.ok) {
+        throw new Error(
+          receiptData.error ||
+            "Payment was saved, but receipt could not be loaded."
+        );
+      }
+
+      if (
+        !receiptData?.receipt
+      ) {
+        throw new Error(
+          "Payment was saved, but receipt data is unavailable."
+        );
+      }
+
+      setReceipt(
+        receiptData.receipt
+      );
 
       setSuccess(
         "Payment collected successfully."
@@ -547,7 +717,8 @@ export default function FeesPage() {
         feeId: "",
         amount: "",
         method: "CASH",
-        transactionReference: "",
+        transactionReference:
+          "",
       });
 
       setStudentFees([]);
@@ -564,67 +735,102 @@ export default function FeesPage() {
     }
   }
 
-  const totalBilled = useMemo(() => {
-    return fees.reduce(
-      (sum, row) =>
-        sum + toNumber(row?.fee?.amount),
-      0
-    );
-  }, [fees]);
+  const totalBilled =
+    useMemo(() => {
+      return fees.reduce(
+        (sum, row) =>
+          sum +
+          toNumber(
+            row?.fee?.amount
+          ),
+        0
+      );
+    }, [fees]);
 
-  const totalDiscount = useMemo(() => {
-    return fees.reduce(
-      (sum, row) =>
-        sum + toNumber(row?.fee?.discount),
-      0
-    );
-  }, [fees]);
+  const totalDiscount =
+    useMemo(() => {
+      return fees.reduce(
+        (sum, row) =>
+          sum +
+          toNumber(
+            row?.fee?.discount
+          ),
+        0
+      );
+    }, [fees]);
 
   const totalNetFees =
     totalBilled - totalDiscount;
 
-  const totalDue = useMemo(() => {
-    return fees.reduce(
-      (sum, row) =>
-        sum + toNumber(row?.fee?.dueAmount),
-      0
-    );
-  }, [fees]);
+  const totalDue =
+    useMemo(() => {
+      return fees.reduce(
+        (sum, row) =>
+          sum +
+          toNumber(
+            row?.fee?.dueAmount
+          ),
+        0
+      );
+    }, [fees]);
 
   const totalAllocatedCollected =
     useMemo(() => {
-      return fees.reduce((sum, row) => {
-        const netAmount =
-          toNumber(row?.fee?.amount) -
-          toNumber(row?.fee?.discount);
+      return fees.reduce(
+        (sum, row) => {
+          const netAmount =
+            toNumber(
+              row?.fee?.amount
+            ) -
+            toNumber(
+              row?.fee?.discount
+            );
 
-        const dueAmount = toNumber(
-          row?.fee?.dueAmount
-        );
+          const dueAmount =
+            toNumber(
+              row?.fee?.dueAmount
+            );
 
-        return (
-          sum +
-          Math.max(0, netAmount - dueAmount)
-        );
-      }, 0);
+          return (
+            sum +
+            Math.max(
+              0,
+              netAmount -
+                dueAmount
+            )
+          );
+        },
+        0
+      );
     }, [fees]);
 
-  const totalPayments = useMemo(() => {
-    return payments.reduce(
-      (sum, row) =>
-        sum + toNumber(row?.payment?.amount),
-      0
-    );
-  }, [payments]);
+  const totalPayments =
+    useMemo(() => {
+      return payments.reduce(
+        (sum, row) =>
+          sum +
+          toNumber(
+            row?.payment?.amount
+          ),
+        0
+      );
+    }, [payments]);
 
-  const dueFees = useMemo(() => {
-    return fees.filter(
-      (row) =>
-        (row?.fee?.status === "DUE" ||
-          row?.fee?.status === "PARTIAL") &&
-        toNumber(row?.fee?.dueAmount) > 0
-    );
-  }, [fees]);
+  const dueFees =
+    useMemo(() => {
+      return fees.filter(
+        (row) =>
+          (
+            row?.fee?.status ===
+              "DUE" ||
+            row?.fee?.status ===
+              "PARTIAL"
+          ) &&
+          toNumber(
+            row?.fee?.dueAmount
+          ) > 0
+      );
+    }, [fees]);
 
   function openFeeModal() {
     setError("");
@@ -648,7 +854,10 @@ export default function FeesPage() {
   }
 
   function changeTab(
-    tab: "fees" | "payments" | "collect"
+    tab:
+      | "fees"
+      | "payments"
+      | "collect"
   ) {
     setActiveTab(tab);
     setError("");
@@ -659,13 +868,18 @@ export default function FeesPage() {
     }
   }
 
+  /*
+   * IMPORTANT:
+   * This receipt function intentionally does NOT
+   * use nested template literals.
+   */
   function handleGenerateReceipt() {
     if (!receipt) return;
 
     const popup = window.open(
       "",
       "_blank",
-      "width=700,height=900"
+      "width=500,height=850"
     );
 
     if (!popup) {
@@ -675,155 +889,640 @@ export default function FeesPage() {
       return;
     }
 
-    const escapeHtml = (value: string) =>
-      value
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    const escapeHtml = (
+      value: unknown
+    ) =>
+      String(value ?? "")
+        .replace(
+          /&/g,
+          "&amp;"
+        )
+        .replace(
+          /</g,
+          "&lt;"
+        )
+        .replace(
+          />/g,
+          "&gt;"
+        )
+        .replace(
+          /"/g,
+          "&quot;"
+        )
+        .replace(
+          /'/g,
+          "&#039;"
+        );
 
-    popup.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Payment Receipt - ${escapeHtml(receipt.receiptNumber)}</title>
-          <meta charset="utf-8" />
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              margin: 0;
-              padding: 40px;
-              color: #111827;
-              background: #ffffff;
+    const payment =
+      receipt.payment || {};
+
+    const student =
+      receipt.student || {};
+
+    const fee =
+      receipt.fee || {};
+
+    const institute =
+      receipt.institute || {};
+
+    const academic =
+      receipt.academic || {};
+
+    const logoUrl =
+      institute.logoUrl
+        ? new URL(
+            String(
+              institute.logoUrl
+            ),
+            window.location.origin
+          ).href
+        : "";
+
+    const paidDate =
+      payment.paidAt
+        ? new Date(
+            payment.paidAt
+          ).toLocaleString(
+            "en-GB",
+            {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
             }
-
-            .receipt {
-              max-width: 620px;
-              margin: 0 auto;
-              border: 1px solid #d1d5db;
-              padding: 32px;
+          )
+        : new Date().toLocaleString(
+            "en-GB",
+            {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
             }
+          );
 
-            .title {
-              text-align: center;
-              font-size: 28px;
-              font-weight: 700;
-              margin-bottom: 8px;
-            }
+    const courseName = String(
+      academic.courseName ||
+        ""
+    );
 
-            .subtitle {
-              text-align: center;
-              color: #6b7280;
-              margin-bottom: 30px;
-            }
+    const programmeName =
+      String(
+        academic.programmeName ||
+          ""
+      );
 
-            .line {
-              display: flex;
-              justify-content: space-between;
-              gap: 20px;
-              padding: 12px 0;
-              border-bottom: 1px solid #e5e7eb;
-            }
+    const semesterName =
+      String(
+        academic.semesterName ||
+          ""
+      );
 
-            .label {
-              font-weight: 600;
-              color: #4b5563;
-            }
+    const batchName = String(
+      academic.batchName || ""
+    );
 
-            .value {
-              font-weight: 600;
-              text-align: right;
-            }
+    const paymentMethod =
+      getPaymentMethodLabel(
+        String(
+          payment.method || ""
+        )
+      );
 
-            .amount {
-              margin-top: 24px;
-              padding: 18px;
-              background: #f0fdf4;
-              border: 1px solid #bbf7d0;
-              text-align: center;
-            }
+    const feeType = fee.type
+      ? getFeeTypeLabel(
+          String(fee.type)
+        )
+      : "";
 
-            .amount-label {
-              color: #166534;
-              font-size: 14px;
-            }
+    const receiptNumber =
+      escapeHtml(
+        payment.receiptNumber ||
+          "-"
+      );
 
-            .amount-value {
-              color: #166534;
-              font-size: 30px;
-              font-weight: 700;
-              margin-top: 6px;
-            }
+    const instituteName =
+      escapeHtml(
+        institute.name ||
+          "Easylearn Institute"
+      );
 
-            .footer {
-              margin-top: 32px;
-              text-align: center;
-              color: #6b7280;
-              font-size: 12px;
-            }
+    const instituteAddress =
+      institute.address
+        ? escapeHtml(
+            institute.address
+          )
+        : "";
 
-            @media print {
-              body {
-                padding: 0;
-              }
+    const institutePhone =
+      institute.phone
+        ? escapeHtml(
+            institute.phone
+          )
+        : "";
 
-              .receipt {
-                border: none;
-              }
-            }
-          </style>
-        </head>
+    const instituteEmail =
+      institute.email
+        ? escapeHtml(
+            institute.email
+          )
+        : "";
 
-        <body>
-          <div class="receipt">
-            <div class="title">Payment Receipt</div>
-            <div class="subtitle">Easylearn Institute</div>
+    const studentName =
+      escapeHtml(
+        student.name || "-"
+      );
 
-            <div class="line">
-              <span class="label">Receipt Number</span>
-              <span class="value">
-                ${escapeHtml(receipt.receiptNumber)}
-              </span>
-            </div>
+    const studentCode =
+      escapeHtml(
+        student.studentCode ||
+          student.studentId ||
+          "-"
+      );
 
-            <div class="line">
-              <span class="label">Student</span>
-              <span class="value">
-                ${escapeHtml(receipt.studentName)}
-              </span>
-            </div>
+    const studentPhone =
+      student.phone
+        ? escapeHtml(
+            student.phone
+          )
+        : "";
 
-            <div class="line">
-              <span class="label">Payment Method</span>
-              <span class="value">
-                ${escapeHtml(
-                  getPaymentMethodLabel(receipt.method)
-                )}
-              </span>
-            </div>
+    const safeCourseName =
+      escapeHtml(
+        courseName
+      );
 
-            <div class="amount">
-              <div class="amount-label">Amount Paid</div>
-              <div class="amount-value">
-                ${escapeHtml(formatCurrency(receipt.amount))}
-              </div>
-            </div>
+    const safeProgrammeName =
+      escapeHtml(
+        programmeName
+      );
 
-            <div class="footer">
-              Payment collected successfully.
-            </div>
-          </div>
-        </body>
-      </html>
-    `);
+    const safeSemesterName =
+      escapeHtml(
+        semesterName
+      );
 
+    const safeBatchName =
+      escapeHtml(
+        batchName
+      );
+
+    const safePaymentMethod =
+      escapeHtml(
+        paymentMethod
+      );
+
+    const safeFeeType =
+      escapeHtml(
+        feeType
+      );
+
+    const safePaidDate =
+      escapeHtml(
+        paidDate
+      );
+
+    const safeReference =
+      payment.transactionReference
+        ? escapeHtml(
+            payment.transactionReference
+          )
+        : "";
+
+    const safeAmount =
+      escapeHtml(
+        formatCurrency(
+          String(
+            payment.amount ||
+              "0"
+          )
+        )
+      );
+
+    let logoHtml = "";
+
+    if (logoUrl) {
+      logoHtml =
+        '<img class="logo" src="' +
+        escapeHtml(logoUrl) +
+        '" alt="Institute Logo" />';
+    }
+
+    let addressHtml = "";
+
+    if (instituteAddress) {
+      addressHtml =
+        '<div class="address">' +
+        instituteAddress +
+        "</div>";
+    }
+
+    let contactHtml = "";
+
+    if (
+      institutePhone ||
+      instituteEmail
+    ) {
+      contactHtml =
+        '<div class="contact">';
+
+      if (institutePhone) {
+        contactHtml +=
+          "Phone: " +
+          institutePhone;
+      }
+
+      if (
+        institutePhone &&
+        instituteEmail
+      ) {
+        contactHtml +=
+          " &nbsp;|&nbsp; ";
+      }
+
+      if (instituteEmail) {
+        contactHtml +=
+          "Email: " +
+          instituteEmail;
+      }
+
+      contactHtml += "</div>";
+    }
+
+    let studentPhoneHtml =
+      "";
+
+    if (studentPhone) {
+      studentPhoneHtml =
+        '<div class="row">' +
+        '<span class="label">Phone</span>' +
+        '<span class="value">' +
+        studentPhone +
+        "</span>" +
+        "</div>";
+    }
+
+    let academicHtml = "";
+
+    if (
+      courseName ||
+      programmeName ||
+      semesterName ||
+      batchName
+    ) {
+      academicHtml =
+        '<div class="section-title">' +
+        "Academic Details" +
+        "</div>";
+
+      if (courseName) {
+        academicHtml +=
+          '<div class="row">' +
+          '<span class="label">Course</span>' +
+          '<span class="value">' +
+          safeCourseName +
+          "</span>" +
+          "</div>";
+      }
+
+      if (programmeName) {
+        academicHtml +=
+          '<div class="row">' +
+          '<span class="label">Programme</span>' +
+          '<span class="value">' +
+          safeProgrammeName +
+          "</span>" +
+          "</div>";
+      }
+
+      if (semesterName) {
+        academicHtml +=
+          '<div class="row">' +
+          '<span class="label">Semester</span>' +
+          '<span class="value">' +
+          safeSemesterName +
+          "</span>" +
+          "</div>";
+      }
+
+      if (batchName) {
+        academicHtml +=
+          '<div class="row">' +
+          '<span class="label">Batch</span>' +
+          '<span class="value">' +
+          safeBatchName +
+          "</span>" +
+          "</div>";
+      }
+    }
+
+    let feeTypeHtml = "";
+
+    if (safeFeeType) {
+      feeTypeHtml =
+        '<div class="row">' +
+        '<span class="label">Fee Type</span>' +
+        '<span class="value">' +
+        safeFeeType +
+        "</span>" +
+        "</div>";
+    }
+
+    let referenceHtml = "";
+
+    if (safeReference) {
+      referenceHtml =
+        '<div class="row">' +
+        '<span class="label">Reference</span>' +
+        '<span class="value">' +
+        safeReference +
+        "</span>" +
+        "</div>";
+    }
+
+    let html = "";
+
+    html += "<!DOCTYPE html>";
+    html += "<html>";
+    html += "<head>";
+    html +=
+      '<meta charset="utf-8" />';
+    html +=
+      "<title>Receipt " +
+      receiptNumber +
+      "</title>";
+
+    html += "<style>";
+
+    html +=
+      "*{box-sizing:border-box;}";
+
+    html +=
+      "@page{size:80mm auto;margin:0;}";
+
+    html +=
+      "html,body{width:80mm;margin:0;padding:0;background:#fff;}";
+
+    html +=
+      "body{font-family:Arial,Helvetica,sans-serif;color:#172033;}";
+
+    html +=
+      ".receipt{width:80mm;padding:4mm 4mm 5mm;}";
+
+    html +=
+      ".top-line{height:2.5mm;background:linear-gradient(to right,#1264d8 0%,#1264d8 65%,#f59e0b 65%,#f59e0b 100%);margin:-4mm -4mm 4mm;}";
+
+    html +=
+      ".header{text-align:center;}";
+
+    html +=
+      ".logo{display:block;max-width:28mm;max-height:20mm;margin:0 auto 2mm;object-fit:contain;}";
+
+    html +=
+      ".institute-name{color:#1264d8;font-size:17px;font-weight:800;line-height:1.2;}";
+
+    html +=
+      ".receipt-title{color:#f59e0b;font-size:12px;font-weight:800;letter-spacing:1.2px;margin-top:1mm;}";
+
+    html +=
+      ".address{margin-top:2mm;color:#64748b;font-size:8.5px;line-height:1.45;}";
+
+    html +=
+      ".contact{color:#64748b;font-size:8px;line-height:1.4;}";
+
+    html +=
+      ".divider{border:0;border-top:1px dashed #94a3b8;margin:3mm 0;}";
+
+    html +=
+      ".receipt-meta{display:grid;grid-template-columns:1fr 1fr;gap:2mm;margin-bottom:2mm;}";
+
+    html +=
+      ".meta-box{border:1px solid #dbe3ef;border-radius:2mm;padding:2mm;}";
+
+    html +=
+      ".label{color:#64748b;font-size:7.5px;text-transform:uppercase;letter-spacing:.5px;}";
+
+    html +=
+      ".value{color:#172033;font-size:9px;font-weight:700;margin-top:.8mm;word-break:break-word;}";
+
+    html +=
+      ".section-title{color:#1264d8;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;margin:3mm 0 1.5mm;}";
+
+    html +=
+      ".row{display:flex;justify-content:space-between;gap:3mm;padding:1.7mm 0;border-bottom:1px solid #edf1f5;}";
+
+    html +=
+      ".row .label{flex:0 0 36%;}";
+
+    html +=
+      ".row .value{flex:1;text-align:right;}";
+
+    html +=
+      ".amount-box{margin-top:3mm;padding:3mm;border:1.5px solid #1264d8;border-radius:2.5mm;text-align:center;background:#f5f9ff;}";
+
+    html +=
+      ".amount-label{color:#1264d8;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;}";
+
+    html +=
+      ".amount{color:#1264d8;font-size:22px;font-weight:900;margin-top:1mm;}";
+
+    html +=
+      ".method{display:inline-block;margin-top:2mm;padding:1.2mm 3mm;border-radius:10mm;background:#fff7e6;color:#c77700;font-size:8px;font-weight:800;}";
+
+    html +=
+      ".footer-line{height:1.5mm;background:linear-gradient(to right,#1264d8 0%,#1264d8 65%,#f59e0b 65%,#f59e0b 100%);margin:4mm -4mm 3mm;}";
+
+    html +=
+      ".machine{text-align:center;color:#475569;font-size:7.5px;font-weight:800;letter-spacing:1px;}";
+
+    html +=
+      ".thanks{text-align:center;color:#94a3b8;font-size:7.5px;margin-top:1.5mm;}";
+
+    html +=
+      ".actions{width:80mm;padding:4mm;display:flex;gap:2mm;}";
+
+    html +=
+      ".actions button{flex:1;border:0;border-radius:2mm;padding:3mm;cursor:pointer;font-weight:700;font-size:11px;}";
+
+    html +=
+      ".print-btn{background:#1264d8;color:#fff;}";
+
+    html +=
+      ".close-btn{background:#e5e7eb;color:#172033;}";
+
+    html +=
+      "@media print{.actions{display:none;}.receipt{padding-bottom:4mm;}}";
+
+    html += "</style>";
+    html += "</head>";
+    html += "<body>";
+
+    html +=
+      '<div class="receipt">';
+
+    html +=
+      '<div class="top-line"></div>';
+
+    html +=
+      '<div class="header">';
+
+    html += logoHtml;
+
+    html +=
+      '<div class="institute-name">' +
+      instituteName +
+      "</div>";
+
+    html +=
+      '<div class="receipt-title">PAYMENT RECEIPT</div>';
+
+    html += addressHtml;
+
+    html += contactHtml;
+
+    html += "</div>";
+
+    html +=
+      '<hr class="divider" />';
+
+    html +=
+      '<div class="receipt-meta">';
+
+    html +=
+      '<div class="meta-box">';
+
+    html +=
+      '<div class="label">Receipt No</div>';
+
+    html +=
+      '<div class="value">' +
+      receiptNumber +
+      "</div>";
+
+    html += "</div>";
+
+    html +=
+      '<div class="meta-box">';
+
+    html +=
+      '<div class="label">Date</div>';
+
+    html +=
+      '<div class="value">' +
+      safePaidDate +
+      "</div>";
+
+    html += "</div>";
+
+    html += "</div>";
+
+    html +=
+      '<div class="section-title">Student Details</div>';
+
+    html +=
+      '<div class="row">';
+
+    html +=
+      '<span class="label">Student</span>';
+
+    html +=
+      '<span class="value">' +
+      studentName +
+      "</span>";
+
+    html += "</div>";
+
+    html +=
+      '<div class="row">';
+
+    html +=
+      '<span class="label">Student ID</span>';
+
+    html +=
+      '<span class="value">' +
+      studentCode +
+      "</span>";
+
+    html += "</div>";
+
+    html += studentPhoneHtml;
+
+    html += academicHtml;
+
+    html +=
+      '<div class="section-title">Payment Details</div>';
+
+    html += feeTypeHtml;
+
+    html +=
+      '<div class="row">';
+
+    html +=
+      '<span class="label">Payment Method</span>';
+
+    html +=
+      '<span class="value">' +
+      safePaymentMethod +
+      "</span>";
+
+    html += "</div>";
+
+    html += referenceHtml;
+
+    html +=
+      '<div class="amount-box">';
+
+    html +=
+      '<div class="amount-label">Amount Paid</div>';
+
+    html +=
+      '<div class="amount">' +
+      safeAmount +
+      "</div>";
+
+    html +=
+      '<div class="method">' +
+      safePaymentMethod +
+      "</div>";
+
+    html += "</div>";
+
+    html +=
+      '<div class="footer-line"></div>';
+
+    html +=
+      '<div class="machine">MACHINE GENERATED RECEIPT</div>';
+
+    html +=
+      '<div class="thanks">Thank you for your payment.</div>';
+
+    html += "</div>";
+
+    html +=
+      '<div class="actions">';
+
+    html +=
+      '<button class="print-btn" onclick="window.print()">PRINT / SAVE PDF</button>';
+
+    html +=
+      '<button class="close-btn" onclick="window.close()">CLOSE</button>';
+
+    html += "</div>";
+
+    html += "</body>";
+    html += "</html>";
+
+    popup.document.open();
+    popup.document.write(html);
     popup.document.close();
 
     setTimeout(() => {
       popup.focus();
       popup.print();
-    }, 300);
+    }, 700);
   }
 
   function handlePaymentStudentChange(
@@ -835,15 +1534,18 @@ export default function FeesPage() {
   function handleFeeSelection(
     feeId: string
   ) {
-    const selected = studentFees.find(
-      (row) => row.fee.id === feeId
-    );
+    const selected =
+      studentFees.find(
+        (row) =>
+          row.fee.id === feeId
+      );
 
     setPayForm((prev) => ({
       ...prev,
       feeId,
       amount:
-        selected?.fee.dueAmount || "",
+        selected?.fee
+          .dueAmount || "",
     }));
   }
 
@@ -856,8 +1558,8 @@ export default function FeesPage() {
           </h1>
 
           <p className="text-sm text-slate-500">
-            Manage student fees, dues and payment
-            collection.
+            Manage student fees, dues and
+            payment collection.
           </p>
         </div>
 
@@ -872,7 +1574,9 @@ export default function FeesPage() {
 
           <button
             type="button"
-            onClick={() => changeTab("collect")}
+            onClick={() =>
+              changeTab("collect")
+            }
             className="btn btn-accent"
           >
             Collect Payment
@@ -895,7 +1599,9 @@ export default function FeesPage() {
 
             <button
               type="button"
-              onClick={() => setError("")}
+              onClick={() =>
+                setError("")
+              }
               className="text-sm font-bold text-red-500 hover:text-red-700"
             >
               X
@@ -919,7 +1625,9 @@ export default function FeesPage() {
 
             <button
               type="button"
-              onClick={() => setSuccess("")}
+              onClick={() =>
+                setSuccess("")
+              }
               className="text-sm font-bold text-green-500 hover:text-green-700"
             >
               X
@@ -935,7 +1643,9 @@ export default function FeesPage() {
           </p>
 
           <p className="mt-2 text-2xl font-bold text-slate-800">
-            {formatCurrency(totalBilled)}
+            {formatCurrency(
+              totalBilled
+            )}
           </p>
 
           <p className="mt-1 text-xs text-slate-400">
@@ -949,7 +1659,9 @@ export default function FeesPage() {
           </p>
 
           <p className="mt-2 text-2xl font-bold text-orange-600">
-            {formatCurrency(totalDiscount)}
+            {formatCurrency(
+              totalDiscount
+            )}
           </p>
 
           <p className="mt-1 text-xs text-slate-400">
@@ -963,7 +1675,9 @@ export default function FeesPage() {
           </p>
 
           <p className="mt-2 text-2xl font-bold text-blue-600">
-            {formatCurrency(totalNetFees)}
+            {formatCurrency(
+              totalNetFees
+            )}
           </p>
 
           <p className="mt-1 text-xs text-slate-400">
@@ -977,7 +1691,9 @@ export default function FeesPage() {
           </p>
 
           <p className="mt-2 text-2xl font-bold text-red-600">
-            {formatCurrency(totalDue)}
+            {formatCurrency(
+              totalDue
+            )}
           </p>
 
           <p className="mt-1 text-xs text-red-500">
@@ -991,7 +1707,9 @@ export default function FeesPage() {
           </p>
 
           <p className="mt-2 text-2xl font-bold text-green-700">
-            {formatCurrency(totalPayments)}
+            {formatCurrency(
+              totalPayments
+            )}
           </p>
 
           <p className="mt-1 text-xs text-green-600">
@@ -1009,8 +1727,8 @@ export default function FeesPage() {
               </p>
 
               <p className="mt-1 text-xs text-slate-400">
-                Allocated collection against fee
-                records
+                Allocated collection against
+                fee records
               </p>
             </div>
 
@@ -1059,7 +1777,9 @@ export default function FeesPage() {
           <button
             key={tab.key}
             type="button"
-            onClick={() => changeTab(tab.key)}
+            onClick={() =>
+              changeTab(tab.key)
+            }
             className={`whitespace-nowrap px-4 py-2.5 text-sm font-semibold transition-all ${
               activeTab === tab.key
                 ? "border-b-2 border-blue-600 text-blue-600"
@@ -1074,7 +1794,7 @@ export default function FeesPage() {
       {receipt && (
         <div className="card border-2 border-green-300 bg-green-50">
           <div className="flex items-start justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <p className="text-lg font-bold text-green-700">
                 Payment Received!
               </p>
@@ -1084,21 +1804,69 @@ export default function FeesPage() {
                   <span className="font-semibold">
                     Receipt:
                   </span>{" "}
-                  {receipt.receiptNumber}
+                  {receipt?.payment
+                    ?.receiptNumber ||
+                    "-"}
                 </p>
 
                 <p>
                   <span className="font-semibold">
                     Student:
                   </span>{" "}
-                  {receipt.studentName}
+                  {receipt?.student
+                    ?.name || "-"}
                 </p>
+
+                {receipt?.academic
+                  ?.courseName && (
+                  <p>
+                    <span className="font-semibold">
+                      Course:
+                    </span>{" "}
+                    {
+                      receipt.academic
+                        .courseName
+                    }
+                  </p>
+                )}
+
+                {receipt?.academic
+                  ?.programmeName && (
+                  <p>
+                    <span className="font-semibold">
+                      Programme:
+                    </span>{" "}
+                    {
+                      receipt.academic
+                        .programmeName
+                    }
+                  </p>
+                )}
+
+                {receipt?.academic
+                  ?.semesterName && (
+                  <p>
+                    <span className="font-semibold">
+                      Semester:
+                    </span>{" "}
+                    {
+                      receipt.academic
+                        .semesterName
+                    }
+                  </p>
+                )}
 
                 <p>
                   <span className="font-semibold">
                     Amount:
                   </span>{" "}
-                  {formatCurrency(receipt.amount)}
+                  {formatCurrency(
+                    String(
+                      receipt?.payment
+                        ?.amount ||
+                        "0"
+                    )
+                  )}
                 </p>
 
                 <p>
@@ -1106,15 +1874,21 @@ export default function FeesPage() {
                     Method:
                   </span>{" "}
                   {getPaymentMethodLabel(
-                    receipt.method
+                    String(
+                      receipt?.payment
+                        ?.method ||
+                        ""
+                    )
                   )}
                 </p>
               </div>
 
-              <div className="mt-4">
+              <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={handleGenerateReceipt}
+                  onClick={
+                    handleGenerateReceipt
+                  }
                   className="btn btn-primary"
                 >
                   Generate Receipt
@@ -1124,8 +1898,10 @@ export default function FeesPage() {
 
             <button
               type="button"
-              onClick={() => setReceipt(null)}
-              className="text-sm font-bold text-green-600 hover:text-green-800"
+              onClick={() =>
+                setReceipt(null)
+              }
+              className="shrink-0 text-sm font-bold text-green-600 hover:text-green-800"
             >
               X
             </button>
@@ -1147,8 +1923,8 @@ export default function FeesPage() {
                 </p>
 
                 <p className="mt-1 text-sm">
-                  Click &quot;Add Fee&quot; to create a
-                  fee record.
+                  Click &quot;Add Fee&quot; to
+                  create a fee record.
                 </p>
               </div>
             ) : (
@@ -1167,12 +1943,15 @@ export default function FeesPage() {
 
                 <tbody>
                   {fees.map((row) => (
-                    <tr key={row.fee.id}>
+                    <tr
+                      key={row.fee.id}
+                    >
                       <td>
                         <div className="flex items-center gap-2">
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
                             {getInitials(
-                              row.studentName || "?"
+                              row.studentName ||
+                                "?"
                             )}
                           </div>
 
@@ -1183,7 +1962,8 @@ export default function FeesPage() {
                             </p>
 
                             <p className="text-xs text-slate-400">
-                              {row.studentCode || "-"}
+                              {row.studentCode ||
+                                "-"}
                             </p>
                           </div>
                         </div>
@@ -1192,7 +1972,8 @@ export default function FeesPage() {
                       <td>
                         <span className="badge badge-blue">
                           {getFeeTypeLabel(
-                            row.fee.feeType
+                            row.fee
+                              .feeType
                           )}
                         </span>
                       </td>
@@ -1212,21 +1993,24 @@ export default function FeesPage() {
                       <td
                         className={`font-semibold ${
                           toNumber(
-                            row.fee.dueAmount
+                            row.fee
+                              .dueAmount
                           ) > 0
                             ? "text-red-600"
                             : "text-green-600"
                         }`}
                       >
                         {formatCurrency(
-                          row.fee.dueAmount
+                          row.fee
+                            .dueAmount
                         )}
                       </td>
 
                       <td className="text-slate-500">
                         {row.fee.dueDate
                           ? formatDate(
-                              row.fee.dueDate
+                              row.fee
+                                .dueDate
                             )
                           : "-"}
                       </td>
@@ -1234,10 +2018,14 @@ export default function FeesPage() {
                       <td>
                         <span
                           className={`badge ${getStatusColor(
-                            row.fee.status
+                            row.fee
+                              .status
                           )}`}
                         >
-                          {row.fee.status}
+                          {
+                            row.fee
+                              .status
+                          }
                         </span>
                       </td>
                     </tr>
@@ -1247,17 +2035,20 @@ export default function FeesPage() {
             )}
           </div>
         </div>
-      ) : activeTab === "payments" ? (
+      ) : activeTab ===
+        "payments" ? (
         <div className="card p-0">
           <div className="table-wrapper">
-            {payments.length === 0 ? (
+            {payments.length ===
+            0 ? (
               <div className="py-12 text-center text-slate-400">
                 <p className="font-medium">
                   No payments yet
                 </p>
 
                 <p className="mt-1 text-sm">
-                  Collected payments will appear here.
+                  Collected payments will
+                  appear here.
                 </p>
               </div>
             ) : (
@@ -1274,54 +2065,70 @@ export default function FeesPage() {
                 </thead>
 
                 <tbody>
-                  {payments.map((row) => (
-                    <tr key={row.payment.id}>
-                      <td>
-                        <span className="badge badge-green font-mono">
-                          {row.payment.receiptNumber}
-                        </span>
-                      </td>
+                  {payments.map(
+                    (row) => (
+                      <tr
+                        key={
+                          row.payment
+                            .id
+                        }
+                      >
+                        <td>
+                          <span className="badge badge-green font-mono">
+                            {
+                              row
+                                .payment
+                                .receiptNumber
+                            }
+                          </span>
+                        </td>
 
-                      <td>
-                        <div>
-                          <p className="font-medium text-slate-700">
-                            {row.studentName ||
-                              "Unknown Student"}
-                          </p>
+                        <td>
+                          <div>
+                            <p className="font-medium text-slate-700">
+                              {row.studentName ||
+                                "Unknown Student"}
+                            </p>
 
-                          <p className="text-xs text-slate-400">
-                            {row.studentCode || "-"}
-                          </p>
-                        </div>
-                      </td>
+                            <p className="text-xs text-slate-400">
+                              {row.studentCode ||
+                                "-"}
+                            </p>
+                          </div>
+                        </td>
 
-                      <td className="font-bold text-green-600">
-                        {formatCurrency(
-                          row.payment.amount
-                        )}
-                      </td>
-
-                      <td>
-                        <span className="badge badge-blue">
-                          {getPaymentMethodLabel(
-                            row.payment.method
+                        <td className="font-bold text-green-600">
+                          {formatCurrency(
+                            row.payment
+                              .amount
                           )}
-                        </span>
-                      </td>
+                        </td>
 
-                      <td className="font-mono text-xs text-slate-500">
-                        {row.payment
-                          .transactionReference ||
-                          "-"}
-                      </td>
+                        <td>
+                          <span className="badge badge-blue">
+                            {getPaymentMethodLabel(
+                              row
+                                .payment
+                                .method
+                            )}
+                          </span>
+                        </td>
 
-                      <td className="text-slate-500">
-                        {formatDate(
-                          row.payment.paidAt
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="font-mono text-xs text-slate-500">
+                          {row.payment
+                            .transactionReference ||
+                            "-"}
+                        </td>
+
+                        <td className="text-slate-500">
+                          {formatDate(
+                            row.payment
+                              .paidAt
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  )}
                 </tbody>
               </table>
             )}
@@ -1335,12 +2142,15 @@ export default function FeesPage() {
             </h2>
 
             <p className="mb-5 text-sm text-slate-500">
-              Select a student and allocate the payment
-              to an outstanding fee.
+              Select a student and allocate
+              the payment to an outstanding
+              fee.
             </p>
 
             <form
-              onSubmit={handleCollect}
+              onSubmit={
+                handleCollect
+              }
               className="space-y-4"
             >
               <div>
@@ -1350,7 +2160,9 @@ export default function FeesPage() {
 
                 <select
                   className="form-select"
-                  value={payForm.studentId}
+                  value={
+                    payForm.studentId
+                  }
                   onChange={(e) =>
                     handlePaymentStudentChange(
                       e.target.value
@@ -1362,15 +2174,24 @@ export default function FeesPage() {
                     Search student...
                   </option>
 
-                  {students.map((student) => (
-                    <option
-                      key={student.id}
-                      value={student.id}
-                    >
-                      {student.name} (
-                      {student.studentId})
-                    </option>
-                  ))}
+                  {students.map(
+                    (student) => (
+                      <option
+                        key={
+                          student.id
+                        }
+                        value={
+                          student.id
+                        }
+                      >
+                        {student.name} (
+                        {
+                          student.studentId
+                        }
+                        )
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
 
@@ -1380,10 +2201,12 @@ export default function FeesPage() {
                     <p className="text-sm text-slate-500">
                       Loading fee records...
                     </p>
-                  ) : studentFees.length === 0 ? (
+                  ) : studentFees.length ===
+                    0 ? (
                     <p className="text-sm text-slate-500">
-                      No fee records found for this
-                      student. You can still record a
+                      No fee records found
+                      for this student. You
+                      can still record a
                       general payment.
                     </p>
                   ) : (
@@ -1400,10 +2223,15 @@ export default function FeesPage() {
                           <span className="font-bold text-red-600">
                             {formatCurrency(
                               studentFees.reduce(
-                                (sum, row) =>
+                                (
+                                  sum,
+                                  row
+                                ) =>
                                   sum +
                                   toNumber(
-                                    row.fee.dueAmount
+                                    row
+                                      .fee
+                                      .dueAmount
                                   ),
                                 0
                               )
@@ -1418,14 +2246,25 @@ export default function FeesPage() {
                           <span className="font-bold text-slate-700">
                             {
                               studentFees.filter(
-                                (row) =>
-                                  (row.fee.status ===
-                                    "DUE" ||
-                                    row.fee.status ===
-                                      "PARTIAL") &&
+                                (
+                                  row
+                                ) =>
+                                  (
+                                    row
+                                      .fee
+                                      .status ===
+                                      "DUE" ||
+                                    row
+                                      .fee
+                                      .status ===
+                                      "PARTIAL"
+                                  ) &&
                                   toNumber(
-                                    row.fee.dueAmount
-                                  ) > 0
+                                    row
+                                      .fee
+                                      .dueAmount
+                                  ) >
+                                    0
                               ).length
                             }
                           </span>
@@ -1436,7 +2275,8 @@ export default function FeesPage() {
                 </div>
               )}
 
-              {studentFees.length > 0 && (
+              {studentFees.length >
+                0 && (
                 <div>
                   <label className="form-label">
                     Fee Record
@@ -1444,7 +2284,9 @@ export default function FeesPage() {
 
                   <select
                     className="form-select"
-                    value={payForm.feeId}
+                    value={
+                      payForm.feeId
+                    }
                     onChange={(e) =>
                       handleFeeSelection(
                         e.target.value
@@ -1458,35 +2300,57 @@ export default function FeesPage() {
                     {studentFees
                       .filter(
                         (row) =>
-                          (row.fee.status === "DUE" ||
-                            row.fee.status ===
-                              "PARTIAL") &&
+                          (
+                            row.fee
+                              .status ===
+                              "DUE" ||
+                            row.fee
+                              .status ===
+                              "PARTIAL"
+                          ) &&
                           toNumber(
-                            row.fee.dueAmount
+                            row.fee
+                              .dueAmount
                           ) > 0
                       )
-                      .map((row) => (
-                        <option
-                          key={row.fee.id}
-                          value={row.fee.id}
-                        >
-                          {getFeeTypeLabel(
-                            row.fee.feeType
-                          )}{" "}
-                          - Due:{" "}
-                          {formatCurrency(
-                            row.fee.dueAmount
-                          )}{" "}
-                          ({row.fee.status})
-                        </option>
-                      ))}
+                      .map(
+                        (row) => (
+                          <option
+                            key={
+                              row.fee
+                                .id
+                            }
+                            value={
+                              row.fee
+                                .id
+                            }
+                          >
+                            {getFeeTypeLabel(
+                              row.fee
+                                .feeType
+                            )}{" "}
+                            - Due:{" "}
+                            {formatCurrency(
+                              row.fee
+                                .dueAmount
+                            )}{" "}
+                            (
+                            {
+                              row.fee
+                                .status
+                            }
+                            )
+                          </option>
+                        )
+                      )}
                   </select>
 
                   {!payForm.feeId && (
                     <p className="mt-1 text-xs text-slate-400">
-                      General payment will be recorded
-                      but will not reduce a specific fee
-                      due.
+                      General payment will
+                      be recorded but will
+                      not reduce a specific
+                      fee due.
                     </p>
                   )}
                 </div>
@@ -1503,12 +2367,18 @@ export default function FeesPage() {
                   step="0.01"
                   className="form-input"
                   placeholder="0.00"
-                  value={payForm.amount}
+                  value={
+                    payForm.amount
+                  }
                   onChange={(e) =>
-                    setPayForm((prev) => ({
-                      ...prev,
-                      amount: e.target.value,
-                    }))
+                    setPayForm(
+                      (prev) => ({
+                        ...prev,
+                        amount:
+                          e.target
+                            .value,
+                      })
+                    )
                   }
                   required
                 />
@@ -1526,26 +2396,41 @@ export default function FeesPage() {
 
                 <select
                   className="form-select"
-                  value={payForm.method}
+                  value={
+                    payForm.method
+                  }
                   onChange={(e) =>
-                    setPayForm((prev) => ({
-                      ...prev,
-                      method: e.target.value,
-                    }))
+                    setPayForm(
+                      (prev) => ({
+                        ...prev,
+                        method:
+                          e.target
+                            .value,
+                      })
+                    )
                   }
                 >
-                  {PAYMENT_METHODS.map((method) => (
-                    <option
-                      key={method.value}
-                      value={method.value}
-                    >
-                      {method.label}
-                    </option>
-                  ))}
+                  {PAYMENT_METHODS.map(
+                    (method) => (
+                      <option
+                        key={
+                          method.value
+                        }
+                        value={
+                          method.value
+                        }
+                      >
+                        {
+                          method.label
+                        }
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
 
-              {payForm.method !== "CASH" && (
+              {payForm.method !==
+                "CASH" && (
                 <div>
                   <label className="form-label">
                     Transaction Reference
@@ -1558,11 +2443,15 @@ export default function FeesPage() {
                       payForm.transactionReference
                     }
                     onChange={(e) =>
-                      setPayForm((prev) => ({
-                        ...prev,
-                        transactionReference:
-                          e.target.value,
-                      }))
+                      setPayForm(
+                        (prev) => ({
+                          ...prev,
+                          transactionReference:
+                            e
+                              .target
+                              .value,
+                        })
+                      )
                     }
                   />
                 </div>
@@ -1570,7 +2459,9 @@ export default function FeesPage() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={
+                  submitting
+                }
                 className="btn btn-accent w-full justify-center py-3"
               >
                 {submitting
@@ -1587,7 +2478,8 @@ export default function FeesPage() {
           className="modal-overlay"
           onClick={(e) => {
             if (
-              e.target === e.currentTarget &&
+              e.target ===
+                e.currentTarget &&
               !submitting
             ) {
               closeFeeModal();
@@ -1602,22 +2494,28 @@ export default function FeesPage() {
                 </h2>
 
                 <p className="mt-1 text-xs text-slate-400">
-                  Create a new student fee and due
-                  amount.
+                  Create a new student fee
+                  and due amount.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={closeFeeModal}
-                disabled={submitting}
+                onClick={
+                  closeFeeModal
+                }
+                disabled={
+                  submitting
+                }
                 className="btn btn-ghost btn-sm"
               >
                 X
               </button>
             </div>
 
-            <form onSubmit={handleAddFee}>
+            <form
+              onSubmit={handleAddFee}
+            >
               <div className="modal-body space-y-4">
                 {error && (
                   <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
@@ -1632,12 +2530,19 @@ export default function FeesPage() {
 
                   <select
                     className="form-select"
-                    value={feeForm.studentId}
+                    value={
+                      feeForm.studentId
+                    }
                     onChange={(e) =>
-                      setFeeForm((prev) => ({
-                        ...prev,
-                        studentId: e.target.value,
-                      }))
+                      setFeeForm(
+                        (prev) => ({
+                          ...prev,
+                          studentId:
+                            e
+                              .target
+                              .value,
+                        })
+                      )
                     }
                     required
                   >
@@ -1645,15 +2550,24 @@ export default function FeesPage() {
                       Select student
                     </option>
 
-                    {students.map((student) => (
-                      <option
-                        key={student.id}
-                        value={student.id}
-                      >
-                        {student.name} (
-                        {student.studentId})
-                      </option>
-                    ))}
+                    {students.map(
+                      (student) => (
+                        <option
+                          key={
+                            student.id
+                          }
+                          value={
+                            student.id
+                          }
+                        >
+                          {student.name} (
+                          {
+                            student.studentId
+                          }
+                          )
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
@@ -1665,22 +2579,37 @@ export default function FeesPage() {
 
                     <select
                       className="form-select"
-                      value={feeForm.feeType}
+                      value={
+                        feeForm.feeType
+                      }
                       onChange={(e) =>
-                        setFeeForm((prev) => ({
-                          ...prev,
-                          feeType: e.target.value,
-                        }))
+                        setFeeForm(
+                          (prev) => ({
+                            ...prev,
+                            feeType:
+                              e
+                                .target
+                                .value,
+                          })
+                        )
                       }
                     >
-                      {FEE_TYPES.map((type) => (
-                        <option
-                          key={type.value}
-                          value={type.value}
-                        >
-                          {type.label}
-                        </option>
-                      ))}
+                      {FEE_TYPES.map(
+                        (type) => (
+                          <option
+                            key={
+                              type.value
+                            }
+                            value={
+                              type.value
+                            }
+                          >
+                            {
+                              type.label
+                            }
+                          </option>
+                        )
+                      )}
                     </select>
                   </div>
 
@@ -1695,12 +2624,19 @@ export default function FeesPage() {
                       step="0.01"
                       className="form-input"
                       placeholder="0.00"
-                      value={feeForm.amount}
+                      value={
+                        feeForm.amount
+                      }
                       onChange={(e) =>
-                        setFeeForm((prev) => ({
-                          ...prev,
-                          amount: e.target.value,
-                        }))
+                        setFeeForm(
+                          (prev) => ({
+                            ...prev,
+                            amount:
+                              e
+                                .target
+                                .value,
+                          })
+                        )
                       }
                       required
                     />
@@ -1717,12 +2653,19 @@ export default function FeesPage() {
                       step="0.01"
                       className="form-input"
                       placeholder="0.00"
-                      value={feeForm.discount}
+                      value={
+                        feeForm.discount
+                      }
                       onChange={(e) =>
-                        setFeeForm((prev) => ({
-                          ...prev,
-                          discount: e.target.value,
-                        }))
+                        setFeeForm(
+                          (prev) => ({
+                            ...prev,
+                            discount:
+                              e
+                                .target
+                                .value,
+                          })
+                        )
                       }
                     />
                   </div>
@@ -1735,18 +2678,27 @@ export default function FeesPage() {
                     <input
                       type="date"
                       className="form-input"
-                      value={feeForm.dueDate}
+                      value={
+                        feeForm.dueDate
+                      }
                       onChange={(e) =>
-                        setFeeForm((prev) => ({
-                          ...prev,
-                          dueDate: e.target.value,
-                        }))
+                        setFeeForm(
+                          (prev) => ({
+                            ...prev,
+                            dueDate:
+                              e
+                                .target
+                                .value,
+                          })
+                        )
                       }
                     />
                   </div>
                 </div>
 
-                {toNumber(feeForm.amount) > 0 && (
+                {toNumber(
+                  feeForm.amount
+                ) > 0 && (
                   <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-blue-500">
                       Fee Preview
@@ -1808,8 +2760,12 @@ export default function FeesPage() {
               <div className="modal-footer">
                 <button
                   type="button"
-                  onClick={closeFeeModal}
-                  disabled={submitting}
+                  onClick={
+                    closeFeeModal
+                  }
+                  disabled={
+                    submitting
+                  }
                   className="btn btn-outline"
                 >
                   Cancel
@@ -1817,7 +2773,9 @@ export default function FeesPage() {
 
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={
+                    submitting
+                  }
                   className="btn btn-primary"
                 >
                   {submitting
@@ -1841,9 +2799,11 @@ function selectedFeeMessage(
     return null;
   }
 
-  const fee = studentFees.find(
-    (row) => row.fee.id === feeId
-  );
+  const fee =
+    studentFees.find(
+      (row) =>
+        row.fee.id === feeId
+    );
 
   if (!fee) {
     return null;
@@ -1852,7 +2812,9 @@ function selectedFeeMessage(
   return (
     <p className="mt-1 text-xs text-red-500">
       Maximum for this fee:{" "}
-      {formatCurrency(fee.fee.dueAmount)}
+      {formatCurrency(
+        fee.fee.dueAmount
+      )}
     </p>
   );
 }
