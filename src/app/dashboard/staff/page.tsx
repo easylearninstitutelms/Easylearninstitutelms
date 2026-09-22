@@ -12,6 +12,7 @@ import {
 interface StaffMember {
   id: string;
   name: string;
+  photoUrl: string | null;
   phone: string;
   email: string;
   designation: string;
@@ -44,6 +45,7 @@ export default function StaffPage() {
 
   const [form, setForm] = useState({
     name: "",
+    photoUrl: "",
     phone: "",
     email: "",
     designation: "",
@@ -83,6 +85,7 @@ export default function StaffPage() {
   function resetForm() {
     setForm({
       name: "",
+      photoUrl: "",
       phone: "",
       email: "",
       designation: "",
@@ -91,6 +94,45 @@ export default function StaffPage() {
       salary: "",
       address: "",
     });
+  }
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Photo size must be 2 MB or less.");
+      e.target.value = "";
+      return;
+    }
+
+    setError("");
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = reader.result;
+
+      if (typeof result === "string") {
+        setForm((current) => ({
+          ...current,
+          photoUrl: result,
+        }));
+      }
+    };
+
+    reader.onerror = () => {
+      setError("Failed to read the selected photo.");
+    };
+
+    reader.readAsDataURL(file);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -191,7 +233,13 @@ export default function StaffPage() {
   }
 
   async function handleArchive(id: string) {
-    if (!confirm("Archive this staff member? They will be removed from the active Staff list.")) return;
+    if (
+      !confirm(
+        "Archive this staff member? They will be removed from the active Staff list."
+      )
+    ) {
+      return;
+    }
 
     try {
       const res = await fetch(`/api/staff/${id}`, {
@@ -201,12 +249,15 @@ export default function StaffPage() {
       });
 
       const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
         alert(data.error || "Failed to archive staff.");
         return;
       }
 
-      setStaffList((current) => current.filter((member) => member.id !== id));
+      setStaffList((current) =>
+        current.filter((member) => member.id !== id)
+      );
     } catch (err) {
       console.error("Archive error:", err);
       alert("Failed to archive staff.");
@@ -214,7 +265,13 @@ export default function StaffPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Move this staff member to Bin? You can restore them later from Staff Bin.")) return;
+    if (
+      !confirm(
+        "Move this staff member to Bin? You can restore them later from Staff Bin."
+      )
+    ) {
+      return;
+    }
 
     try {
       const res = await fetch(`/api/staff/${id}`, {
@@ -222,12 +279,15 @@ export default function StaffPage() {
       });
 
       const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
         alert(data.error || "Failed to move staff to Bin.");
         return;
       }
 
-      setStaffList((current) => current.filter((member) => member.id !== id));
+      setStaffList((current) =>
+        current.filter((member) => member.id !== id)
+      );
     } catch (err) {
       console.error("Bin delete error:", err);
       alert("Failed to move staff to Bin.");
@@ -249,6 +309,7 @@ export default function StaffPage() {
           <Link href="/dashboard/staff/bin" className="btn btn-outline">
             🗑️ Bin
           </Link>
+
           <button
             onClick={() => {
               setError("");
@@ -256,21 +317,21 @@ export default function StaffPage() {
             }}
             className="btn btn-primary"
           >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
 
-          Add Staff
+            Add Staff
           </button>
         </div>
       </div>
@@ -324,9 +385,17 @@ export default function StaffPage() {
               <div key={s.id} className="card">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center text-lg font-bold text-purple-600">
-                      {getInitials(s.name)}
-                    </div>
+                    {s.photoUrl ? (
+                      <img
+                        src={s.photoUrl}
+                        alt={s.name}
+                        className="w-12 h-12 rounded-2xl object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center text-lg font-bold text-purple-600">
+                        {getInitials(s.name)}
+                      </div>
+                    )}
 
                     <div>
                       <p className="font-semibold text-slate-800">
@@ -421,13 +490,15 @@ export default function StaffPage() {
                       Archive
                     </button>
                   )}
+
                   <button
                     onClick={() => handleDelete(s.id)}
                     className="btn btn-sm flex-1 text-red-600 border border-red-200 hover:bg-red-50"
                   >
                     Delete
                   </button>
-                </div>            </div>
+                </div>
+              </div>
             ))
           )}
         </div>
@@ -464,6 +535,56 @@ export default function StaffPage() {
                     {error}
                   </div>
                 )}
+
+                <div className="mb-4">
+                  <label className="form-label">
+                    Staff Photo
+                  </label>
+
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+                      {form.photoUrl ? (
+                        <img
+                          src={form.photoUrl}
+                          alt="Staff preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-3xl text-slate-400">
+                          👤
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="form-input"
+                        onChange={handlePhotoChange}
+                      />
+
+                      <p className="text-xs text-slate-500 mt-1">
+                        JPG, PNG or other image. Maximum 2 MB.
+                      </p>
+
+                      {form.photoUrl && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((current) => ({
+                              ...current,
+                              photoUrl: "",
+                            }))
+                          }
+                          className="text-xs text-red-600 mt-2"
+                        >
+                          Remove photo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">

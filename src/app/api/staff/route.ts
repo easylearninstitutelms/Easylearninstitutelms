@@ -111,9 +111,6 @@ export async function GET(request: Request) {
     isNull(staff.deletedAt),
   ];
 
-  // The main Staff page shows only active staff by default.
-  // Archived/inactive staff stay out of the active list unless
-  // a specific status filter is requested.
   if (status && status !== "ALL") {
     conditions.push(
       eq(
@@ -173,6 +170,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const name = cleanText(body.name);
+    const photoUrl = cleanText(body.photoUrl);
     const phone = cleanText(body.phone);
     const providedEmail = cleanText(body.email).toLowerCase();
     const designation = cleanText(body.designation);
@@ -187,6 +185,25 @@ export async function POST(request: Request) {
         { error: "Name is required" },
         { status: 400 },
       );
+    }
+
+    if (photoUrl) {
+      if (!photoUrl.startsWith("data:image/")) {
+        return Response.json(
+          { error: "Invalid staff photo." },
+          { status: 400 },
+        );
+      }
+
+      if (photoUrl.length > 3_000_000) {
+        return Response.json(
+          {
+            error:
+              "Staff photo is too large. Please select an image under 2 MB.",
+          },
+          { status: 400 },
+        );
+      }
     }
 
     const role: AccountRole =
@@ -259,6 +276,7 @@ export async function POST(request: Request) {
           instituteId,
           userId: user.id,
           name,
+          photoUrl: photoUrl || null,
           phone: phone || null,
           email: providedEmail || null,
           designation: designation || null,
