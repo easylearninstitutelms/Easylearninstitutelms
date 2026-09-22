@@ -2,7 +2,7 @@ import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { and, desc, eq, isNull, like, or } from "drizzle-orm";
 import { db } from "@/db";
-import { staff, users } from "@/db/schema";
+import { courses, programmes, staff, teacherAssignments, users } from "@/db/schema";
 import {
   getSession,
   requireRoles,
@@ -179,6 +179,8 @@ export async function POST(request: Request) {
     const accountRole = cleanText(
       body.accountRole,
     ) as AccountRole;
+    const assignmentType = cleanText(body.assignmentType).toUpperCase();
+    const assignmentId = cleanText(body.assignmentId);
 
     if (!name) {
       return Response.json(
@@ -212,6 +214,34 @@ export async function POST(request: Request) {
         : designation.toLowerCase().includes("teacher")
           ? "TEACHER"
           : "STAFF";
+
+    if (role === "TEACHER") {
+      if (!assignmentId || (assignmentType !== "COURSE" && assignmentType !== "PROGRAMME")) {
+        return Response.json(
+          { error: "Please select a Course or Programme for the teacher." },
+          { status: 400 },
+        );
+      }
+
+      const [academicItem] = assignmentType === "COURSE"
+        ? await db
+            .select({ id: courses.id })
+            .from(courses)
+            .where(and(eq(courses.id, assignmentId), eq(courses.instituteId, instituteId), eq(courses.status, "ACTIVE")))
+            .limit(1)
+        : await db
+            .select({ id: programmes.id })
+            .from(programmes)
+            .where(and(eq(programmes.id, assignmentId), eq(programmes.instituteId, instituteId), eq(programmes.status, "ACTIVE")))
+            .limit(1);
+
+      if (!academicItem) {
+        return Response.json(
+          { error: "Selected Course or Programme is invalid or inactive." },
+          { status: 400 },
+        );
+      }
+    }
 
     if (
       providedEmail &&
@@ -290,6 +320,15 @@ export async function POST(request: Request) {
         throw new Error(
           "Failed to create staff member.",
         );
+      }
+
+      if (role === "TEACHER") {
+        await tx.insert(teacherAssignments).values({
+          instituteId,
+          teacherId: member.id,
+          courseId: assignmentType === "COURSE" ? assignmentId : null,
+          programmeId: assignmentType === "PROGRAMME" ? assignmentId : null,
+        });
       }
 
       return {
