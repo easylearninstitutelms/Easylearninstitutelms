@@ -391,6 +391,43 @@ export async function POST(request: Request) {
     let prefix = "";
 
     if (selectedCourseId) {
+      if (session.role === "TEACHER") {
+            const teacherRows = await db.execute(sql`
+              SELECT id
+              FROM staff
+              WHERE user_id = ${session.userId}
+                AND institute_id = ${instituteId}
+              LIMIT 1
+            `);
+      
+            const teacherId = (teacherRows as any).rows?.[0]?.id;
+      
+            if (!teacherId) {
+              return Response.json(
+                { error: "Teacher profile is not linked to this account." },
+                { status: 403 },
+              );
+            }
+      
+            const allowedRows = await db.execute(sql`
+              SELECT b.id
+              FROM batches b
+              WHERE b.institute_id = ${instituteId}
+                AND b.teacher_id = ${teacherId}
+                AND b.status = 'ACTIVE'
+                AND b.course_id = ${selectedCourseId}
+              LIMIT 1
+            `);
+      
+            if (!(allowedRows as any).rows?.length) {
+              return Response.json(
+                { error: "You can only add students to a course assigned to you." },
+                { status: 403 },
+              );
+            }
+      
+            }
+
       const courseRows = await db.execute(sql`
         SELECT
           id,
@@ -428,6 +465,43 @@ export async function POST(request: Request) {
         String(course.name),
       )}${courseNo}`;
     } else if (selectedProgrammeId) {
+      if (session.role === "TEACHER") {
+            const teacherRows = await db.execute(sql`
+              SELECT id
+              FROM staff
+              WHERE user_id = ${session.userId}
+                AND institute_id = ${instituteId}
+              LIMIT 1
+            `);
+      
+            const teacherId = (teacherRows as any).rows?.[0]?.id;
+      
+            if (!teacherId) {
+              return Response.json(
+                { error: "Teacher profile is not linked to this account." },
+                { status: 403 },
+              );
+            }
+      
+            const allowedRows = await db.execute(sql`
+              SELECT b.id
+              FROM batches b
+              WHERE b.institute_id = ${instituteId}
+                AND b.teacher_id = ${teacherId}
+                AND b.status = 'ACTIVE'
+                AND b.programme_id = ${selectedProgrammeId}
+              LIMIT 1
+            `);
+      
+            if (!(allowedRows as any).rows?.length) {
+              return Response.json(
+                { error: "You can only add students to a programme assigned to you." },
+                { status: 403 },
+              );
+            }
+      
+            }
+
       const programmeRows = await db.execute(sql`
         SELECT
           id,
