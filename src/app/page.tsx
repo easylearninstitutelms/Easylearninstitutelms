@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,21 @@ export default function LoginPage() {
     useState<"login" | "register">(
       "login"
     );
+
+  const [forgotPasswordMode, setForgotPasswordMode] =
+    useState(false);
+
+  const [forgotEmail, setForgotEmail] =
+    useState("");
+
+  const [forgotMessage, setForgotMessage] =
+    useState("");
+
+  const [forgotError, setForgotError] =
+    useState("");
+
+  const [forgotLoading, setForgotLoading] =
+    useState(false);
 
   const [loading, setLoading] =
     useState(false);
@@ -130,6 +145,52 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgotPassword(
+    e: React.FormEvent
+  ) {
+    e.preventDefault();
+
+    setForgotLoading(true);
+    setForgotMessage("");
+    setForgotError("");
+
+    try {
+      const res = await fetch(
+        "/api/auth/forgot-password",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            email: forgotEmail,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setForgotError(
+          data.error ||
+            "Unable to process your request."
+        );
+        return;
+      }
+
+      setForgotMessage(
+        data.message ||
+          "If this email is registered, a password reset link has been sent."
+      );
+    } catch {
+      setForgotError(
+        "Network error. Please try again."
+      );
+    } finally {
+      setForgotLoading(false);
+    }
+  }
   async function handleRegister(
     e: React.FormEvent
   ) {
@@ -245,63 +306,137 @@ export default function LoginPage() {
           )}
 
           {tab === "login" ? (
-            <form
-              onSubmit={
-                handleLogin
-              }
-              className="space-y-4"
-            >
-              <div>
-                <label className="form-label">
-                  Email
-                </label>
+  forgotPasswordMode ? (
+    <form
+      onSubmit={handleForgotPassword}
+      className="space-y-4"
+    >
+      <div>
+        <h2 className="text-lg font-semibold text-slate-800">
+          Forgot Password
+        </h2>
 
-                <input
-                  type="email"
-                  className="form-input"
-                  placeholder="your@email.com"
-                  value={loginEmail}
-                  onChange={(e) =>
-                    setLoginEmail(
-                      e.target.value
-                    )
-                  }
-                  required
-                />
-              </div>
+        <p className="text-sm text-slate-500 mt-1">
+          Enter your registered email address.
+          If it is registered, you will receive a
+          password reset link.
+        </p>
+      </div>
 
-              <div>
-                <label className="form-label">
-                  Password
-                </label>
+      {forgotError && (
+        <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+          {forgotError}
+        </div>
+      )}
 
-                <input
-                  type="password"
-                  className="form-input"
-                  placeholder="••••••••"
-                  value={
-                    loginPassword
-                  }
-                  onChange={(e) =>
-                    setLoginPassword(
-                      e.target.value
-                    )
-                  }
-                  required
-                />
-              </div>
+      {forgotMessage && (
+        <div className="p-3 bg-green-50 border border-green-100 rounded-xl text-sm text-green-700">
+          {forgotMessage}
+        </div>
+      )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-primary w-full justify-center py-3"
-              >
-                {loading
-                  ? "Logging in..."
-                  : "Login"}
-              </button>
-            </form>
-          ) : (
+      <div>
+        <label className="form-label">
+          Email
+        </label>
+
+        <input
+          type="email"
+          className="form-input"
+          placeholder="your@email.com"
+          value={forgotEmail}
+          onChange={(e) =>
+            setForgotEmail(e.target.value)
+          }
+          required
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={forgotLoading}
+        className="btn btn-primary w-full justify-center py-3"
+      >
+        {forgotLoading
+          ? "Sending..."
+          : "Send Reset Link"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setForgotPasswordMode(false);
+          setForgotMessage("");
+          setForgotError("");
+        }}
+        className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+      >
+        ← Back to Login
+      </button>
+    </form>
+  ) : (
+    <form
+      onSubmit={handleLogin}
+      className="space-y-4"
+    >
+      <div>
+        <label className="form-label">
+          Email
+        </label>
+
+        <input
+          type="email"
+          className="form-input"
+          placeholder="your@email.com"
+          value={loginEmail}
+          onChange={(e) =>
+            setLoginEmail(e.target.value)
+          }
+          required
+        />
+      </div>
+
+      <div>
+        <label className="form-label">
+          Password
+        </label>
+
+        <input
+          type="password"
+          className="form-input"
+          placeholder="••••••••"
+          value={loginPassword}
+          onChange={(e) =>
+            setLoginPassword(e.target.value)
+          }
+          required
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="btn btn-primary w-full justify-center py-3"
+      >
+        {loading
+          ? "Logging in..."
+          : "Login"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setForgotPasswordMode(true);
+          setForgotMessage("");
+          setForgotError("");
+        }}
+        className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+      >
+        Forgot password?
+      </button>
+    </form>
+  )
+) : (
             <form
               onSubmit={
                 handleRegister
@@ -309,7 +444,7 @@ export default function LoginPage() {
               className="space-y-4"
             >
               <div className="p-3 bg-blue-50 rounded-xl text-xs text-blue-700 font-medium">
-                🎉 Free 30-day trial — no payment required
+                ðŸŽ‰ Free 30-day trial â€” no payment required
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -464,9 +599,10 @@ export default function LoginPage() {
       </div>
 
       <p className="text-xs text-slate-400 mt-6">
-        © {new Date().getFullYear()} Easylearn Institute.
+        Â© {new Date().getFullYear()} Easylearn Institute.
         All rights reserved.
       </p>
     </div>
   );
 }
+
