@@ -4,6 +4,7 @@ import { eq, desc } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { getSession, requireRoles } from "@/lib/session";
 import { ensureCourseSchema } from "@/lib/academic";
+import { ensureTeacherAssignmentSchema } from "@/lib/teacher-assignment";
 
 const COURSE_VIEW_ROLES = ["SUPER_ADMIN", "INSTITUTE_ADMIN", "MANAGER", "TEACHER"];
 const COURSE_MANAGE_ROLES = ["SUPER_ADMIN", "INSTITUTE_ADMIN", "MANAGER", "TEACHER", "DIGITAL_MARKETER"];
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
 
   try {
     await ensureCourseSchema();
+    await ensureTeacherAssignmentSchema();
 
     const url = new URL(request.url);
     const forStudentAdd = url.searchParams.get("forStudentAdd") === "true";
