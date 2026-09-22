@@ -43,24 +43,31 @@ export async function GET(request: Request) {
     const session = await getSession();
     if (!session?.instituteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     await ensureAcademicCoreSchema();
-    await ensureTeacherAssignmentSchema();
 
     const url = new URL(request.url);
-    const forStudentAdd = url.searchParams.get("forStudentAdd") === "true";
+    const forStudentAdd =
+      url.searchParams.get("forStudentAdd") === "true";
 
-    const teacherRows =
-      forStudentAdd && session.role === "TEACHER"
-        ? rowsOf(await db.execute(sql`
-            SELECT ta.id
-            FROM teacher_assignments ta
-            INNER JOIN staff s ON s.id = ta.teacher_id
-            WHERE s.user_id = ${session.userId}
-              AND ta.institute_id = ${session.instituteId}
-            LIMIT 1
-          `))
-        : [];
+    let teacherId: string | null = null;
 
-    const teacherId = teacherRows[0]?.id;
+    if (forStudentAdd && session.role === "TEACHER") {
+      await ensureTeacherAssignmentSchema();
+
+      const teacherRows = rowsOf(
+        await db.execute(sql`
+          SELECT ta.teacher_id AS "teacherId"
+          FROM teacher_assignments ta
+          INNER JOIN staff s ON s.id = ta.teacher_id
+          WHERE s.user_id = ${session.userId}
+            AND ta.institute_id = ${session.instituteId}
+          LIMIT 1
+        `),
+      );
+
+      teacherId = teacherRows[0]?.teacherId
+        ? String(teacherRows[0].teacherId)
+        : null;
+    }
 
     // Attendance and other dropdowns only need the programme identity.
     // Keep this query independent from legacy enrollment/semester columns so
