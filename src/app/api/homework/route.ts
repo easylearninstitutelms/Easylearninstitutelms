@@ -259,8 +259,7 @@ export async function POST(request: Request) {
       if (
         programmeId ||
         semesterId ||
-        programmeClassId ||
-
+        programmeClassId
       ) {
         return NextResponse.json(
           {
