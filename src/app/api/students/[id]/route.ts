@@ -188,6 +188,8 @@ export async function GET(
   }
 
   try {
+    await ensureAcademicCoreSchema();
+
     const [student] = await db
       .select()
       .from(students)
