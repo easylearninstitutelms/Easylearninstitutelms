@@ -1017,13 +1017,6 @@ export default function FeesPage() {
           )
         : "";
 
-    const institutePhone =
-      institute.phone
-        ? escapeHtml(
-            institute.phone
-          )
-        : "";
-
     const instituteEmail =
       institute.email
         ? escapeHtml(
@@ -1036,19 +1029,19 @@ export default function FeesPage() {
         student.name || "-"
       );
 
-    const studentCode =
-      escapeHtml(
-        student.studentCode ||
-          student.studentId ||
-          "-"
-      );
-
     const studentPhone =
       student.phone
         ? escapeHtml(
             student.phone
           )
         : "";
+
+    const studentCode =
+      escapeHtml(
+        student.studentCode ||
+          student.studentId ||
+          "-"
+      );
 
     const safeCourseName =
       escapeHtml(
@@ -1122,48 +1115,22 @@ export default function FeesPage() {
 
     let contactHtml = "";
 
-    if (
-      institutePhone ||
-      instituteEmail
-    ) {
+    if (instituteEmail) {
       contactHtml =
-        '<div class="contact">';
-
-      if (institutePhone) {
-        contactHtml +=
-          "Phone: " +
-          institutePhone;
-      }
-
-      if (
-        institutePhone &&
-        instituteEmail
-      ) {
-        contactHtml +=
-          " &nbsp;|&nbsp; ";
-      }
-
-      if (instituteEmail) {
-        contactHtml +=
-          "Email: " +
-          instituteEmail;
-      }
-
-      contactHtml += "</div>";
-    }
-
-    let studentPhoneHtml =
-      "";
-
-    if (studentPhone) {
-      studentPhoneHtml =
-        '<div class="row">' +
-        '<span class="label">Phone</span>' +
-        '<span class="value">' +
-        studentPhone +
-        "</span>" +
+        '<div class="contact">Email: ' +
+        instituteEmail +
         "</div>";
     }
+
+    const studentPhoneHtml =
+      studentPhone
+        ? '<div class="row">' +
+          '<span class="label">Phone</span>' +
+          '<span class="value">' +
+          studentPhone +
+          "</span>" +
+          "</div>"
+        : "";
 
     let academicHtml = "";
 
