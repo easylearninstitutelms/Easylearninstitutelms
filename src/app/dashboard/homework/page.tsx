@@ -890,8 +890,6 @@ export default function HomeworkPage() {
                       >
                         Programme Class
                       </button>
-
->
                     </div>
                   </div>
 
