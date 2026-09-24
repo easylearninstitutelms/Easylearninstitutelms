@@ -658,7 +658,10 @@ export default function StudentsPage() {
             ? form.programmeId || null
             : null,
 
-        semesterId: null,
+        semesterId:
+          form.enrollmentType === "PROGRAMME"
+            ? form.semesterId || null
+            : null,
 
         photoUrl:
           form.photoUrl || null,
@@ -2590,7 +2593,33 @@ export default function StudentsPage() {
                               </select>
                             </div>
 
-
+                            <div>
+                              <label className="form-label">Select Semester *</label>
+                              <select
+                                className="form-select"
+                                value={form.semesterId}
+                                onChange={(e) =>
+                                  setForm({
+                                    ...form,
+                                    semesterId: e.target.value,
+                                  })
+                                }
+                                disabled={!form.programmeId}
+                                required
+                              >
+                                <option value="">
+                                  {form.programmeId
+                                    ? "Select a semester"
+                                    : "Select a programme first"}
+                                </option>
+                                {(programmes.find((p) => p.id === form.programmeId)?.semesters || []).map((semester) => (
+                                  <option key={semester.id} value={semester.id}>
+                                    {semester.name}
+                                    {semester.semesterNo ? " (#" + semester.semesterNo + ")" : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           </>
                         )}                      </div>
                     </div>
