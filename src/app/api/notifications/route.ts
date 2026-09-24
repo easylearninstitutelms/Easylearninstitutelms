@@ -132,6 +132,7 @@ export async function POST(request: Request) {
     const targetType = typeof body.targetType === "string" ? body.targetType : "ALL";
     const courseId = typeof body.courseId === "string" ? body.courseId.trim() : "";
     const programmeId = typeof body.programmeId === "string" ? body.programmeId.trim() : "";
+    const semesterId = typeof body.semesterId === "string" ? body.semesterId.trim() : "";
 
     const allowedTypes = [
       "ANNOUNCEMENT",
@@ -149,7 +150,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Invalid notification type." }, { status: 400 });
     }
 
-    if (!["ALL", "COURSE", "PROGRAMME"].includes(targetType)) {
+    if (!["ALL", "COURSE", "PROGRAMME", "PROGRAMME_SEMESTER"].includes(targetType)) {
       return Response.json({ error: "Invalid notification target." }, { status: 400 });
     }
 
