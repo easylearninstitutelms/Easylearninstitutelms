@@ -4,6 +4,60 @@ import { sql } from "drizzle-orm";
 
 let vapidConfigured = false;
 
+export async function ensurePushConfig() {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS push_config (
+      id integer PRIMARY KEY,
+      subject text NOT NULL,
+      public_key text NOT NULL,
+      private_key text NOT NULL,
+      created_at timestamp NOT NULL DEFAULT now(),
+      updated_at timestamp NOT NULL DEFAULT now()
+    )
+  `);
+
+  const result = await db.execute(sql`
+    SELECT subject, public_key, private_key
+    FROM push_config
+    WHERE id = 1
+    LIMIT 1
+  `);
+
+  const row = (result.rows as Array<{
+    subject: string;
+    public_key: string;
+    private_key: string;
+  }>)[0];
+
+  if (row) return row;
+
+  const subject = process.env.VAPID_SUBJECT || "mailto:easylearninstitute15@gmail.com";
+  const keys = webpush.generateVAPIDKeys();
+
+  await db.execute(sql`
+    INSERT INTO push_config (id, subject, public_key, private_key)
+    VALUES (1, ${subject}, ${keys.publicKey}, ${keys.privateKey})
+    ON CONFLICT (id) DO NOTHING
+  `);
+
+  const created = await db.execute(sql`
+    SELECT subject, public_key, private_key
+    FROM push_config
+    WHERE id = 1
+    LIMIT 1
+  `);
+
+  return (created.rows as Array<{
+    subject: string;
+    public_key: string;
+    private_key: string;
+  }>)[0] || {
+    subject,
+    public_key: keys.publicKey,
+    private_key: keys.privateKey,
+  };
+}
+
 export async function ensurePushSubscriptionsTable() {
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -23,33 +77,46 @@ export async function ensurePushSubscriptionsTable() {
   `);
 }
 
-function configureVapid() {
+async function configureVapid() {
   const subject = process.env.VAPID_SUBJECT;
-  const publicKey = process.env.VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const envPublicKey = process.env.VAPID_PUBLIC_KEY;
+  const envPrivateKey = process.env.VAPID_PRIVATE_KEY;
 
-  if (!subject || !publicKey || !privateKey) return false;
+  const config =
+    subject && envPublicKey && envPrivateKey
+      ? { subject, public_key: envPublicKey, private_key: envPrivateKey }
+      : await ensurePushConfig();
 
   if (!vapidConfigured) {
-    webpush.setVapidDetails(subject, publicKey, privateKey);
+    webpush.setVapidDetails(
+      config.subject,
+      config.public_key,
+      config.private_key,
+    );
     vapidConfigured = true;
   }
 
-  return true;
+  return config;
 }
 
-export function getVapidPublicKey() {
-  return process.env.VAPID_PUBLIC_KEY || "";
+export async function getVapidPublicKey() {
+  const subject = process.env.VAPID_SUBJECT;
+  const envPublicKey = process.env.VAPID_PUBLIC_KEY;
+  const envPrivateKey = process.env.VAPID_PRIVATE_KEY;
+
+  if (subject && envPublicKey && envPrivateKey) return envPublicKey;
+
+  const config = await ensurePushConfig();
+  return config.public_key;
 }
 
 export async function sendPushToUsers(
   userIds: string[],
   payload: { title: string; body?: string | null; url?: string },
 ) {
-  if (userIds.length === 0 || !configureVapid()) {
-    return { sent: 0, skipped: userIds.length };
-  }
+  if (userIds.length === 0) return { sent: 0, skipped: 0 };
 
+  const config = await configureVapid();
   await ensurePushSubscriptionsTable();
 
   const uniqueUserIds = [...new Set(userIds)];
@@ -93,5 +160,9 @@ export async function sendPushToUsers(
     }
   }
 
-  return { sent, skipped: Math.max(0, uniqueUserIds.length - sent) };
+  return {
+    sent,
+    skipped: Math.max(0, uniqueUserIds.length - sent),
+    configured: Boolean(config.public_key),
+  };
 }
