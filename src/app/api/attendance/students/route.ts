@@ -27,59 +27,53 @@ export async function GET(request: Request) {
 
     if (!classId || !date) return NextResponse.json({ students: [] });
 
-    let result;
-    if (programmeId) {
-      result = await db.execute(sql`
-        SELECT DISTINCT ON (s.id)
+    if (programmeId && semesterId) {
+      const result = await db.execute(sql`
+        SELECT
           s.id AS "studentId",
           s.name,
           s.student_id AS "studentNo",
-          e.batch_id AS "batchId",
-          b.name AS "batchName",
           a.status AS "attendanceStatus"
         FROM enrollments e
         INNER JOIN students s ON s.id = e.student_id
-        INNER JOIN batches b ON b.id = e.batch_id
         LEFT JOIN attendance a
           ON a.student_id = s.id
-         AND a.batch_id = e.batch_id
+         AND a.programme_id = e.programme_id
+         AND a.semester_id = e.semester_id
          AND a.class_id = ${classId}
          AND a.date = ${date}
         WHERE e.institute_id = ${session.instituteId}
           AND e.status = 'ACTIVE'
-          AND b.institute_id = ${session.instituteId}
-          AND b.programme_id = ${programmeId}
-          ${semesterId ? sql`AND b.semester_id = ${semesterId}` : sql``}
-        ORDER BY s.id, b.created_at DESC
+          AND e.programme_id = ${programmeId}
+          AND e.semester_id = ${semesterId}
+        ORDER BY s.student_id
       `);
-    } else if (courseId) {
-      result = await db.execute(sql`
-        SELECT DISTINCT ON (s.id)
-          s.id AS "studentId",
-          s.name,
-          s.student_id AS "studentNo",
-          e.batch_id AS "batchId",
-          b.name AS "batchName",
-          a.status AS "attendanceStatus"
-        FROM enrollments e
-        INNER JOIN students s ON s.id = e.student_id
-        INNER JOIN batches b ON b.id = e.batch_id
-        LEFT JOIN attendance a
-          ON a.student_id = s.id
-         AND a.batch_id = e.batch_id
-         AND a.class_id = ${classId}
-         AND a.date = ${date}
-        WHERE e.institute_id = ${session.instituteId}
-          AND e.status = 'ACTIVE'
-          AND b.institute_id = ${session.instituteId}
-          AND b.course_id = ${courseId}
-        ORDER BY s.id, b.created_at DESC
-      `);
-    } else {
-      return NextResponse.json({ students: [] });
+      return NextResponse.json({ students: rows(result) });
     }
 
-    return NextResponse.json({ students: rows(result) });
+    if (courseId) {
+      const result = await db.execute(sql`
+        SELECT
+          s.id AS "studentId",
+          s.name,
+          s.student_id AS "studentNo",
+          a.status AS "attendanceStatus"
+        FROM enrollments e
+        INNER JOIN students s ON s.id = e.student_id
+        LEFT JOIN attendance a
+          ON a.student_id = s.id
+         AND a.course_id = e.course_id
+         AND a.class_id = ${classId}
+         AND a.date = ${date}
+        WHERE e.institute_id = ${session.instituteId}
+          AND e.status = 'ACTIVE'
+          AND e.course_id = ${courseId}
+        ORDER BY s.student_id
+      `);
+      return NextResponse.json({ students: rows(result) });
+    }
+
+    return NextResponse.json({ students: [] });
   } catch (error) {
     console.error("Attendance students GET error:", error);
     return NextResponse.json({ error: "Failed to load attendance students" }, { status: 500 });
