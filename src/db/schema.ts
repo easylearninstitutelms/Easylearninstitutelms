@@ -551,8 +551,10 @@ export const attendance = pgTable(
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
     batchId: uuid("batch_id")
-      .notNull()
       .references(() => batches.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id").references(() => courses.id, { onDelete: "cascade" }),
+    programmeId: uuid("programme_id").references(() => programmes.id, { onDelete: "cascade" }),
+    semesterId: uuid("semester_id").references(() => programmeSemesters.id, { onDelete: "cascade" }),
     classId: uuid("class_id"),
     classType: varchar("class_type", { length: 20 }),
     date: date("date").notNull(),
