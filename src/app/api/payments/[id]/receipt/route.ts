@@ -129,7 +129,10 @@ export async function GET(
           )
 
         LEFT JOIN programme_semesters ps
-          ON ps.id = b.semester_id
+          ON ps.id = COALESCE(
+            e.semester_id,
+            b.semester_id
+          )
 
         WHERE e.student_id = p.student_id
           AND e.institute_id = p.institute_id
