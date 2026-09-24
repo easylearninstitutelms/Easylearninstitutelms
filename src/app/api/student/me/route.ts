@@ -4,7 +4,6 @@ import {
   students,
   users,
   enrollments,
-  batches,
   courses,
   attendance,
   exams,
@@ -131,7 +130,7 @@ export async function GET() {
 
           e.course_id AS course_id,
           e.programme_id AS programme_id,
-          b.semester_id AS semester_id,
+          e.semester_id AS semester_id,
 
           c.name AS course_name,
           c.course_no,
