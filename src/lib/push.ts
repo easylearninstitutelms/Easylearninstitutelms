@@ -123,7 +123,7 @@ export async function sendPushToUsers(
   const subscriptions = await db.execute(sql`
     SELECT id, endpoint, p256dh, auth
     FROM push_subscriptions
-    WHERE user_id = ANY(${uniqueUserIds}::uuid[])
+    WHERE user_id IN (${sql.join(uniqueUserIds.map((id) => sql`${id}::uuid`), sql`, `)})
   `);
 
   let sent = 0;
