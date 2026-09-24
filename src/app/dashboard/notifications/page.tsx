@@ -107,7 +107,7 @@ export default function NotificationsPage() {
       title: "",
       body: "",
       type: "ANNOUNCEMENT",
-      targetType: "ALL",
+      targetType: "COURSE",
       courseId: "",
       programmeId: "",
       semesterId: "",
