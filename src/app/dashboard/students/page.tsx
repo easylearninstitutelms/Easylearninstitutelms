@@ -162,7 +162,17 @@ export default function StudentsPage() {
   >([]);
 
   const [programmes, setProgrammes] = useState<
-    Array<{ id: string; name: string; code?: string | null; programmeNo?: number | null }>
+    Array<{
+      id: string;
+      name: string;
+      code?: string | null;
+      programmeNo?: number | null;
+      semesters?: Array<{
+        id: string;
+        name: string;
+        semesterNo: number;
+      }>;
+    }>
   >([]);
 
   const [
@@ -496,7 +506,7 @@ export default function StudentsPage() {
           ? "PROGRAMME"
           : activeEnrollment?.course?.id
             ? "COURSE"
-            : "BATCH";
+            : "COURSE";
 
       setEditingStudentId(
         student.id
@@ -1488,17 +1498,16 @@ export default function StudentsPage() {
                                 <p className="font-medium text-slate-700">
                                   {item.programme?.name ||
                                     item.course?.name ||
-                                    item.batch?.name ||
                                     "Unknown Enrollment"}
                                 </p>
 
                                 <p className="text-sm text-slate-500">
                                   {item.programme
                                     ? "Programme"
-                                    : item.course
-                                      ? "Course"
-                                      : "Batch"}
-                                  {item.batch?.name ? " Â· Batch: " + item.batch.name : ""}
+                                    : "Course"}
+                                  {item.programme && item.enrollment.semesterId
+                                    ? " Â· Semester"
+                                    : ""}
                                 </p>
 
                                 <p className="text-xs text-slate-400 mt-1">
