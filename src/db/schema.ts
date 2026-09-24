@@ -580,6 +580,7 @@ export const fees = pgTable(
     studentId: uuid("student_id")
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
+    semesterId: uuid("semester_id").references(() => programmeSemesters.id, { onDelete: "cascade" }),
     feeType: feeTypeEnum("fee_type").notNull(),
     amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
     discount: numeric("discount", { precision: 10, scale: 2 }).default("0"),

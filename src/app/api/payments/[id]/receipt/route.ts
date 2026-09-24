@@ -72,7 +72,6 @@ export async function GET(
         i.name AS "instituteName",
         i.logo_url AS "instituteLogoUrl",
         i.phone AS "institutePhone",
-        i.email AS "instituteEmail",
         i.address AS "instituteAddress",
 
         academic."batchNo",
@@ -82,8 +81,9 @@ export async function GET(
         academic."programmeName",
         academic."programmeCode",
         academic."programmeNo",
-        academic."semesterName",
-        academic."semesterNo"
+        
+        COALESCE(fs.name, academic."semesterName") AS "semesterName",
+        COALESCE(fs.semester_no, academic."semesterNo") AS "semesterNo"
 
       FROM payments p
 
@@ -96,52 +96,29 @@ export async function GET(
       LEFT JOIN fees f
         ON f.id = p.fee_id
 
+      LEFT JOIN programme_semesters fs 
+        ON fs.id = f.semester_id
+
       LEFT JOIN LATERAL (
         SELECT
           b.batch_no AS "batchNo",
           b.name AS "batchName",
-
           c.name AS "courseName",
           c.course_no AS "courseNo",
-
           pr.name AS "programmeName",
           pr.code AS "programmeCode",
           pr.programme_no AS "programmeNo",
-
           ps.name AS "semesterName",
           ps.semester_no AS "semesterNo"
-
         FROM enrollments e
-
-        LEFT JOIN batches b
-          ON b.id = e.batch_id
-
-        LEFT JOIN courses c
-          ON c.id = COALESCE(
-            e.course_id,
-            b.course_id
-          )
-
-        LEFT JOIN programmes pr
-          ON pr.id = COALESCE(
-            e.programme_id,
-            b.programme_id
-          )
-
-        LEFT JOIN programme_semesters ps
-          ON ps.id = COALESCE(
-            e.semester_id,
-            b.semester_id
-          )
-
+        LEFT JOIN batches b ON b.id = e.batch_id
+        LEFT JOIN courses c ON c.id = COALESCE(e.course_id, b.course_id)
+        LEFT JOIN programmes pr ON pr.id = COALESCE(e.programme_id, b.programme_id)
+        LEFT JOIN programme_semesters ps ON ps.id = b.semester_id
         WHERE e.student_id = p.student_id
           AND e.institute_id = p.institute_id
           AND e.status = 'ACTIVE'
-
-        ORDER BY
-          e.enrollment_date DESC,
-          e.id DESC
-
+        ORDER BY e.enrollment_date DESC, e.id DESC
         LIMIT 1
       ) academic ON TRUE
 
@@ -166,74 +143,43 @@ export async function GET(
           id: String(value(row, "id") ?? ""),
           amount: String(value(row, "amount") ?? "0"),
           method: String(value(row, "method") ?? ""),
-          transactionReference:
-            value(row, "transactionReference") ?? null,
-          receiptNumber: String(
-            value(row, "receiptNumber") ?? "",
-          ),
+          transactionReference: value(row, "transactionReference") ?? null,
+          receiptNumber: String(value(row, "receiptNumber") ?? ""),
           paidAt: value(row, "paidAt") ?? null,
         },
 
         student: {
-          id: String(
-            value(row, "studentId") ?? "",
-          ),
-          studentCode: String(
-            value(row, "studentCode") ?? "",
-          ),
-          name: String(
-            value(row, "studentName") ?? "",
-          ),
+          id: String(value(row, "studentId") ?? ""),
+          studentCode: String(value(row, "studentCode") ?? ""),
+          name: String(value(row, "studentName") ?? ""),
         },
 
         fee: {
-          id:
-            value(row, "feeId") ?? null,
-          type:
-            value(row, "feeType") ?? null,
-          amount:
-            value(row, "feeAmount") ?? null,
-          discount:
-            value(row, "feeDiscount") ?? null,
-          dueAmount:
-            value(row, "feeDueAmount") ?? null,
-          dueDate:
-            value(row, "feeDueDate") ?? null,
+          id: value(row, "feeId") ?? null,
+          type: value(row, "feeType") ?? null,
+          amount: value(row, "feeAmount") ?? null,
+          discount: value(row, "feeDiscount") ?? null,
+          dueAmount: value(row, "feeDueAmount") ?? null,
+          dueDate: value(row, "feeDueDate") ?? null,
         },
 
         institute: {
-          name: String(
-            value(row, "instituteName") ?? "Easylearn Institute",
-          ),
-          logoUrl:
-            value(row, "instituteLogoUrl") ?? null,
-          phone:
-            value(row, "institutePhone") ?? null,
-          email:
-            value(row, "instituteEmail") ?? null,
-          address:
-            value(row, "instituteAddress") ?? null,
+          name: String(value(row, "instituteName") ?? "Easylearn Institute"),
+          logoUrl: value(row, "instituteLogoUrl") ?? null,
+          phone: value(row, "institutePhone") ?? null,
+          address: value(row, "instituteAddress") ?? null,
         },
 
         academic: {
-          batchNo:
-            value(row, "batchNo") ?? null,
-          batchName:
-            value(row, "batchName") ?? null,
-          courseName:
-            value(row, "courseName") ?? null,
-          courseNo:
-            value(row, "courseNo") ?? null,
-          programmeName:
-            value(row, "programmeName") ?? null,
-          programmeCode:
-            value(row, "programmeCode") ?? null,
-          programmeNo:
-            value(row, "programmeNo") ?? null,
-          semesterName:
-            value(row, "semesterName") ?? null,
-          semesterNo:
-            value(row, "semesterNo") ?? null,
+          batchNo: value(row, "batchNo") ?? null,
+          batchName: value(row, "batchName") ?? null,
+          courseName: value(row, "courseName") ?? null,
+          courseNo: value(row, "courseNo") ?? null,
+          programmeName: value(row, "programmeName") ?? null,
+          programmeCode: value(row, "programmeCode") ?? null,
+          programmeNo: value(row, "programmeNo") ?? null,
+          semesterName: value(row, "semesterName") ?? null,
+          semesterNo: value(row, "semesterNo") ?? null,
         },
       },
     });
