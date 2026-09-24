@@ -198,12 +198,11 @@ export default function NotificationsPage() {
                       <p className="font-semibold text-slate-800">{n.title}</p>
                       {n.body && <p className="text-sm text-slate-500 mt-0.5">{n.body}</p>}
                     </div>
-                    {!n.readAt && (
-                      <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5" />
-                    )}
+                    <span className="badge badge-blue">Saved</span>
                   </div>
                   <div className="flex items-center gap-3 mt-2">
                     <span className="badge badge-blue">{n.type.replace("_", " ")}</span>
+                    <span className="text-xs font-medium text-emerald-600">Saved in notification history</span>
                     <span className="text-xs text-slate-400">{formatDateTime(n.createdAt)}</span>
                   </div>
                 </div>
