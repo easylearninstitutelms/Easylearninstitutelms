@@ -43,17 +43,35 @@ export default function ExpensesPage() {
     e.preventDefault();
     setSubmitting(true);
     setError("");
-    const res = await fetch("/api/expenses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    setSubmitting(false);
-    if (!res.ok) { setError(data.error); return; }
-    setShowModal(false);
-    setForm({ category: "RENT", amount: "", method: "CASH", description: "", expenseDate: new Date().toISOString().split("T")[0] });
-    fetchExpenses();
+
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data.error || "Failed to add expense.");
+        return;
+      }
+
+      setShowModal(false);
+      setForm({
+        category: "RENT",
+        amount: "",
+        method: "CASH",
+        description: "",
+        expenseDate: new Date().toISOString().split("T")[0],
+      });
+      await fetchExpenses();
+    } catch {
+      setError("Unable to add expense right now. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || "0"), 0);
