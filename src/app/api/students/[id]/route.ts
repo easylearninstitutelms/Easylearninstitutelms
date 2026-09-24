@@ -4,6 +4,7 @@ import {
   enrollments,
   batches,
   courses,
+  programmes,
   attendance,
   fees,
   payments,
@@ -14,6 +15,7 @@ import {
   and,
   desc,
   sql,
+  aliasedTable,
 } from "drizzle-orm";
 import {
   getSession,
@@ -217,12 +219,28 @@ export async function GET(
       );
     }
 
+    /*
+     * Load the student's enrollments directly from
+     * enrollment.courseId / enrollment.programmeId.
+     *
+     * We keep the batch course as a fallback because
+     * older batch-based enrollments may not have a
+     * direct courseId.
+     */
+
+    const batchCourses = aliasedTable(
+  courses,
+  "enrollment_batch_course",
+);
+
     const existingEnrollments =
       await db
         .select({
           enrollment: enrollments,
           batch: batches,
-          course: courses,
+          directCourse: courses,
+          batchCourse: batchCourses,
+          programme: programmes,
         })
         .from(enrollments)
         .leftJoin(
@@ -235,8 +253,22 @@ export async function GET(
         .leftJoin(
           courses,
           eq(
-            batches.courseId,
+            enrollments.courseId,
             courses.id,
+          ),
+        )
+        .leftJoin(
+          batchCourses,
+          eq(
+            batches.courseId,
+            batchCourses.id,
+          ),
+        )
+        .leftJoin(
+          programmes,
+          eq(
+            enrollments.programmeId,
+            programmes.id,
           ),
         )
         .where(
@@ -252,95 +284,54 @@ export async function GET(
           ),
         );
 
-    const directEnrollmentResult =
-      await db.execute(sql`
-        SELECT
-          e.id AS enrollment_id,
-          e.course_id,
-          e.programme_id,
-
-          c.id AS direct_course_id,
-          c.name AS direct_course_name,
-          c.description AS direct_course_description,
-          c.duration AS direct_course_duration,
-          c.fee AS direct_course_fee,
-
-          p.id AS direct_programme_id,
-          p.name AS direct_programme_name,
-          p.code AS direct_programme_code,
-          p.description AS direct_programme_description,
-          p.duration AS direct_programme_duration
-
-        FROM enrollments e
-
-        LEFT JOIN courses c
-          ON c.id = e.course_id
-
-        LEFT JOIN programmes p
-          ON p.id = e.programme_id
-
-        WHERE e.student_id = ${id}
-          AND e.institute_id = ${instituteId}
-      `);
-
-    const directRows: any[] =
-      Array.isArray(
-        (directEnrollmentResult as any)?.rows,
-      )
-        ? (directEnrollmentResult as any).rows
-        : [];
-
-    const directMap = new Map<
-      string,
-      any
-    >(
-      directRows.map(
-        (row: any) => [
-          String(row.enrollment_id),
-          row,
-        ],
-      ),
-    );
-
     const studentEnrollments =
       existingEnrollments.map(
         (item) => {
-          const direct: any =
-            directMap.get(
-              String(
-                item.enrollment.id,
-              ),
-            );
-
           const directCourse =
-            direct?.direct_course_id
+            item.directCourse
               ? {
                   id:
-                    direct.direct_course_id,
+                    item.directCourse.id,
                   name:
-                    direct.direct_course_name,
+                    item.directCourse.name,
                   description:
-                    direct.direct_course_description,
+                    item.directCourse.description,
                   duration:
-                    direct.direct_course_duration,
+                    item.directCourse.duration,
                   fee:
-                    direct.direct_course_fee,
+                    item.directCourse.fee,
                 }
               : null;
 
-          const directProgramme =
-            direct?.direct_programme_id
+          const batchCourse =
+            item.batchCourse
               ? {
                   id:
-                    direct.direct_programme_id,
+                    item.batchCourse.id,
                   name:
-                    direct.direct_programme_name,
-                  code:
-                    direct.direct_programme_code,
+                    item.batchCourse.name,
                   description:
-                    direct.direct_programme_description,
+                    item.batchCourse.description,
                   duration:
-                    direct.direct_programme_duration,
+                    item.batchCourse.duration,
+                  fee:
+                    item.batchCourse.fee,
+                }
+              : null;
+
+          const programme =
+            item.programme
+              ? {
+                  id:
+                    item.programme.id,
+                  name:
+                    item.programme.name,
+                  code:
+                    item.programme.code,
+                  description:
+                    item.programme.description,
+                  duration:
+                    item.programme.duration,
                 }
               : null;
 
@@ -351,11 +342,9 @@ export async function GET(
               item.batch,
             course:
               directCourse ||
-              item.course ||
+              batchCourse ||
               null,
-            programme:
-              directProgramme ||
-              null,
+            programme,
           };
         },
       );
