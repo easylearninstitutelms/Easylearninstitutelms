@@ -21,7 +21,9 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [form, setForm] = useState({
@@ -39,6 +41,32 @@ export default function ExpensesPage() {
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
+  function openAddModal() {
+    setEditingExpense(null);
+    setError("");
+    setForm({
+      category: "RENT",
+      amount: "",
+      method: "CASH",
+      description: "",
+      expenseDate: new Date().toISOString().split("T")[0],
+    });
+    setShowModal(true);
+  }
+
+  function openEditModal(expense: Expense) {
+    setEditingExpense(expense);
+    setError("");
+    setForm({
+      category: expense.category,
+      amount: expense.amount,
+      method: expense.method,
+      description: expense.description || "",
+      expenseDate: expense.expenseDate,
+    });
+    setShowModal(true);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -46,7 +74,7 @@ export default function ExpensesPage() {
 
     try {
       const res = await fetch("/api/expenses", {
-        method: "POST",
+        method: editingExpense ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
@@ -59,6 +87,7 @@ export default function ExpensesPage() {
       }
 
       setShowModal(false);
+      setEditingExpense(null);
       setForm({
         category: "RENT",
         amount: "",
@@ -71,6 +100,38 @@ export default function ExpensesPage() {
       setError("Unable to add expense right now. Please try again.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(expense: Expense) {
+    const confirmed = window.confirm(
+      `Delete this ${expense.category} expense of ${formatCurrency(expense.amount)}? This action cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(expense.id);
+    setError("");
+
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: expense.id }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data.error || "Failed to delete expense.");
+        return;
+      }
+
+      await fetchExpenses();
+    } catch {
+      setError("Unable to delete expense right now. Please try again.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -90,7 +151,7 @@ export default function ExpensesPage() {
         </div>
         <div className="flex gap-2 items-center">
           <input type="month" className="form-input w-auto" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} />
-          <button onClick={() => setShowModal(true)} className="btn btn-primary">
+          <button onClick={openAddModal} className="btn btn-primary">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Add Expense
           </button>
@@ -117,7 +178,7 @@ export default function ExpensesPage() {
           <div className="text-center py-12">
             <div className="text-4xl mb-3">💸</div>
             <p className="text-slate-500">No expenses for {selectedMonth}</p>
-            <button onClick={() => setShowModal(true)} className="btn btn-primary btn-sm mt-4">Add Expense</button>
+            <button onClick={openAddModal} className="btn btn-primary btn-sm mt-4">Add Expense</button>
           </div>
         ) : (
           <div className="table-wrapper">
@@ -129,6 +190,7 @@ export default function ExpensesPage() {
                   <th>Amount</th>
                   <th>Method</th>
                   <th>Date</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,6 +206,26 @@ export default function ExpensesPage() {
                     <td className="font-bold text-red-600">{formatCurrency(e.amount)}</td>
                     <td><span className="badge badge-blue">{e.method}</span></td>
                     <td className="text-slate-500">{formatDate(e.expenseDate)}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(e)}
+                          disabled={deletingId === e.id}
+                          className="btn btn-outline btn-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(e)}
+                          disabled={deletingId === e.id}
+                          className="btn btn-outline btn-sm text-red-600"
+                        >
+                          {deletingId === e.id ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -151,7 +233,7 @@ export default function ExpensesPage() {
                 <tr>
                   <td colSpan={2} className="font-bold text-slate-700 px-4 py-3">Total</td>
                   <td className="font-bold text-red-600 px-4 py-3">{formatCurrency(totalExpenses)}</td>
-                  <td colSpan={2} />
+                  <td colSpan={3} />
                 </tr>
               </tfoot>
             </table>
@@ -163,7 +245,7 @@ export default function ExpensesPage() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal-box">
             <div className="modal-header">
-              <h2 className="modal-title">Add Expense</h2>
+              <h2 className="modal-title">{editingExpense ? "Edit Expense" : "Add Expense"}</h2>
               <button onClick={() => setShowModal(false)} className="btn btn-ghost btn-sm">✕</button>
             </div>
             <form onSubmit={handleSubmit}>
@@ -203,8 +285,10 @@ export default function ExpensesPage() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" onClick={() => setShowModal(false)} className="btn btn-outline">Cancel</button>
-                <button type="submit" disabled={submitting} className="btn btn-primary">{submitting ? "Adding..." : "Add Expense"}</button>
+                <button type="button" onClick={() => { setShowModal(false); setEditingExpense(null); setError(""); }} className="btn btn-outline">Cancel</button>
+                <button type="submit" disabled={submitting} className="btn btn-primary">
+                  {submitting ? (editingExpense ? "Saving..." : "Adding...") : (editingExpense ? "Save Changes" : "Add Expense")}
+                </button>
               </div>
             </form>
           </div>
