@@ -164,10 +164,24 @@ export async function POST(request: Request) {
       });
     }
 
-    const inserted = await db.insert(attendance).values(values as any).onConflictDoUpdate({
-      target: [attendance.studentId, attendance.courseId, attendance.programmeId, attendance.semesterId, attendance.date, attendance.classId],
-      set: { status: sql`EXCLUDED.status`, note: sql`EXCLUDED.note` },
-    }).returning();
+    for (const value of values as any[]) {
+      const targetConditions = [
+        eq(attendance.studentId, value.studentId),
+        eq(attendance.date, value.date),
+        eq(attendance.classId, value.classId),
+      ];
+
+      if (value.courseId) {
+        targetConditions.push(eq(attendance.courseId, value.courseId));
+      } else {
+        targetConditions.push(eq(attendance.programmeId, value.programmeId));
+        targetConditions.push(eq(attendance.semesterId, value.semesterId));
+      }
+
+      await db.delete(attendance).where(and(...targetConditions));
+    }
+
+    const inserted = await db.insert(attendance).values(values as any).returning();
 
     return Response.json({ attendance: inserted });
   } catch (error) {
