@@ -198,14 +198,32 @@ export async function POST(request: Request) {
     if (targetType === "COURSE") {
       recipientFilter = sql`
         ${recipientFilter}
-        AND e.course_id = ${courseId}
+        AND (
+          e.course_id = ${courseId}
+          OR EXISTS (
+            SELECT 1
+            FROM batches b
+            WHERE b.id = e.batch_id
+              AND b.institute_id = ${session.instituteId}
+              AND b.course_id = ${courseId}
+          )
+        )
       `;
     }
 
     if (targetType === "PROGRAMME") {
       recipientFilter = sql`
         ${recipientFilter}
-        AND e.programme_id = ${programmeId}
+        AND (
+          e.programme_id = ${programmeId}
+          OR EXISTS (
+            SELECT 1
+            FROM batches b
+            WHERE b.id = e.batch_id
+              AND b.institute_id = ${session.instituteId}
+              AND b.programme_id = ${programmeId}
+          )
+        )
       `;
     }
 
