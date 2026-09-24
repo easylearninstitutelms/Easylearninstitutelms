@@ -21,7 +21,6 @@ interface HwRow {
   description?: string | null;
   deadline?: string | null;
   teacherName?: string | null;
-  batchName?: string | null;
   courseName?: string | null;
   courseClassNo?: number | null;
   courseClassTitle?: string | null;
@@ -50,17 +49,6 @@ interface Programme {
   name: string;
   code?: string | null;
   semesters?: ProgrammeSemester[];
-}
-
-interface Batch {
-  id: string;
-  name: string;
-  programmeId?: string | null;
-  semesterId?: string | null;
-  courseId?: string | null;
-  programmeName?: string | null;
-  semesterName?: string | null;
-  courseName?: string | null;
 }
 
 interface CourseClass {
@@ -93,10 +81,7 @@ interface Staff {
   name: string;
 }
 
-type TargetType =
-  | "course"
-  | "programme"
-  | "batch";
+type TargetType = "course" | "programme";
 
 interface FormState {
   courseId: string;
@@ -106,7 +91,6 @@ interface FormState {
   semesterId: string;
   programmeClassId: string;
 
-  batchId: string;
 
   teacherId: string;
   title: string;
@@ -122,7 +106,6 @@ const initialForm: FormState = {
   semesterId: "",
   programmeClassId: "",
 
-  batchId: "",
 
   teacherId: "",
   title: "",
@@ -139,9 +122,6 @@ export default function HomeworkPage() {
 
   const [programmes, setProgrammes] =
     useState<Programme[]>([]);
-
-  const [batches, setBatches] =
-    useState<Batch[]>([]);
 
   const [staffList, setStaffList] =
     useState<Staff[]>([]);
@@ -226,10 +206,6 @@ export default function HomeworkPage() {
               cache: "no-store",
             }),
 
-            fetch("/api/batches", {
-              cache: "no-store",
-            }),
-
             fetch("/api/staff", {
               cache: "no-store",
             }),
@@ -241,11 +217,8 @@ export default function HomeworkPage() {
         const programmeData =
           await results[1].json();
 
-        const batchData =
-          await results[2].json();
-
         const staffData =
-          await results[3].json();
+          await results[2].json();
 
         if (!results[0].ok) {
           throw new Error(
@@ -263,13 +236,6 @@ export default function HomeworkPage() {
 
         if (!results[2].ok) {
           throw new Error(
-            batchData?.error ||
-              "Failed to load batches"
-          );
-        }
-
-        if (!results[3].ok) {
-          throw new Error(
             staffData?.error ||
               "Failed to load staff"
           );
@@ -281,31 +247,6 @@ export default function HomeworkPage() {
 
         setProgrammes(
           programmeData.programmes || []
-        );
-
-        const rawBatches =
-          batchData.batches || [];
-
-        const normalizedBatches: Batch[] =
-          rawBatches.map(
-            (
-              item:
-                | Batch
-                | { batch: Batch }
-            ) => {
-              if (
-                "batch" in item &&
-                item.batch
-              ) {
-                return item.batch;
-              }
-
-              return item as Batch;
-            }
-          );
-
-        setBatches(
-          normalizedBatches
         );
 
         setStaffList(
@@ -480,8 +421,7 @@ export default function HomeworkPage() {
       ...prev,
       courseId,
       courseClassId: "",
-      batchId: "",
-    }));
+        }));
 
     await loadCourseClasses(courseId);
   }
@@ -494,8 +434,7 @@ export default function HomeworkPage() {
       programmeId,
       semesterId: "",
       programmeClassId: "",
-      batchId: "",
-    }));
+        }));
 
     setProgrammeClasses([]);
 
@@ -511,8 +450,7 @@ export default function HomeworkPage() {
       ...prev,
       semesterId,
       programmeClassId: "",
-      batchId: "",
-    }));
+        }));
   }
 
   const selectedProgramme =
@@ -569,16 +507,6 @@ export default function HomeworkPage() {
       return;
     }
 
-    if (
-      targetType === "batch" &&
-      !form.batchId
-    ) {
-      setError(
-        "Please select Batch."
-      );
-      return;
-    }
-
     try {
       setSubmitting(true);
 
@@ -608,11 +536,6 @@ export default function HomeworkPage() {
         programmeClassId:
           targetType === "programme"
             ? form.programmeClassId
-            : "",
-
-        batchId:
-          targetType === "batch"
-            ? form.batchId
             : "",
 
         teacherId: form.teacherId,
@@ -690,10 +613,7 @@ export default function HomeworkPage() {
       );
     }
 
-    return (
-      "Batch: " +
-      (row.batchName || "-")
-    );
+    return "Unspecified";
   }
 
   return (
@@ -971,22 +891,7 @@ export default function HomeworkPage() {
                         Programme Class
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          changeTargetType(
-                            "batch"
-                          )
-                        }
-                        className={
-                          targetType ===
-                          "batch"
-                            ? "rounded-xl border-2 border-blue-600 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700"
-                            : "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600"
-                        }
-                      >
-                        Batch
-                      </button>
+>
                     </div>
                   </div>
 
@@ -1269,63 +1174,6 @@ export default function HomeworkPage() {
                             </p>
                           )}
                       </div>
-                    </div>
-                  )}
-
-                  {targetType ===
-                    "batch" && (
-                    <div>
-                      <label className="form-label">
-                        Batch *
-                      </label>
-
-                      <select
-                        className="form-select"
-                        value={
-                          form.batchId
-                        }
-                        onChange={(event) =>
-                          setForm({
-                            ...form,
-                            batchId:
-                              event.target
-                                .value,
-                          })
-                        }
-                        required
-                        disabled={
-                          loadingOptions
-                        }
-                      >
-                        <option value="">
-                          {loadingOptions
-                            ? "Loading batches..."
-                            : "Select batch"}
-                        </option>
-
-                        {batches.map(
-                          (batch) => (
-                            <option
-                              key={
-                                batch.id
-                              }
-                              value={
-                                batch.id
-                              }
-                            >
-                              {batch.name}
-                            </option>
-                          )
-                        )}
-                      </select>
-
-                      {!loadingOptions &&
-                        batches.length ===
-                          0 && (
-                          <p className="mt-1 text-xs text-amber-600">
-                            No batch found.
-                          </p>
-                        )}
                     </div>
                   )}
 
