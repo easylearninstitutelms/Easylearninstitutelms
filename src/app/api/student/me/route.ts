@@ -122,15 +122,10 @@ export async function GET() {
         SELECT
           e.id,
           e.student_id,
-          e.batch_id,
           e.status,
-
-          b.name AS batch_name,
-          b.batch_no,
 
           e.course_id AS course_id,
           e.programme_id AS programme_id,
-          e.semester_id AS semester_id,
 
           c.name AS course_name,
           c.course_no,
@@ -138,8 +133,8 @@ export async function GET() {
           p.name AS programme_name,
           p.programme_no,
 
-          ps.name AS semester_name,
-          ps.semester_no
+          NULL AS semester_name,
+          NULL AS semester_no
 
         FROM enrollments e
 
@@ -148,9 +143,6 @@ export async function GET() {
 
         LEFT JOIN programmes p
           ON p.id = e.programme_id
-
-        LEFT JOIN programme_semesters ps
-          ON ps.id = e.semester_id
 
         WHERE e.student_id = ${studentId}
           AND e.institute_id = ${session.instituteId}
@@ -245,8 +237,7 @@ export async function GET() {
               AND (
                 (h.course_id IS NOT NULL AND e.course_id = h.course_id)
                 OR
-                (h.programme_id IS NOT NULL AND h.semester_id IS NOT NULL
-                  AND e.programme_id = h.programme_id AND e.semester_id = h.semester_id)
+                (h.programme_id IS NOT NULL AND e.programme_id = h.programme_id)
               )
           )
         ORDER BY h.created_at DESC
