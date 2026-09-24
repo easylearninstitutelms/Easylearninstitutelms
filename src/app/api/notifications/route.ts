@@ -2,43 +2,298 @@ import { db } from "@/db";
 import { notifications } from "@/db/schema";
 import { eq, and, desc, isNull, or } from "drizzle-orm";
 import { getSession } from "@/lib/session";
+import { sql } from "drizzle-orm";
 
-export async function GET() {
+const SEND_ROLES = [
+  "SUPER_ADMIN",
+  "INSTITUTE_ADMIN",
+  "MANAGER",
+  "TEACHER",
+  "RECEPTIONIST",
+  "ACCOUNTANT",
+  "STAFF",
+  "DIGITAL_MARKETER",
+];
+
+function rowsOf(result: unknown): Record<string, any>[] {
+  if (
+    result &&
+    typeof result === "object" &&
+    "rows" in result &&
+    Array.isArray((result as { rows?: unknown }).rows)
+  ) {
+    return (result as { rows: Record<string, any>[] }).rows;
+  }
+  return Array.isArray(result) ? (result as Record<string, any>[]) : [];
+}
+
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const rows = await db.select().from(notifications)
-    .where(
-      or(
-        eq(notifications.recipientUserId, session.userId),
-        and(
-          eq(notifications.instituteId, session.instituteId!),
-          isNull(notifications.recipientUserId)
+  try {
+    const url = new URL(request.url);
+
+    if (url.searchParams.get("options") === "true") {
+      if (!session.instituteId) {
+        return Response.json({ error: "Institute not found" }, { status: 400 });
+      }
+
+      const courses = rowsOf(await db.execute(sql`
+        SELECT id, name, course_no AS "courseNo"
+        FROM courses
+        WHERE institute_id = ${session.instituteId}
+          AND status = 'ACTIVE'
+        ORDER BY name ASC
+      `));
+
+      const programmes = rowsOf(await db.execute(sql`
+        SELECT
+          p.id,
+          p.name,
+          p.code,
+          p.programme_no AS "programmeNo",
+          COALESCE(
+            (
+              SELECT json_agg(
+                json_build_object(
+                  'id', ps.id,
+                  'semesterNo', ps.semester_no,
+                  'name', ps.name
+                )
+                ORDER BY ps.semester_no
+              )
+              FROM programme_semesters ps
+              WHERE ps.programme_id = p.id
+                AND ps.institute_id = p.institute_id
+            ),
+            '[]'::json
+          ) AS semesters
+        FROM programmes p
+        WHERE p.institute_id = ${session.instituteId}
+          AND p.status = 'ACTIVE'
+        ORDER BY p.name ASC
+      `));
+
+      return Response.json({ courses, programmes });
+    }
+
+    if (!session.instituteId) {
+      return Response.json({ error: "Institute not found" }, { status: 400 });
+    }
+
+    const rows = await db
+      .select({
+        id: notifications.id,
+        title: notifications.title,
+        body: notifications.body,
+        type: notifications.type,
+        readAt: notifications.readAt,
+        createdAt: notifications.createdAt,
+      })
+      .from(notifications)
+      .where(
+        or(
+          eq(notifications.recipientUserId, session.userId),
+          and(
+            eq(notifications.instituteId, session.instituteId),
+            isNull(notifications.recipientUserId)
+          )
         )
       )
-    )
-    .orderBy(desc(notifications.createdAt))
-    .limit(30);
+      .orderBy(desc(notifications.createdAt))
+      .limit(50);
 
-  return Response.json({ notifications: rows });
+    return Response.json({ notifications: rows });
+  } catch (error) {
+    console.error("GET /api/notifications error:", error);
+    return Response.json({ error: "Failed to load notifications" }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
   const session = await getSession();
-  if (!session || !session.instituteId) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session || !session.instituteId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  const body = await request.json();
-  const { title, body: notifBody, type, recipientUserId } = body;
+  if (!SEND_ROLES.includes(session.role)) {
+    return Response.json({ error: "You do not have permission to send notifications." }, { status: 403 });
+  }
 
-  if (!title) return Response.json({ error: "Title required" }, { status: 400 });
+  try {
+    const body = await request.json();
 
-  const [notification] = await db.insert(notifications).values({
-    instituteId: session.instituteId,
-    recipientUserId: recipientUserId || null,
-    title,
-    body: notifBody || null,
-    type: type || "GENERAL",
-  }).returning();
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    const notifBody = typeof body.body === "string" ? body.body.trim() : "";
+    const type = typeof body.type === "string" ? body.type : "GENERAL";
+    const targetType = typeof body.targetType === "string" ? body.targetType : "ALL";
+    const courseId = typeof body.courseId === "string" ? body.courseId.trim() : "";
+    const programmeId = typeof body.programmeId === "string" ? body.programmeId.trim() : "";
+    const semesterId = typeof body.semesterId === "string" ? body.semesterId.trim() : "";
 
-  return Response.json({ notification });
+    const allowedTypes = [
+      "ANNOUNCEMENT",
+      "FEE_DUE",
+      "EXAM",
+      "ROUTINE_UPDATE",
+      "GENERAL",
+    ];
+
+    if (!title) {
+      return Response.json({ error: "Title required" }, { status: 400 });
+    }
+
+    if (!allowedTypes.includes(type)) {
+      return Response.json({ error: "Invalid notification type." }, { status: 400 });
+    }
+
+    if (!["ALL", "COURSE", "PROGRAMME_SEMESTER"].includes(targetType)) {
+      return Response.json({ error: "Invalid notification target." }, { status: 400 });
+    }
+
+    if (targetType === "COURSE" && !courseId) {
+      return Response.json({ error: "Please select a course." }, { status: 400 });
+    }
+
+    if (targetType === "PROGRAMME_SEMESTER" && (!programmeId || !semesterId)) {
+      return Response.json({ error: "Please select a programme and semester." }, { status: 400 });
+    }
+
+    if (targetType === "COURSE") {
+      const course = rowsOf(await db.execute(sql`
+        SELECT id
+        FROM courses
+        WHERE id = ${courseId}
+          AND institute_id = ${session.instituteId}
+          AND status = 'ACTIVE'
+        LIMIT 1
+      `))[0];
+
+      if (!course) {
+        return Response.json({ error: "Invalid course." }, { status: 400 });
+      }
+    }
+
+    if (targetType === "PROGRAMME_SEMESTER") {
+      const semester = rowsOf(await db.execute(sql`
+        SELECT ps.id
+        FROM programme_semesters ps
+        INNER JOIN programmes p ON p.id = ps.programme_id
+        WHERE ps.id = ${semesterId}
+          AND ps.programme_id = ${programmeId}
+          AND ps.institute_id = ${session.instituteId}
+          AND p.institute_id = ${session.instituteId}
+          AND p.status = 'ACTIVE'
+        LIMIT 1
+      `))[0];
+
+      if (!semester) {
+        return Response.json({ error: "Invalid programme or semester." }, { status: 400 });
+      }
+    }
+
+    let recipientFilter = sql`
+      u.institute_id = ${session.instituteId}
+      AND u.role = 'STUDENT'
+      AND u.status = 'ACTIVE'
+      AND s.status = 'ACTIVE'
+    `;
+
+    if (targetType === "COURSE") {
+      recipientFilter = sql`
+        ${recipientFilter}
+        AND (
+          e.course_id = ${courseId}
+          OR b.course_id = ${courseId}
+        )
+      `;
+    }
+
+    if (targetType === "PROGRAMME_SEMESTER") {
+      recipientFilter = sql`
+        ${recipientFilter}
+        AND b.programme_id = ${programmeId}
+        AND b.semester_id = ${semesterId}
+      `;
+    }
+
+    const result = await db.execute(sql`
+      INSERT INTO notifications (
+        institute_id,
+        recipient_user_id,
+        title,
+        body,
+        type
+      )
+      SELECT
+        ${session.instituteId},
+        u.id,
+        ${title},
+        ${notifBody || null},
+        ${type}
+      FROM users u
+      INNER JOIN students s
+        ON s.user_id = u.id
+       AND s.institute_id = ${session.instituteId}
+      LEFT JOIN enrollments e
+        ON e.student_id = s.id
+       AND e.institute_id = ${session.instituteId}
+       AND e.status = 'ACTIVE'
+      LEFT JOIN batches b
+        ON b.id = e.batch_id
+       AND b.institute_id = ${session.instituteId}
+      WHERE ${recipientFilter}
+      GROUP BY u.id
+      RETURNING id
+    `);
+
+    const recipientCount = rowsOf(result).length;
+
+    return Response.json(
+      {
+        success: true,
+        recipientCount,
+        message:
+          recipientCount > 0
+            ? `Notification sent to ${recipientCount} student${recipientCount === 1 ? "" : "s"}.`
+            : "No matching active students were found for this target.",
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error("POST /api/notifications error:", error);
+    return Response.json({ error: "Failed to send notification" }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  const session = await getSession();
+  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const body = await request.json();
+    const notificationId = typeof body.notificationId === "string" ? body.notificationId.trim() : "";
+
+    if (!notificationId) {
+      return Response.json({ error: "Notification ID is required." }, { status: 400 });
+    }
+
+    const updated = await db.execute(sql`
+      UPDATE notifications
+      SET read_at = now()
+      WHERE id = ${notificationId}
+        AND recipient_user_id = ${session.userId}
+      RETURNING id
+    `);
+
+    if (rowsOf(updated).length === 0) {
+      return Response.json({ error: "Notification not found." }, { status: 404 });
+    }
+
+    return Response.json({ success: true });
+  } catch (error) {
+    console.error("PATCH /api/notifications error:", error);
+    return Response.json({ error: "Failed to update notification" }, { status: 500 });
+  }
 }
