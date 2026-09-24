@@ -4,6 +4,7 @@ import { eq, and, desc, isNull, or } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { sql } from "drizzle-orm";
 import { sendPushToUsers } from "@/lib/push";
+import { ensureAcademicCoreSchema } from "@/lib/academic";
 
 const SEND_ROLES = [
   "SUPER_ADMIN",
@@ -124,6 +125,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    await ensureAcademicCoreSchema();
     const body = await request.json();
 
     const title = typeof body.title === "string" ? body.title.trim() : "";
