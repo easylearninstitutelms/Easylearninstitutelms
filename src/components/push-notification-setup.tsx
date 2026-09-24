@@ -11,6 +11,7 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export default function PushNotificationSetup() {
   const [visible, setVisible] = useState(false);
+  const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -27,7 +28,11 @@ export default function PushNotificationSetup() {
       try {
         const registration = await navigator.serviceWorker.register("/sw.js");
         const subscription = await registration.pushManager.getSubscription();
-        if (!subscription && !cancelled) setVisible(true);
+        if (subscription) {
+          setEnabled(true);
+        } else if (!cancelled) {
+          setVisible(true);
+        }
       } catch (error) {
         console.error("Push setup check failed:", error);
       }
@@ -75,6 +80,7 @@ export default function PushNotificationSetup() {
         throw new Error(saveData?.error || "Failed to enable notifications.");
       }
 
+      setEnabled(true);
       setVisible(false);
     } catch (error) {
       console.error("Push notification setup failed:", error);
@@ -84,9 +90,15 @@ export default function PushNotificationSetup() {
     }
   }
 
-  if (!visible) return null;
+  if (!visible && !enabled) return null;
 
   return (
+    <>
+      {!visible && enabled && (
+        <button type="button" className="fixed bottom-5 left-5 z-[65] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 shadow-lg">
+          🔔 Notifications On
+        </button>
+      )}
     <div className="fixed bottom-5 right-5 z-[70] w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-blue-100 bg-white p-4 shadow-2xl">
       <p className="font-bold text-slate-800">🔔 Turn on notifications</p>
       <p className="mt-1 text-sm text-slate-500">
@@ -99,5 +111,7 @@ export default function PushNotificationSetup() {
         </button>
       </div>
     </div>
+      {visible && null}
+    </>
   );
 }
