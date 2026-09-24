@@ -1093,7 +1093,7 @@ export default function StudentPage() {
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h2 className="font-bold text-slate-800">Homework</h2>
-                <p className="text-xs text-slate-400 mt-1">Homework from your enrolled batches</p>
+                <p className="text-xs text-slate-400 mt-1">Homework from your enrolled courses and programmes</p>
               </div>
               <span className="badge badge-blue">{data.homework.length} items</span>
             </div>
@@ -1111,7 +1111,7 @@ export default function StudentPage() {
                       <div>
                         <h3 className="font-bold text-slate-800">{item.title}</h3>
                         <p className="text-xs text-blue-600 mt-1 font-semibold">
-                          {item.programmeName || item.courseName || item.batchName || "Homework"}
+                          {item.programmeName || item.courseName || "Homework"}
                         </p>
                         {(item.semesterName || item.courseClassTitle || item.programmeClassTitle) && (
                           <p className="text-xs text-slate-400 mt-1">
