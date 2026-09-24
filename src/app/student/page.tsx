@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDate } from "@/lib/utils";
+import PushNotificationSetup from "@/components/push-notification-setup";
 
 interface StudentData {
   id: string;
@@ -454,6 +455,7 @@ export default function StudentPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <PushNotificationSetup />
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
