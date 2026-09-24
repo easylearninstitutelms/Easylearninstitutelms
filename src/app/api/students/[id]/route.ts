@@ -2,7 +2,6 @@ import { db } from "@/db";
 import {
   students,
   enrollments,
-  batches,
   courses,
   programmes,
   attendance,
@@ -111,40 +110,31 @@ async function teacherCanAccessStudent(
 
   if (!teacherId) return false;
 
+  const assignment = await db.execute(sql`
+    SELECT ta.course_id AS "courseId", ta.programme_id AS "programmeId"
+    FROM teacher_assignments ta
+    WHERE ta.teacher_id = ${teacherId}
+      AND ta.institute_id = ${instituteId}
+    LIMIT 1
+  `);
+
+  const row = (assignment as any).rows?.[0];
+
+  if (!row) return false;
+
   const [access] = await db
-    .select({
-      enrollmentId: enrollments.id,
-    })
+    .select({ enrollmentId: enrollments.id })
     .from(enrollments)
-    .innerJoin(
-      batches,
-      eq(
-        enrollments.batchId,
-        batches.id,
-      ),
-    )
     .where(
       and(
-        eq(
-          enrollments.studentId,
-          studentId,
-        ),
-        eq(
-          enrollments.instituteId,
-          instituteId,
-        ),
-        eq(
-          enrollments.status,
-          "ACTIVE",
-        ),
-        eq(
-          batches.instituteId,
-          instituteId,
-        ),
-        eq(
-          batches.teacherId,
-          teacherId,
-        ),
+        eq(enrollments.studentId, studentId),
+        eq(enrollments.instituteId, instituteId),
+        eq(enrollments.status, "ACTIVE"),
+        sql`(
+          (${row.courseId || null}::uuid IS NOT NULL AND ${enrollments.courseId} = ${row.courseId || null})
+          OR
+          (${row.programmeId || null}::uuid IS NOT NULL AND ${enrollments.programmeId} = ${row.programmeId || null})
+        )`,
       ),
     )
     .limit(1);
@@ -237,19 +227,11 @@ export async function GET(
       await db
         .select({
           enrollment: enrollments,
-          batch: batches,
           directCourse: courses,
           batchCourse: batchCourses,
           programme: programmes,
         })
         .from(enrollments)
-        .leftJoin(
-          batches,
-          eq(
-            enrollments.batchId,
-            batches.id,
-          ),
-        )
         .leftJoin(
           courses,
           eq(
@@ -647,105 +629,6 @@ export async function PATCH(
     if (
       Object.prototype.hasOwnProperty.call(
         body,
-        "batchId",
-      )
-    ) {
-      const batchId =
-        cleanText(
-          body.batchId,
-        );
-
-      if (batchId) {
-        const [batch] =
-          await db
-            .select({
-              id: batches.id,
-            })
-            .from(batches)
-            .where(
-              and(
-                eq(
-                  batches.id,
-                  batchId,
-                ),
-                eq(
-                  batches.instituteId,
-                  instituteId,
-                ),
-              ),
-            )
-            .limit(1);
-
-        if (!batch) {
-          return Response.json(
-            {
-              error:
-                "Invalid batch",
-            },
-            { status: 400 },
-          );
-        }
-
-        const activeEnrollment =
-          await db
-            .select({
-              id: enrollments.id,
-            })
-            .from(enrollments)
-            .where(
-              and(
-                eq(
-                  enrollments.studentId,
-                  id,
-                ),
-                eq(
-                  enrollments.instituteId,
-                  instituteId,
-                ),
-                eq(
-                  enrollments.status,
-                  "ACTIVE",
-                ),
-              ),
-            )
-            .limit(1);
-
-        if (
-          activeEnrollment[0]
-        ) {
-          await db
-            .update(enrollments)
-            .set({
-              batchId,
-              enrollmentDate:
-                admissionDate,
-              status: "ACTIVE",
-            })
-            .where(
-              eq(
-                enrollments.id,
-                activeEnrollment[0]
-                  .id,
-              ),
-            );
-        } else {
-          await db
-            .insert(enrollments)
-            .values({
-              instituteId,
-              studentId: id,
-              batchId,
-              enrollmentDate:
-                admissionDate,
-              status: "ACTIVE",
-            });
-        }
-      }
-    }
-
-    if (
-      Object.prototype.hasOwnProperty.call(
-        body,
         "courseId",
       ) ||
       Object.prototype.hasOwnProperty.call(
@@ -763,6 +646,11 @@ export async function PATCH(
           body.programmeId,
         );
 
+      const semesterId =
+        cleanText(
+          body.semesterId,
+        );
+
       if (
         (courseId &&
           programmeId) ||
@@ -772,8 +660,22 @@ export async function PATCH(
         return Response.json(
           {
             error:
-              "Please select exactly one Course or Programme.",
+              "Please select exactly one Course or Programme + Semester.",
           },
+          { status: 400 },
+        );
+      }
+
+      if (programmeId && !semesterId) {
+        return Response.json(
+          { error: "Please select a semester for the selected programme." },
+          { status: 400 },
+        );
+      }
+
+      if (courseId && semesterId) {
+        return Response.json(
+          { error: "Semester is only required for Programme enrollment." },
           { status: 400 },
         );
       }
@@ -869,6 +771,7 @@ export async function PATCH(
             batch_id = NULL,
             course_id = ${courseId || null},
             programme_id = ${programmeId || null},
+            semester_id = ${semesterId || null},
             enrollment_date = ${admissionDate},
             status = 'ACTIVE'
           WHERE id = ${activeEnrollment[0].id}
@@ -881,6 +784,7 @@ export async function PATCH(
             batch_id,
             course_id,
             programme_id,
+            semester_id,
             enrollment_date,
             status
           )
@@ -890,6 +794,7 @@ export async function PATCH(
             NULL,
             ${courseId || null},
             ${programmeId || null},
+            ${semesterId || null},
             ${admissionDate},
             'ACTIVE'
           )
