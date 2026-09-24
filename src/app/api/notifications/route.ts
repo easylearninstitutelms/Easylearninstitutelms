@@ -203,7 +203,6 @@ export async function POST(request: Request) {
           SELECT 1
           FROM enrollments e
           WHERE e.student_id = s.id
-            AND e.institute_id = ${session.instituteId}
             AND e.status = 'ACTIVE'
             AND (
               e.course_id = ${courseId}
@@ -228,7 +227,6 @@ export async function POST(request: Request) {
           SELECT 1
           FROM enrollments e
           WHERE e.student_id = s.id
-            AND e.institute_id = ${session.instituteId}
             AND e.status = 'ACTIVE'
             AND (
               e.programme_id = ${programmeId}
