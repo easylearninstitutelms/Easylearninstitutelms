@@ -129,8 +129,8 @@ export async function GET() {
           b.name AS batch_name,
           b.batch_no,
 
-          COALESCE(e.course_id, b.course_id) AS course_id,
-          COALESCE(e.programme_id, b.programme_id) AS programme_id,
+          e.course_id AS course_id,
+          e.programme_id AS programme_id,
           b.semester_id AS semester_id,
 
           c.name AS course_name,
@@ -144,17 +144,14 @@ export async function GET() {
 
         FROM enrollments e
 
-        LEFT JOIN batches b
-          ON b.id = e.batch_id
-
         LEFT JOIN courses c
-          ON c.id = COALESCE(e.course_id, b.course_id)
+          ON c.id = e.course_id
 
         LEFT JOIN programmes p
-          ON p.id = COALESCE(e.programme_id, b.programme_id)
+          ON p.id = e.programme_id
 
         LEFT JOIN programme_semesters ps
-          ON ps.id = b.semester_id
+          ON ps.id = e.semester_id
 
         WHERE e.student_id = ${studentId}
           AND e.institute_id = ${session.instituteId}
@@ -181,20 +178,18 @@ export async function GET() {
           a.id,
           a.date,
           a.status,
-          a.batch_id AS "batchId",
+          a.course_id AS "courseId",
+          a.programme_id AS "programmeId",
+          a.semester_id AS "semesterId",
           a.class_id AS "classId",
           a.class_type AS "classType",
-          a.note,
-          b.name AS "batchName"
+          a.note
         FROM attendance a
-        LEFT JOIN batches b
-          ON b.id = a.batch_id
         WHERE a.student_id = ${studentId}
           AND a.institute_id = ${session.instituteId}
         ORDER BY a.date DESC
         LIMIT 100
       `);
-
       attendanceData = rowsOf(attendanceRows);
     } catch {
       attendanceData = [];
@@ -215,133 +210,62 @@ export async function GET() {
           h.deadline,
           h.attachment_url AS "attachmentUrl",
           h.created_at AS "createdAt",
-
-          h.batch_id AS "batchId",
           h.course_id AS "courseId",
           h.programme_id AS "programmeId",
           h.semester_id AS "semesterId",
           h.course_class_id AS "courseClassId",
           h.programme_class_id AS "programmeClassId",
-
           c.name AS "courseName",
           p.name AS "programmeName",
-
           ps.name AS "semesterName",
           ps.semester_no AS "semesterNo",
-
           csc.class_no AS "courseClassNo",
           csc.title AS "courseClassTitle",
-
           psc.class_no AS "programmeClassNo",
           psc.title AS "programmeClassTitle",
-
           u.name AS "teacherName",
-
           hs.id AS "submissionId",
           hs.answer AS "submissionAnswer",
           hs.attachment_url AS "submissionAttachmentUrl",
           hs.submitted_at AS "submissionSubmittedAt"
-
         FROM homework h
-
-        LEFT JOIN courses c
-          ON c.id = h.course_id
-
-        LEFT JOIN programmes p
-          ON p.id = h.programme_id
-
-        LEFT JOIN programme_semesters ps
-          ON ps.id = h.semester_id
-
-        LEFT JOIN course_syllabus_classes csc
-          ON csc.id = h.course_class_id
-
-        LEFT JOIN programme_syllabus_classes psc
-          ON psc.id = h.programme_class_id
-
-        LEFT JOIN users u
-          ON u.id = h.teacher_id
-
+        LEFT JOIN courses c ON c.id = h.course_id
+        LEFT JOIN programmes p ON p.id = h.programme_id
+        LEFT JOIN programme_semesters ps ON ps.id = h.semester_id
+        LEFT JOIN course_syllabus_classes csc ON csc.id = h.course_class_id
+        LEFT JOIN programme_syllabus_classes psc ON psc.id = h.programme_class_id
+        LEFT JOIN users u ON u.id = h.teacher_id
         LEFT JOIN homework_submissions hs
-          ON hs.homework_id = h.id
-          AND hs.student_id = ${studentId}
-
+          ON hs.homework_id = h.id AND hs.student_id = ${studentId}
         WHERE h.institute_id = ${session.instituteId}
-
           AND EXISTS (
-            SELECT 1
-            FROM enrollments e
-
-            LEFT JOIN batches eb
-              ON eb.id = e.batch_id
-
+            SELECT 1 FROM enrollments e
             WHERE e.student_id = ${studentId}
               AND e.institute_id = ${session.instituteId}
               AND e.status = 'ACTIVE'
-
               AND (
-                (
-                  h.batch_id IS NOT NULL
-                  AND e.batch_id = h.batch_id
-                )
-
-                OR (
-                  h.course_id IS NOT NULL
-                  AND COALESCE(e.course_id, eb.course_id) = h.course_id
-                )
-
-                OR (
-                  h.programme_id IS NOT NULL
-                  AND COALESCE(e.programme_id, eb.programme_id) = h.programme_id
-                )
-              )
-
-              AND (
-                h.semester_id IS NULL
-                OR eb.semester_id = h.semester_id
+                (h.course_id IS NOT NULL AND e.course_id = h.course_id)
+                OR
+                (h.programme_id IS NOT NULL AND h.semester_id IS NOT NULL
+                  AND e.programme_id = h.programme_id AND e.semester_id = h.semester_id)
               )
           )
-
         ORDER BY h.created_at DESC
       `);
-
       homeworkData = rowsOf(homeworkRows).map((row: any) => ({
-        id: row.id,
-        title: row.title,
-        description: row.description,
-        deadline: row.deadline,
-        attachmentUrl: row.attachmentUrl,
-        createdAt: row.createdAt,
-
-        batchId: row.batchId,
-        courseId: row.courseId,
-        programmeId: row.programmeId,
-        semesterId: row.semesterId,
-        courseClassId: row.courseClassId,
-        programmeClassId: row.programmeClassId,
-
-        courseName: row.courseName,
-        programmeName: row.programmeName,
-
-        semesterName: row.semesterName,
-        semesterNo: row.semesterNo,
-
-        courseClassNo: row.courseClassNo,
-        courseClassTitle: row.courseClassTitle,
-
-        programmeClassNo: row.programmeClassNo,
-        programmeClassTitle: row.programmeClassTitle,
-
+        id: row.id, title: row.title, description: row.description,
+        deadline: row.deadline, attachmentUrl: row.attachmentUrl, createdAt: row.createdAt,
+        courseId: row.courseId, programmeId: row.programmeId, semesterId: row.semesterId,
+        courseClassId: row.courseClassId, programmeClassId: row.programmeClassId,
+        courseName: row.courseName, programmeName: row.programmeName,
+        semesterName: row.semesterName, semesterNo: row.semesterNo,
+        courseClassNo: row.courseClassNo, courseClassTitle: row.courseClassTitle,
+        programmeClassNo: row.programmeClassNo, programmeClassTitle: row.programmeClassTitle,
         teacherName: row.teacherName,
-
-        submission: row.submissionId
-          ? {
-              id: row.submissionId,
-              answer: row.submissionAnswer,
-              attachmentUrl: row.submissionAttachmentUrl,
-              submittedAt: row.submissionSubmittedAt,
-            }
-          : null,
+        submission: row.submissionId ? {
+          id: row.submissionId, answer: row.submissionAnswer,
+          attachmentUrl: row.submissionAttachmentUrl, submittedAt: row.submissionSubmittedAt,
+        } : null,
       }));
     } catch (error) {
       console.error("Student homework load error:", error);
