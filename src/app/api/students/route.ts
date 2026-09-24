@@ -273,6 +273,7 @@ export async function POST(request: Request) {
     const admissionDate = cleanText(body.admissionDate);
     const selectedCourseId = cleanText(body.courseId);
     const selectedProgrammeId = cleanText(body.programmeId);
+    const selectedSemesterId = cleanText(body.semesterId);
     const gender = validGender(body.gender);
     const photoUrl = cleanPhotoUrl(body.photoUrl);
 
@@ -322,6 +323,31 @@ export async function POST(request: Request) {
       return Response.json({ error: "Please select exactly one: Course or Programme." }, { status: 400 });
     }
 
+
+    if (selectedProgrammeId) {
+      if (!selectedSemesterId) {
+        return Response.json(
+          { error: "Please select a semester for the selected programme." },
+          { status: 400 },
+        );
+      }
+
+      const semesterRows = await db.execute(sql`
+        SELECT id
+        FROM programme_semesters
+        WHERE id = ${selectedSemesterId}
+          AND programme_id = ${selectedProgrammeId}
+          AND institute_id = ${instituteId}
+        LIMIT 1
+      `);
+
+      if (!((semesterRows as any).rows || [])[0]) {
+        return Response.json(
+          { error: "Invalid semester for the selected programme." },
+          { status: 400 },
+        );
+      }
+    }
 
     if (body.photoUrl && !photoUrl) {
       return Response.json(
@@ -548,6 +574,7 @@ export async function POST(request: Request) {
           student_id,
           course_id,
           programme_id,
+          semester_id,
           enrollment_date,
           status
         )
@@ -556,6 +583,7 @@ export async function POST(request: Request) {
           ${student.id},
           ${selectedCourseId || null},
           ${selectedProgrammeId || null},
+          ${selectedSemesterId || null},
           ${admissionDate},
           'ACTIVE'
         )
