@@ -132,7 +132,6 @@ export async function POST(request: Request) {
     const targetType = typeof body.targetType === "string" ? body.targetType : "ALL";
     const courseId = typeof body.courseId === "string" ? body.courseId.trim() : "";
     const programmeId = typeof body.programmeId === "string" ? body.programmeId.trim() : "";
-    const semesterId = typeof body.semesterId === "string" ? body.semesterId.trim() : "";
 
     const allowedTypes = [
       "ANNOUNCEMENT",
@@ -150,16 +149,12 @@ export async function POST(request: Request) {
       return Response.json({ error: "Invalid notification type." }, { status: 400 });
     }
 
-    if (!["ALL", "COURSE", "PROGRAMME_SEMESTER"].includes(targetType)) {
+    if (!["ALL", "COURSE", "PROGRAMME"].includes(targetType)) {
       return Response.json({ error: "Invalid notification target." }, { status: 400 });
     }
 
     if (targetType === "COURSE" && !courseId) {
       return Response.json({ error: "Please select a course." }, { status: 400 });
-    }
-
-    if (targetType === "PROGRAMME_SEMESTER" && (!programmeId || !semesterId)) {
-      return Response.json({ error: "Please select a programme and semester." }, { status: 400 });
     }
 
     if (targetType === "COURSE") {
@@ -177,21 +172,18 @@ export async function POST(request: Request) {
       }
     }
 
-    if (targetType === "PROGRAMME_SEMESTER") {
-      const semester = rowsOf(await db.execute(sql`
-        SELECT ps.id
-        FROM programme_semesters ps
-        INNER JOIN programmes p ON p.id = ps.programme_id
-        WHERE ps.id = ${semesterId}
-          AND ps.programme_id = ${programmeId}
-          AND ps.institute_id = ${session.instituteId}
-          AND p.institute_id = ${session.instituteId}
-          AND p.status = 'ACTIVE'
+    if (targetType === "PROGRAMME") {
+      const programme = rowsOf(await db.execute(sql`
+        SELECT id
+        FROM programmes
+        WHERE id = ${programmeId}
+          AND institute_id = ${session.instituteId}
+          AND status = 'ACTIVE'
         LIMIT 1
       `))[0];
 
-      if (!semester) {
-        return Response.json({ error: "Invalid programme or semester." }, { status: 400 });
+      if (!programme) {
+        return Response.json({ error: "Invalid programme." }, { status: 400 });
       }
     }
 
@@ -212,11 +204,10 @@ export async function POST(request: Request) {
       `;
     }
 
-    if (targetType === "PROGRAMME_SEMESTER") {
+    if (targetType === "PROGRAMME") {
       recipientFilter = sql`
         ${recipientFilter}
-        AND b.programme_id = ${programmeId}
-        AND b.semester_id = ${semesterId}
+        AND e.programme_id = ${programmeId}
       `;
     }
 
@@ -242,9 +233,6 @@ export async function POST(request: Request) {
         ON e.student_id = s.id
        AND e.institute_id = ${session.instituteId}
        AND e.status = 'ACTIVE'
-      LEFT JOIN batches b
-        ON b.id = e.batch_id
-       AND b.institute_id = ${session.instituteId}
       WHERE ${recipientFilter}
       GROUP BY u.id
       RETURNING id
@@ -264,9 +252,6 @@ export async function POST(request: Request) {
         ON e.student_id = s.id
        AND e.institute_id = ${session.instituteId}
        AND e.status = 'ACTIVE'
-      LEFT JOIN batches b
-        ON b.id = e.batch_id
-       AND b.institute_id = ${session.instituteId}
       WHERE ${recipientFilter}
     `));
 
