@@ -12,8 +12,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || "Easylearn Institute", {
       body: data.body || "You have a new notification.",
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      icon: "/easylearn-logo.jpg",
+      badge: "/easylearn-logo.jpg",
       data: { url: data.url || "/student" },
       tag: "easylearn-notification",
     }),
