@@ -655,7 +655,7 @@ export function ensureAcademicCoreSchema() {
         ALTER TABLE batches ADD COLUMN IF NOT EXISTS batch_no integer;\
         CREATE INDEX IF NOT EXISTS batches_programme_idx ON batches(programme_id);\
         CREATE INDEX IF NOT EXISTS batches_semester_idx ON batches(semester_id);\
-        CREATE INDEX IF NOT EXISTS batches_course_idx ON batches(course_id);
+        CREATE INDEX IF NOT EXISTS batches_course_idx ON batches(course_id);        ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS course_id uuid;        ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS programme_id uuid;        ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS semester_id uuid;        CREATE INDEX IF NOT EXISTS enrollments_course_idx ON enrollments(course_id);        CREATE INDEX IF NOT EXISTS enrollments_programme_idx ON enrollments(programme_id);        CREATE INDEX IF NOT EXISTS enrollments_semester_idx ON enrollments(semester_id);
 
         CREATE TABLE IF NOT EXISTS programme_syllabus_classes (
           id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
