@@ -20,6 +20,7 @@ import {
   getSession,
   requireRoles,
 } from "@/lib/session";
+import { ensureAcademicCoreSchema } from "@/lib/academic";
 
 const MAX_PHOTO_CHARS = 5_000_000;
 
