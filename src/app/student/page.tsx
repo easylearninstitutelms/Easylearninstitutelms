@@ -160,6 +160,15 @@ interface StudentRecording {
   duration?: string | null;
 }
 
+interface StudentNotification {
+  id: string;
+  title: string;
+  body?: string | null;
+  type: string;
+  readAt?: string | null;
+  createdAt: string;
+}
+
 interface StudentPortalData {
   student: StudentData;
   enrollments: EnrollmentData[];
@@ -239,8 +248,10 @@ export default function StudentPage() {
   const [recordings, setRecordings] = useState<StudentRecording[]>([]);
   const [recordingsLoading, setRecordingsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "overview" | "classes" | "recordings" | "attendance" | "homework" | "results" | "fees"
+    "overview" | "classes" | "recordings" | "attendance" | "homework" | "results" | "fees" | "notifications"
   >("overview");
+  const [notifications, setNotifications] = useState<StudentNotification[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [selectedHomework, setSelectedHomework] = useState<HomeworkItem | null>(null);
   const [submissionAnswer, setSubmissionAnswer] = useState("");
   const [submissionLink, setSubmissionLink] = useState("");
@@ -261,6 +272,40 @@ export default function StudentPage() {
       setClasses([]);
     } finally {
       setClassesLoading(false);
+    }
+  }, []);
+
+  const loadNotifications = useCallback(async () => {
+    setNotificationsLoading(true);
+    try {
+      const res = await fetch("/api/notifications", { cache: "no-store" });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || "Failed to load notifications.");
+      setNotifications(body.notifications || []);
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+      setNotifications([]);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, []);
+
+  const markNotificationRead = useCallback(async (notificationId: string) => {
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId }),
+      });
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === notificationId
+            ? { ...item, readAt: item.readAt || new Date().toISOString() }
+            : item
+        )
+      );
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
     }
   }, []);
 
@@ -313,7 +358,8 @@ export default function StudentPage() {
   useEffect(() => {
     if (activeTab === "classes") loadClasses();
     if (activeTab === "recordings") loadRecordings();
-  }, [activeTab, loadClasses, loadRecordings]);
+    if (activeTab === "notifications") loadNotifications();
+  }, [activeTab, loadClasses, loadRecordings, loadNotifications]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -423,6 +469,23 @@ export default function StudentPage() {
             </div>
 
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("notifications");
+                  loadNotifications();
+                }}
+                className="relative rounded-xl p-2 text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition"
+                title="Notifications"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {notifications.some((item) => !item.readAt) && (
+                  <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                )}
+              </button>
+
               <div className="hidden sm:block text-right">
                 <p className="text-sm font-semibold text-slate-700">{student.name}</p>
                 <p className="text-xs text-slate-400">{student.studentId}</p>
@@ -488,6 +551,7 @@ export default function StudentPage() {
             { key: "homework", label: "Homework" },
             { key: "results", label: "Exam & Result" },
             { key: "fees", label: "Fees" },
+            { key: "notifications", label: "Notifications" },
           ].map((tab) => {
             const active = activeTab === tab.key;
             return (
@@ -506,6 +570,64 @@ export default function StudentPage() {
             );
           })}
         </div>
+
+        {/* Notifications Tab */}
+        {activeTab === "notifications" && (
+          <div className="mt-6 space-y-4">
+            {notificationsLoading ? (
+              <div className="card text-center py-12 text-sm text-slate-500">
+                Loading notifications...
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="card text-center py-12">
+                <div className="text-4xl mb-3">🔔</div>
+                <p className="text-slate-500">No notifications yet.</p>
+              </div>
+            ) : (
+              notifications.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => !item.readAt && markNotificationRead(item.id)}
+                  className={`card w-full text-left transition hover:shadow-md ${
+                    item.readAt ? "" : "border-l-4 border-l-blue-500 bg-blue-50/40"
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-xl flex-shrink-0">
+                      🔔
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-slate-800">{item.title}</p>
+                          {item.body && (
+                            <p className="mt-1 text-sm text-slate-600 whitespace-pre-wrap">
+                              {item.body}
+                            </p>
+                          )}
+                        </div>
+                        {!item.readAt && (
+                          <span className="rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white">
+                            New
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex items-center gap-3">
+                        <span className="text-xs font-semibold text-slate-500">
+                          {item.type.replaceAll("_", " ")}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {formatDate(item.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        )}
 
         {/* My Classes Tab */}
         {activeTab === "classes" && (
