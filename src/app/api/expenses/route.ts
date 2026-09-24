@@ -210,7 +210,7 @@ export async function POST(request: Request) {
         method: typedMethod,
         description: cleanDescription,
         expenseDate,
-        addedBy: session.userId,
+        addedBy: null,
       })
       .returning();
 
