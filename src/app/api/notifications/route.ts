@@ -3,6 +3,7 @@ import { notifications } from "@/db/schema";
 import { eq, and, desc, isNull, or } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { sql } from "drizzle-orm";
+import { sendPushToUsers } from "@/lib/push";
 
 const SEND_ROLES = [
   "SUPER_ADMIN",
@@ -250,6 +251,33 @@ export async function POST(request: Request) {
     `);
 
     const recipientCount = rowsOf(result).length;
+
+    // Re-read the exact recipient user IDs so the same audience also receives
+    // a browser/device push notification when they have opted in.
+    const recipientUsers = rowsOf(await db.execute(sql`
+      SELECT DISTINCT u.id
+      FROM users u
+      INNER JOIN students s
+        ON s.user_id = u.id
+       AND s.institute_id = ${session.instituteId}
+      LEFT JOIN enrollments e
+        ON e.student_id = s.id
+       AND e.institute_id = ${session.instituteId}
+       AND e.status = 'ACTIVE'
+      LEFT JOIN batches b
+        ON b.id = e.batch_id
+       AND b.institute_id = ${session.instituteId}
+      WHERE ${recipientFilter}
+    `));
+
+    const pushResult = await sendPushToUsers(
+      recipientUsers.map((row) => String(row.id)),
+      {
+        title,
+        body: notifBody || null,
+        url: "/student",
+      },
+    );
 
     // Keep a permanent sender-side history row. Students only receive
     // rows addressed to their own user_id, so this row is not delivered to students.
