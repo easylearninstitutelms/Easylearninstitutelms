@@ -197,10 +197,7 @@ export async function POST(request: Request) {
     if (targetType === "COURSE") {
       recipientFilter = sql`
         ${recipientFilter}
-        AND (
-          e.course_id = ${courseId}
-          OR b.course_id = ${courseId}
-        )
+        AND e.course_id = ${courseId}
       `;
     }
 
