@@ -173,7 +173,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (targetType === "PROGRAMME") {
+    if (targetType === "PROGRAMME" || targetType === "PROGRAMME_SEMESTER") {
       const programme = rowsOf(await db.execute(sql`
         SELECT id
         FROM programmes
@@ -186,6 +186,10 @@ export async function POST(request: Request) {
       if (!programme) {
         return Response.json({ error: "Invalid programme." }, { status: 400 });
       }
+    }
+
+    if (targetType === "PROGRAMME_SEMESTER" && !semesterId) {
+      return Response.json({ error: "Please select a semester." }, { status: 400 });
     }
 
     let recipientFilter = sql`
@@ -202,7 +206,7 @@ export async function POST(request: Request) {
       `;
     }
 
-    if (targetType === "PROGRAMME") {
+    if (targetType === "PROGRAMME" || targetType === "PROGRAMME_SEMESTER") {
       recipientFilter = sql`
         ${recipientFilter}
         AND e.programme_id = ${programmeId}
