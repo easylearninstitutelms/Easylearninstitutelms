@@ -34,13 +34,13 @@ export async function POST(request: Request) {
 
     await ensurePushSubscriptionsTable();
 
-    await db.execute(sql\`
+    await db.execute(sql`
       INSERT INTO push_subscriptions (
         user_id, institute_id, endpoint, p256dh, auth, updated_at
       )
       VALUES (
-        \${session.userId}, \${session.instituteId}, \${subscription.endpoint},
-        \${subscription.keys.p256dh}, \${subscription.keys.auth}, now()
+        ${session.userId}, ${session.instituteId}, ${subscription.endpoint},
+        ${subscription.keys.p256dh}, ${subscription.keys.auth}, now()
       )
       ON CONFLICT (endpoint)
       DO UPDATE SET
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
         p256dh = EXCLUDED.p256dh,
         auth = EXCLUDED.auth,
         updated_at = now()
-    \`);
+    `);
 
     return Response.json({ success: true });
   } catch (error) {
