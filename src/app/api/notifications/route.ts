@@ -150,7 +150,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Invalid notification type." }, { status: 400 });
     }
 
-    if (!["ALL", "COURSE", "PROGRAMME", "PROGRAMME_SEMESTER"].includes(targetType)) {
+    if (!["COURSE", "PROGRAMME"].includes(targetType)) {
       return Response.json({ error: "Invalid notification target." }, { status: 400 });
     }
 
@@ -173,7 +173,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (targetType === "PROGRAMME" || targetType === "PROGRAMME_SEMESTER") {
+    if (targetType === "PROGRAMME") {
       const programme = rowsOf(await db.execute(sql`
         SELECT id
         FROM programmes
@@ -186,10 +186,6 @@ export async function POST(request: Request) {
       if (!programme) {
         return Response.json({ error: "Invalid programme." }, { status: 400 });
       }
-    }
-
-    if (targetType === "PROGRAMME_SEMESTER" && !semesterId) {
-      return Response.json({ error: "Please select a semester." }, { status: 400 });
     }
 
     let recipientFilter = sql`
@@ -206,14 +202,14 @@ export async function POST(request: Request) {
       `;
     }
 
-    if (targetType === "PROGRAMME" || targetType === "PROGRAMME_SEMESTER") {
+    if (targetType === "PROGRAMME") {
       recipientFilter = sql`
         ${recipientFilter}
         AND e.programme_id = ${programmeId}
       `;
     }
 
-    if (targetType === "PROGRAMME_SEMESTER") {
+    if (targetType === "PROGRAMME" && semesterId) {
       recipientFilter = sql`
         ${recipientFilter}
         AND EXISTS (
