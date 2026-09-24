@@ -238,12 +238,15 @@ export async function POST(request: Request) {
                   AND b.programme_id = ${programmeId}
               )
             )
-            ${semesterId ? sql`AND EXISTS (
-              SELECT 1
-              FROM batches bs
-              WHERE bs.id = e.batch_id
-                AND bs.institute_id = ${session.instituteId}
-                AND bs.semester_id = ${semesterId}
+            ${semesterId ? sql`AND (
+              e.semester_id = ${semesterId}
+              OR EXISTS (
+                SELECT 1
+                FROM batches bs
+                WHERE bs.id = e.batch_id
+                  AND bs.institute_id = ${session.instituteId}
+                  AND bs.semester_id = ${semesterId}
+              )
             )` : sql``}
         )
       `;
