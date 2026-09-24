@@ -521,7 +521,6 @@ export function ensureHomeworkSchema() {
         CREATE TABLE IF NOT EXISTS homework (
           id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
           institute_id uuid NOT NULL,
-          batch_id uuid,
           course_id uuid,
           programme_id uuid,
           semester_id uuid,
@@ -536,7 +535,6 @@ export function ensureHomeworkSchema() {
         );
 
         ALTER TABLE homework ADD COLUMN IF NOT EXISTS institute_id uuid;
-        ALTER TABLE homework ADD COLUMN IF NOT EXISTS batch_id uuid;
         ALTER TABLE homework ADD COLUMN IF NOT EXISTS course_id uuid;
         ALTER TABLE homework ADD COLUMN IF NOT EXISTS programme_id uuid;
         ALTER TABLE homework ADD COLUMN IF NOT EXISTS semester_id uuid;
