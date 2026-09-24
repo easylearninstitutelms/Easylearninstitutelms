@@ -82,6 +82,8 @@ export async function GET(request: Request) {
       return Response.json({ error: "Institute not found" }, { status: 400 });
     }
 
+    const isSender = SEND_ROLES.includes(session.role);
+
     const rows = await db
       .select({
         id: notifications.id,
@@ -93,13 +95,12 @@ export async function GET(request: Request) {
       })
       .from(notifications)
       .where(
-        or(
-          eq(notifications.recipientUserId, session.userId),
-          and(
-            eq(notifications.instituteId, session.instituteId),
-            isNull(notifications.recipientUserId)
-          )
-        )
+        isSender
+          ? and(
+              eq(notifications.instituteId, session.instituteId),
+              isNull(notifications.recipientUserId)
+            )
+          : eq(notifications.recipientUserId, session.userId)
       )
       .orderBy(desc(notifications.createdAt))
       .limit(50);
@@ -249,6 +250,25 @@ export async function POST(request: Request) {
     `);
 
     const recipientCount = rowsOf(result).length;
+
+    // Keep a permanent sender-side history row. Students only receive
+    // rows addressed to their own user_id, so this row is not delivered to students.
+    await db.execute(sql`
+      INSERT INTO notifications (
+        institute_id,
+        recipient_user_id,
+        title,
+        body,
+        type
+      )
+      VALUES (
+        ${session.instituteId},
+        NULL,
+        ${title},
+        ${notifBody || null},
+        ${type}
+      )
+    `);
 
     return Response.json(
       {
