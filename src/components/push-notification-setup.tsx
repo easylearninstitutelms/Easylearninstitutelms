@@ -61,6 +61,7 @@ export default function PushNotificationSetup() {
       }
 
       const registration = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
       const subscription =
         (await registration.pushManager.getSubscription()) ||
         (await registration.pushManager.subscribe({
@@ -98,6 +99,7 @@ export default function PushNotificationSetup() {
           🔔 Notifications On
         </button>
       )}
+    {visible && (
     <div className="fixed bottom-5 right-5 z-[70] w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-blue-100 bg-white p-4 shadow-2xl">
       <p className="font-bold text-slate-800">🔔 Turn on notifications</p>
       <p className="mt-1 text-sm text-slate-500">
@@ -110,7 +112,7 @@ export default function PushNotificationSetup() {
         </button>
       </div>
     </div>
-      {visible && null}
+    )}
     </>
   );
 }
