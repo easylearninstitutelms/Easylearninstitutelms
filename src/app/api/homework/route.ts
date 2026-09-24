@@ -369,8 +369,7 @@ export async function POST(request: Request) {
 
       if (
         courseId ||
-        courseClassId ||
-
+        courseClassId
       ) {
         return NextResponse.json(
           {
@@ -477,7 +476,7 @@ export async function POST(request: Request) {
       }
     }
 
-  * TEACHER
+     * TEACHER
      * =========================================================
      */
     let finalTeacherId: string | null = null;
