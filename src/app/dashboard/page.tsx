@@ -7,7 +7,6 @@ import { formatCurrency, formatDateTime, getInitials } from "@/lib/utils";
 interface DashboardData {
   studentCount: number;
   staffCount: number;
-  batchCount: number;
   attendance: { present: number; absent: number; late: number };
   todayCollection: number;
   monthlyCollection: number;
