@@ -65,6 +65,26 @@ interface Semester {
   programmeName: string | null;
 }
 
+interface StudentEnrollment {
+  enrollment: {
+    id: string;
+    studentId: string;
+    courseId: string | null;
+    programmeId: string | null;
+    status: string;
+    batchId: string | null;
+  };
+  course: {
+    id: string;
+    name: string;
+  } | null;
+  programme: {
+    id: string;
+    name: string;
+    code: string | null;
+  } | null;
+}
+
 const FEE_TYPES = [
   { value: "MONTHLY", label: "Monthly" },
   { value: "ADMISSION", label: "Admission" },
@@ -371,12 +391,24 @@ export default function FeesPage() {
   const [studentFees, setStudentFees] =
     useState<FeeRow[]>([]);
 
+  const [
+    studentEnrollments,
+    setStudentEnrollments,
+  ] = useState<
+    Record<string, StudentEnrollment[]>
+  >({});
+
   const [loading, setLoading] =
     useState(true);
 
   const [
     loadingStudentFees,
     setLoadingStudentFees,
+  ] = useState(false);
+
+  const [
+    loadingStudentEnrollment,
+    setLoadingStudentEnrollment,
   ] = useState(false);
 
   const [
@@ -721,6 +753,77 @@ export default function FeesPage() {
     }
   }
 
+  async function loadStudentEnrollment(
+    studentId: string
+  ) {
+    if (!studentId) {
+      setStudentEnrollments({});
+      return;
+    }
+
+    try {
+      setLoadingStudentEnrollment(
+        true
+      );
+
+      const response = await fetch(
+        `/api/students/${encodeURIComponent(
+          studentId
+        )}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+            "Failed to load student enrollment."
+        );
+      }
+
+      const enrollments =
+        Array.isArray(
+          data?.enrollments
+        )
+          ? data.enrollments
+          : [];
+
+      setStudentEnrollments(
+        (prev) => ({
+          ...prev,
+          [studentId]:
+            enrollments,
+        })
+      );
+    } catch (err) {
+      console.error(
+        "Failed to load student enrollment:",
+        err
+      );
+
+      setStudentEnrollments(
+        (prev) => ({
+          ...prev,
+          [studentId]: [],
+        })
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load student enrollment."
+      );
+    } finally {
+      setLoadingStudentEnrollment(
+        false
+      );
+    }
+  }
+
   function handleFeeStudentChange(
     studentId: string
   ) {
@@ -731,7 +834,87 @@ export default function FeesPage() {
     }));
 
     setError("");
+
+    if (!studentId) {
+      setStudentEnrollments({});
+      return;
+    }
+
+    void loadStudentEnrollment(
+      studentId
+    );
   }
+
+  const selectedStudentEnrollments =
+    feeForm.studentId
+      ? studentEnrollments[
+          feeForm.studentId
+        ] ?? []
+      : [];
+
+  const activeStudentEnrollments =
+    selectedStudentEnrollments.filter(
+      (item) =>
+        String(
+          item?.enrollment?.status ||
+            ""
+        ).toUpperCase() ===
+        "ACTIVE"
+    );
+
+  const selectedStudentProgrammeIds =
+    activeStudentEnrollments
+      .map(
+        (item) =>
+          item?.enrollment
+            ?.programmeId
+      )
+      .filter(
+        (
+          programmeId
+        ): programmeId is string =>
+          Boolean(programmeId)
+      );
+
+  const uniqueStudentProgrammeIds =
+    Array.from(
+      new Set(
+        selectedStudentProgrammeIds
+      )
+    );
+
+  const availableFeeSemesters =
+    uniqueStudentProgrammeIds.length >
+    0
+      ? semesters.filter(
+          (semester) =>
+            semester.programmeId
+              ? uniqueStudentProgrammeIds.includes(
+                  semester.programmeId
+                )
+              : false
+        )
+      : [];
+
+  const selectedStudentProgrammeNames =
+    activeStudentEnrollments
+      .map(
+        (item) =>
+          item?.programme?.name
+      )
+      .filter(
+        (
+          name
+        ): name is string =>
+          Boolean(name)
+      );
+
+  const uniqueStudentProgrammeNames =
+    Array.from(
+      new Set(
+        selectedStudentProgrammeNames
+      )
+    );
 
   async function handleAddFee(
     e: FormEvent<HTMLFormElement>
@@ -759,6 +942,21 @@ export default function FeesPage() {
     if (!feeForm.semesterId) {
       setError(
         "Please select a semester."
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    const selectedSemester =
+      availableFeeSemesters.find(
+        (semester) =>
+          semester.id ===
+          feeForm.semesterId
+      );
+
+    if (!selectedSemester) {
+      setError(
+        "The selected semester does not belong to this student's enrolled programme."
       );
       setSubmitting(false);
       return;
@@ -1777,6 +1975,13 @@ export default function FeesPage() {
           .dueAmount || "",
     }));
   }
+
+  const selectedFeeSemester =
+    availableFeeSemesters.find(
+      (semester) =>
+        semester.id ===
+        feeForm.semesterId
+    );
 
   return (
     <div className="space-y-5">
@@ -2843,20 +3048,26 @@ export default function FeesPage() {
                       )
                     }
                     disabled={
-                      loadingSemesters
+                      loadingSemesters ||
+                      loadingStudentEnrollment ||
+                      !feeForm.studentId
                     }
                     required
                   >
                     <option value="">
                       {loadingSemesters
                         ? "Loading semesters..."
-                        : semesters.length ===
-                            0
-                          ? "No semesters available"
-                          : "Select semester"}
+                        : loadingStudentEnrollment
+                          ? "Loading student's programme..."
+                          : !feeForm.studentId
+                            ? "Select student first"
+                            : availableFeeSemesters.length ===
+                                0
+                              ? "No applicable semesters"
+                              : "Select semester"}
                     </option>
 
-                    {semesters.map(
+                    {availableFeeSemesters.map(
                       (semester) => (
                         <option
                           key={
@@ -2874,14 +3085,43 @@ export default function FeesPage() {
                     )}
                   </select>
 
-                  {semesters.length ===
-                    0 &&
-                    !loadingSemesters && (
+                  {feeForm.studentId &&
+                    !loadingStudentEnrollment &&
+                    uniqueStudentProgrammeNames.length >
+                      0 && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        Enrolled Programme:{" "}
+                        <span className="font-semibold text-blue-600">
+                          {
+                            uniqueStudentProgrammeNames.join(
+                              ", "
+                            )
+                          }
+                        </span>
+                      </p>
+                    )}
+
+                  {feeForm.studentId &&
+                    !loadingStudentEnrollment &&
+                    availableFeeSemesters.length ===
+                      0 && (
                       <p className="mt-1 text-xs text-red-500">
-                        No programme semesters
-                        are available. Please
-                        create a semester under
-                        a programme first.
+                        This student has no active
+                        Programme enrollment with
+                        available semesters. If the
+                        student is enrolled in a
+                        Course only, Programme
+                        semesters are not applicable.
+                      </p>
+                    )}
+
+                  {!feeForm.studentId &&
+                    !loadingSemesters && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        Select a student first. Only
+                        that student&apos;s enrolled
+                        Programme semesters will be
+                        shown.
                       </p>
                     )}
                 </div>
@@ -3026,23 +3266,10 @@ export default function FeesPage() {
                         </span>
 
                         <span className="text-right font-semibold text-blue-700">
-                          {feeForm.semesterId
-                            ? (() => {
-                                const selectedSemester =
-                                  semesters.find(
-                                    (
-                                      semester
-                                    ) =>
-                                      semester.id ===
-                                      feeForm.semesterId
-                                  );
-
-                                return selectedSemester
-                                  ? getSemesterLabel(
-                                      selectedSemester
-                                    )
-                                  : "-";
-                              })()
+                          {selectedFeeSemester
+                            ? getSemesterLabel(
+                                selectedFeeSemester
+                              )
                             : "-"}
                         </span>
                       </div>
@@ -3117,8 +3344,10 @@ export default function FeesPage() {
                   type="submit"
                   disabled={
                     submitting ||
+                    loadingStudentEnrollment ||
+                    !feeForm.studentId ||
                     !feeForm.semesterId ||
-                    semesters.length ===
+                    availableFeeSemesters.length ===
                       0
                   }
                   className="btn btn-primary"
