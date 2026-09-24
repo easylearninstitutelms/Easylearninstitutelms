@@ -320,11 +320,7 @@ export async function POST(request: Request) {
     const enrollmentChoices = [Boolean(selectedCourseId), Boolean(selectedProgrammeId)].filter(Boolean).length;
 
     if (enrollmentChoices !== 1) {
-      return Response.json({ error: "Please select exactly one: Course or Programme + Semester." }, { status: 400 });
-    }
-
-    if (selectedProgrammeId && !selectedSemesterId) {
-      return Response.json({ error: "Please select a semester for the selected programme." }, { status: 400 });
+      return Response.json({ error: "Please select exactly one: Course or Programme." }, { status: 400 });
     }
 
     if (selectedCourseId && selectedSemesterId) {
