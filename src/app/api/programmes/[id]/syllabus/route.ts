@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
 import { getSession } from "@/lib/session";
-import { ensureAcademicSchema } from "@/lib/academic";
+import { ensureAcademicCoreSchema } from "@/lib/academic";
 
 type Row = Record<string, unknown>;
 
@@ -60,7 +60,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     const session = await getSession();
     if (!session?.instituteId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    await ensureAcademicSchema();
+    await ensureAcademicCoreSchema();
     const { id } = await params;
 
     const programme = rowsOf(await db.execute(sql`
@@ -103,7 +103,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!["INSTITUTE_ADMIN", "SUPER_ADMIN", "MANAGER", "TEACHER"].includes(session.role)) {
       return NextResponse.json({ error: "You do not have permission to manage syllabus" }, { status: 403 });
     }
-    await ensureAcademicSchema();
+    await ensureAcademicCoreSchema();
     const { id } = await params;
     const body = await request.json();
 
@@ -198,7 +198,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!["INSTITUTE_ADMIN", "SUPER_ADMIN", "MANAGER", "TEACHER"].includes(session.role)) {
       return NextResponse.json({ error: "You do not have permission to manage syllabus" }, { status: 403 });
     }
-    await ensureAcademicSchema();
+    await ensureAcademicCoreSchema();
     const { id } = await params;
     const body = await request.json();
     const classId = String(body.classId || "");
