@@ -351,7 +351,20 @@ export async function GET(
 
     const recentAttendance =
       await db
-        .select()
+        .select({
+          id: attendance.id,
+          instituteId: attendance.instituteId,
+          studentId: attendance.studentId,
+          batchId: attendance.batchId,
+          classId: attendance.classId,
+          classType: attendance.classType,
+          date: attendance.date,
+          status: attendance.status,
+          recordedBy: attendance.recordedBy,
+          remarks: attendance.remarks,
+          note: attendance.note,
+          createdAt: attendance.createdAt,
+        })
         .from(attendance)
         .where(
           and(
