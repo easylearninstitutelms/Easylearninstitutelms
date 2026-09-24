@@ -617,15 +617,6 @@ export default function StudentsPage() {
       return;
     }
 
-    if (
-      !editingStudentId &&
-      form.enrollmentType === "PROGRAMME" &&
-      !form.semesterId
-    ) {
-      setError("Please select a semester.");
-      return;
-    }
-
     setSubmitting(true);
     setError("");
 
@@ -667,10 +658,7 @@ export default function StudentsPage() {
             ? form.programmeId || null
             : null,
 
-        semesterId:
-          form.enrollmentType === "PROGRAMME"
-            ? form.semesterId || null
-            : null,
+        semesterId: null,
 
         photoUrl:
           form.photoUrl || null,
