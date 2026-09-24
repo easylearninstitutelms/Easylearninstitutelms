@@ -74,7 +74,6 @@ export async function GET(
         i.phone AS "institutePhone",
         i.email AS "instituteEmail",
         i.address AS "instituteAddress",
-        i.website AS "instituteWebsite",
 
         academic."batchNo",
         academic."batchName",
@@ -211,8 +210,6 @@ export async function GET(
             value(row, "instituteEmail") ?? null,
           address:
             value(row, "instituteAddress") ?? null,
-          website:
-            value(row, "instituteWebsite") ?? null,
         },
 
         academic: {
