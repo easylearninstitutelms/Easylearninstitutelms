@@ -4,7 +4,13 @@ import { sql } from "drizzle-orm";
 import { ensurePushSubscriptionsTable, getVapidPublicKey } from "@/lib/push";
 
 export async function GET() {
-  return Response.json({ publicKey: getVapidPublicKey() });
+  try {
+    const publicKey = await getVapidPublicKey();
+    return Response.json({ publicKey });
+  } catch (error) {
+    console.error("GET /api/notifications/subscribe error:", error);
+    return Response.json({ error: "Push notifications are not configured yet." }, { status: 503 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -14,7 +20,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!getVapidPublicKey()) {
+  if (!(await getVapidPublicKey())) {
     return Response.json({ error: "Push notifications are not configured yet." }, { status: 503 });
   }
 
