@@ -24,6 +24,9 @@ interface Fee {
   dueDate: string | null;
   status: string;
   createdAt: string;
+  semesterId: string | null;
+  semesterName: string | null;
+  semesterNo: number | null;
 }
 
 interface FeeRow {
@@ -52,6 +55,14 @@ interface Student {
   id: string;
   name: string;
   studentId: string;
+}
+
+interface Semester {
+  id: string;
+  semesterNo: number;
+  name: string;
+  programmeId: string | null;
+  programmeName: string | null;
 }
 
 const FEE_TYPES = [
@@ -93,6 +104,20 @@ function normalizeFeeRow(
     return null;
   }
 
+  const semesterNoValue =
+    rawFee.semesterNo ??
+    row?.semesterNo ??
+    row?.semester?.semesterNo ??
+    row?.semester?.semester_no ??
+    null;
+
+  const parsedSemesterNo =
+    semesterNoValue === null ||
+    semesterNoValue === undefined ||
+    semesterNoValue === ""
+      ? null
+      : Number(semesterNoValue);
+
   return {
     fee: {
       id: String(rawFee.id),
@@ -108,13 +133,30 @@ function normalizeFeeRow(
       dueAmount: String(
         rawFee.dueAmount ?? "0"
       ),
-      dueDate: rawFee.dueDate ?? null,
+      dueDate:
+        rawFee.dueDate ?? null,
       status: String(
         rawFee.status ?? "DUE"
       ),
       createdAt: String(
         rawFee.createdAt ?? ""
       ),
+      semesterId:
+        rawFee.semesterId ??
+        row?.semesterId ??
+        row?.semester?.id ??
+        null,
+      semesterName:
+        rawFee.semesterName ??
+        row?.semesterName ??
+        row?.semester?.name ??
+        null,
+      semesterNo:
+        Number.isFinite(
+          parsedSemesterNo
+        )
+          ? parsedSemesterNo
+          : null,
     },
 
     studentName: String(
@@ -169,7 +211,9 @@ function normalizePaymentRow(
 
   return {
     payment: {
-      id: String(rawPayment.id),
+      id: String(
+        rawPayment.id
+      ),
 
       amount: String(
         rawPayment.amount ?? "0"
@@ -252,6 +296,58 @@ function getPaymentMethodLabel(
   );
 }
 
+function getSemesterLabel(
+  semester: Semester
+) {
+  const numberPart =
+    semester.semesterNo
+      ? `Semester ${semester.semesterNo}`
+      : "Semester";
+
+  const namePart =
+    semester.name &&
+    semester.name !==
+      `Semester ${semester.semesterNo}`
+      ? ` - ${semester.name}`
+      : "";
+
+  const programmePart =
+    semester.programmeName
+      ? ` (${semester.programmeName})`
+      : "";
+
+  return (
+    numberPart +
+    namePart +
+    programmePart
+  );
+}
+
+function getFeeSemesterLabel(
+  fee: Fee
+) {
+  if (
+    fee.semesterName ||
+    fee.semesterNo
+  ) {
+    const numberPart =
+      fee.semesterNo
+        ? `Semester ${fee.semesterNo}`
+        : "Semester";
+
+    const namePart =
+      fee.semesterName &&
+      fee.semesterName !==
+        `Semester ${fee.semesterNo}`
+        ? ` - ${fee.semesterName}`
+        : "";
+
+    return numberPart + namePart;
+  }
+
+  return "-";
+}
+
 export default function FeesPage() {
   const [
     activeTab,
@@ -269,6 +365,9 @@ export default function FeesPage() {
   const [students, setStudents] =
     useState<Student[]>([]);
 
+  const [semesters, setSemesters] =
+    useState<Semester[]>([]);
+
   const [studentFees, setStudentFees] =
     useState<FeeRow[]>([]);
 
@@ -278,6 +377,11 @@ export default function FeesPage() {
   const [
     loadingStudentFees,
     setLoadingStudentFees,
+  ] = useState(false);
+
+  const [
+    loadingSemesters,
+    setLoadingSemesters,
   ] = useState(false);
 
   const [submitting, setSubmitting] =
@@ -300,6 +404,7 @@ export default function FeesPage() {
   const [feeForm, setFeeForm] =
     useState({
       studentId: "",
+      semesterId: "",
       feeType: "MONTHLY",
       amount: "",
       discount: "",
@@ -319,12 +424,14 @@ export default function FeesPage() {
     useCallback(async () => {
       try {
         setLoading(true);
+        setLoadingSemesters(true);
         setError("");
 
         const [
           feesRes,
           paymentsRes,
           studentsRes,
+          programmesRes,
         ] = await Promise.all([
           fetch("/api/fees", {
             cache: "no-store",
@@ -340,16 +447,22 @@ export default function FeesPage() {
               cache: "no-store",
             }
           ),
+
+          fetch("/api/programmes", {
+            cache: "no-store",
+          }),
         ]);
 
         const [
           feesData,
           paymentsData,
           studentsData,
+          programmesData,
         ] = await Promise.all([
           feesRes.json(),
           paymentsRes.json(),
           studentsRes.json(),
+          programmesRes.json(),
         ]);
 
         if (!feesRes.ok) {
@@ -392,6 +505,126 @@ export default function FeesPage() {
             ? studentsData.students
             : []
         );
+
+        if (programmesRes.ok) {
+          const programmeRows: any[] =
+            Array.isArray(
+              programmesData?.programmes
+            )
+              ? programmesData.programmes
+              : Array.isArray(
+                    programmesData
+                  )
+                ? programmesData
+                : [];
+
+          const semesterRows: Semester[] =
+            programmeRows.flatMap(
+              (programme) => {
+                const programmeId =
+                  programme?.id
+                    ? String(
+                        programme.id
+                      )
+                    : null;
+
+                const programmeName =
+                  programme?.name
+                    ? String(
+                        programme.name
+                      )
+                    : null;
+
+                const sourceSemesters =
+                  Array.isArray(
+                    programme?.semesters
+                  )
+                    ? programme.semesters
+                    : [];
+
+                return sourceSemesters
+                  .filter(
+                    (semester: any) =>
+                      semester?.id
+                  )
+                  .map(
+                    (
+                      semester: any
+                    ) => {
+                      const rawNo =
+                        semester.semesterNo ??
+                        semester.semester_no ??
+                        0;
+
+                      const parsedNo =
+                        Number(rawNo);
+
+                      return {
+                        id: String(
+                          semester.id
+                        ),
+                        semesterNo:
+                          Number.isFinite(
+                            parsedNo
+                          )
+                            ? parsedNo
+                            : 0,
+                        name: String(
+                          semester.name ??
+                            `Semester ${rawNo}`
+                        ),
+                        programmeId,
+                        programmeName,
+                      };
+                    }
+                  );
+              }
+            );
+
+          const uniqueSemesters =
+            Array.from(
+              new Map(
+                semesterRows.map(
+                  (semester) => [
+                    semester.id,
+                    semester,
+                  ]
+                )
+              ).values()
+            );
+
+          uniqueSemesters.sort(
+            (a, b) => {
+              const programmeCompare =
+                String(
+                  a.programmeName ||
+                    ""
+                ).localeCompare(
+                  String(
+                    b.programmeName ||
+                      ""
+                  )
+                );
+
+              if (
+                programmeCompare !== 0
+              ) {
+                return programmeCompare;
+              }
+
+              return (
+                a.semesterNo -
+                b.semesterNo
+              );
+            }
+          );
+
+          setSemesters(
+            uniqueSemesters
+          );
+        } else {
+          setSemesters([]);
+        }
       } catch (err) {
         setError(
           err instanceof Error
@@ -400,6 +633,7 @@ export default function FeesPage() {
         );
       } finally {
         setLoading(false);
+        setLoadingSemesters(false);
       }
     }, []);
 
@@ -429,7 +663,9 @@ export default function FeesPage() {
 
       const res = await fetch(
         "/api/fees?studentId=" +
-          encodeURIComponent(studentId),
+          encodeURIComponent(
+            studentId
+          ),
         {
           cache: "no-store",
         }
@@ -485,6 +721,18 @@ export default function FeesPage() {
     }
   }
 
+  function handleFeeStudentChange(
+    studentId: string
+  ) {
+    setFeeForm((prev) => ({
+      ...prev,
+      studentId,
+      semesterId: "",
+    }));
+
+    setError("");
+  }
+
   async function handleAddFee(
     e: FormEvent<HTMLFormElement>
   ) {
@@ -503,6 +751,14 @@ export default function FeesPage() {
     if (!feeForm.studentId) {
       setError(
         "Please select a student."
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    if (!feeForm.semesterId) {
+      setError(
+        "Please select a semester."
       );
       setSubmitting(false);
       return;
@@ -543,9 +799,14 @@ export default function FeesPage() {
           },
           body: JSON.stringify({
             ...feeForm,
-            amount: String(amount),
-            discount:
-              String(discount),
+            semesterId:
+              feeForm.semesterId,
+            amount: String(
+              amount
+            ),
+            discount: String(
+              discount
+            ),
           }),
         }
       );
@@ -564,6 +825,7 @@ export default function FeesPage() {
 
       setFeeForm({
         studentId: "",
+        semesterId: "",
         feeType: "MONTHLY",
         amount: "",
         discount: "",
@@ -649,7 +911,9 @@ export default function FeesPage() {
           },
           body: JSON.stringify({
             ...payForm,
-            amount: String(amount),
+            amount: String(
+              amount
+            ),
             feeId:
               payForm.feeId ||
               null,
@@ -846,6 +1110,7 @@ export default function FeesPage() {
 
     setFeeForm({
       studentId: "",
+      semesterId: "",
       feeType: "MONTHLY",
       amount: "",
       discount: "",
@@ -868,11 +1133,6 @@ export default function FeesPage() {
     }
   }
 
-  /*
-   * IMPORTANT:
-   * This receipt function intentionally does NOT
-   * use nested template literals.
-   */
   function handleGenerateReceipt() {
     if (!receipt) return;
 
@@ -1100,7 +1360,9 @@ export default function FeesPage() {
     if (logoUrl) {
       logoHtml =
         '<img class="logo" src="' +
-        escapeHtml(logoUrl) +
+        escapeHtml(
+          logoUrl
+        ) +
         '" alt="Institute Logo" />';
     }
 
@@ -1899,6 +2161,7 @@ export default function FeesPage() {
                 <thead>
                   <tr>
                     <th>Student</th>
+                    <th>Semester</th>
                     <th>Type</th>
                     <th>Amount</th>
                     <th>Discount</th>
@@ -1911,7 +2174,9 @@ export default function FeesPage() {
                 <tbody>
                   {fees.map((row) => (
                     <tr
-                      key={row.fee.id}
+                      key={
+                        row.fee.id
+                      }
                     >
                       <td>
                         <div className="flex items-center gap-2">
@@ -1937,6 +2202,21 @@ export default function FeesPage() {
                       </td>
 
                       <td>
+                        {row.fee
+                          .semesterId ? (
+                          <span className="badge badge-blue">
+                            {getFeeSemesterLabel(
+                              row.fee
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">
+                            -
+                          </span>
+                        )}
+                      </td>
+
+                      <td>
                         <span className="badge badge-blue">
                           {getFeeTypeLabel(
                             row.fee
@@ -1947,13 +2227,15 @@ export default function FeesPage() {
 
                       <td className="font-medium">
                         {formatCurrency(
-                          row.fee.amount
+                          row.fee
+                            .amount
                         )}
                       </td>
 
                       <td className="text-slate-500">
                         {formatCurrency(
-                          row.fee.discount
+                          row.fee
+                            .discount
                         )}
                       </td>
 
@@ -1974,7 +2256,8 @@ export default function FeesPage() {
                       </td>
 
                       <td className="text-slate-500">
-                        {row.fee.dueDate
+                        {row.fee
+                          .dueDate
                           ? formatDate(
                               row.fee
                                 .dueDate
@@ -2292,6 +2575,13 @@ export default function FeesPage() {
                                 .id
                             }
                           >
+                            {row.fee
+                              .semesterId
+                              ? getFeeSemesterLabel(
+                                  row.fee
+                                )
+                              : "General Fee"}{" "}
+                            -{" "}
                             {getFeeTypeLabel(
                               row.fee
                                 .feeType
@@ -2501,14 +2791,8 @@ export default function FeesPage() {
                       feeForm.studentId
                     }
                     onChange={(e) =>
-                      setFeeForm(
-                        (prev) => ({
-                          ...prev,
-                          studentId:
-                            e
-                              .target
-                              .value,
-                        })
+                      handleFeeStudentChange(
+                        e.target.value
                       )
                     }
                     required
@@ -2536,6 +2820,70 @@ export default function FeesPage() {
                       )
                     )}
                   </select>
+                </div>
+
+                <div>
+                  <label className="form-label">
+                    Semester *
+                  </label>
+
+                  <select
+                    className="form-select"
+                    value={
+                      feeForm.semesterId
+                    }
+                    onChange={(e) =>
+                      setFeeForm(
+                        (prev) => ({
+                          ...prev,
+                          semesterId:
+                            e.target
+                              .value,
+                        })
+                      )
+                    }
+                    disabled={
+                      loadingSemesters
+                    }
+                    required
+                  >
+                    <option value="">
+                      {loadingSemesters
+                        ? "Loading semesters..."
+                        : semesters.length ===
+                            0
+                          ? "No semesters available"
+                          : "Select semester"}
+                    </option>
+
+                    {semesters.map(
+                      (semester) => (
+                        <option
+                          key={
+                            semester.id
+                          }
+                          value={
+                            semester.id
+                          }
+                        >
+                          {getSemesterLabel(
+                            semester
+                          )}
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  {semesters.length ===
+                    0 &&
+                    !loadingSemesters && (
+                      <p className="mt-1 text-xs text-red-500">
+                        No programme semesters
+                        are available. Please
+                        create a semester under
+                        a programme first.
+                      </p>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -2674,6 +3022,33 @@ export default function FeesPage() {
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
                         <span className="text-slate-500">
+                          Semester
+                        </span>
+
+                        <span className="text-right font-semibold text-blue-700">
+                          {feeForm.semesterId
+                            ? (() => {
+                                const selectedSemester =
+                                  semesters.find(
+                                    (
+                                      semester
+                                    ) =>
+                                      semester.id ===
+                                      feeForm.semesterId
+                                  );
+
+                                return selectedSemester
+                                  ? getSemesterLabel(
+                                      selectedSemester
+                                    )
+                                  : "-";
+                              })()
+                            : "-"}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">
                           Amount
                         </span>
 
@@ -2741,7 +3116,10 @@ export default function FeesPage() {
                 <button
                   type="submit"
                   disabled={
-                    submitting
+                    submitting ||
+                    !feeForm.semesterId ||
+                    semesters.length ===
+                      0
                   }
                   className="btn btn-primary"
                 >
