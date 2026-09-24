@@ -39,11 +39,6 @@ interface StudentDetails {
       status: string;
     };
 
-    batch: {
-      id: string;
-      name: string;
-    } | null;
-
     course: {
       id: string;
       name: string;
@@ -93,10 +88,10 @@ interface FormData {
   dob: string;
   gender: string;
   admissionDate: string;
-  batchId: string;
-  enrollmentType: "COURSE" | "PROGRAMME" | "BATCH";
+  enrollmentType: "COURSE" | "PROGRAMME";
   courseId: string;
   programmeId: string;
+  semesterId: string;
   photoUrl: string;
 }
 
@@ -124,10 +119,10 @@ const EMPTY_FORM: FormData = {
   admissionDate: new Date()
     .toISOString()
     .split("T")[0],
-  batchId: "",
   enrollmentType: "COURSE",
   courseId: "",
   programmeId: "",
+  semesterId: "",
   photoUrl: "",
 };
 
@@ -161,16 +156,6 @@ export default function StudentsPage() {
 
   const [error, setError] =
     useState("");
-
-  const [batches, setBatches] =
-    useState<
-      Array<{
-        batch: {
-          id: string;
-          name: string;
-        };
-      }>
-    >([]);
 
   const [courses, setCourses] = useState<
     Array<{ id: string; name: string; courseNo?: number | null }>
@@ -282,18 +267,15 @@ export default function StudentsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/batches", { cache: "no-store" }).then((r) => r.json()),
       fetch("/api/courses?forStudentAdd=true", { cache: "no-store" }).then((r) => r.json()),
       fetch("/api/programmes?forStudentAdd=true", { cache: "no-store" }).then((r) => r.json()),
     ])
-      .then(([batchData, courseData, programmeData]) => {
-        setBatches(batchData.batches || []);
+      .then(([courseData, programmeData]) => {
         setCourses(courseData.courses || []);
         setProgrammes(programmeData.programmes || []);
       })
       .catch((err) => {
         console.error(err);
-        setBatches([]);
         setCourses([]);
         setProgrammes([]);
       });
@@ -556,11 +538,13 @@ export default function StudentsPage() {
             .toISOString()
             .split("T")[0],
 
-        batchId:
-          activeEnrollment?.batch
-            ?.id || "",
+        enrollmentType:
+          directEnrollmentType === "PROGRAMME"
+            ? "PROGRAMME"
+            : "COURSE",
 
-        enrollmentType: directEnrollmentType,
+        semesterId:
+          activeEnrollment?.enrollment?.semesterId || "",
 
         courseId:
           activeEnrollment?.course?.id ||
@@ -625,10 +609,10 @@ export default function StudentsPage() {
 
     if (
       !editingStudentId &&
-      form.enrollmentType === "BATCH" &&
-      !form.batchId
+      form.enrollmentType === "PROGRAMME" &&
+      !form.semesterId
     ) {
-      setError("Please select a batch.");
+      setError("Please select a semester.");
       return;
     }
 
@@ -663,11 +647,6 @@ export default function StudentsPage() {
         admissionDate:
           form.admissionDate,
 
-        batchId:
-          form.enrollmentType === "BATCH"
-            ? form.batchId || null
-            : null,
-
         courseId:
           form.enrollmentType === "COURSE"
             ? form.courseId || null
@@ -676,6 +655,11 @@ export default function StudentsPage() {
         programmeId:
           form.enrollmentType === "PROGRAMME"
             ? form.programmeId || null
+            : null,
+
+        semesterId:
+          form.enrollmentType === "PROGRAMME"
+            ? form.semesterId || null
             : null,
 
         photoUrl:
@@ -2548,19 +2532,18 @@ export default function StudentsPage() {
                             className="form-select"
                             value={form.enrollmentType}
                             onChange={(e) => {
-                              const type = e.target.value as "COURSE" | "PROGRAMME" | "BATCH";
+                              const type = e.target.value as "COURSE" | "PROGRAMME";
                               setForm({
                                 ...form,
                                 enrollmentType: type,
                                 courseId: "",
                                 programmeId: "",
-                                batchId: "",
+                                semesterId: "",
                               });
                             }}
                           >
                             <option value="COURSE">Course</option>
-                            <option value="PROGRAMME">Programme</option>
-                            <option value="BATCH">Batch (legacy)</option>
+                            <option value="PROGRAMME">Programme + Semester</option>
                           </select>
                         </div>
 
@@ -2574,7 +2557,7 @@ export default function StudentsPage() {
                                 ...form,
                                 courseId: e.target.value,
                                 programmeId: "",
-                                batchId: "",
+                                semesterId: "",
                               })}
                             >
                               <option value="">Select a course</option>
@@ -2585,52 +2568,54 @@ export default function StudentsPage() {
                               ))}
                             </select>
                           </div>
-                        ) : form.enrollmentType === "PROGRAMME" ? (
-                          <div className="sm:col-span-2">
-                            <label className="form-label">Select Programme *</label>
-                            <select
-                              className="form-select"
-                              value={form.programmeId}
-                              onChange={(e) => setForm({
-                                ...form,
-                                programmeId: e.target.value,
-                                courseId: "",
-                                batchId: "",
-                              })}
-                            >
-                              <option value="">Select a programme</option>
-                              {programmes.map((programme) => (
-                                <option key={programme.id} value={programme.id}>
-                                  {programme.name}
-                                  {programme.code ? " (" + programme.code + ")" : ""}
-                                  {programme.programmeNo ? " #" + programme.programmeNo : ""}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
                         ) : (
-                          <div className="sm:col-span-2">
-                            <label className="form-label">Select Batch</label>
-                            <select
-                              className="form-select"
-                              value={form.batchId}
-                              onChange={(e) => setForm({
-                                ...form,
-                                batchId: e.target.value,
-                                courseId: "",
-                                programmeId: "",
-                              })}
-                            >
-                              <option value="">Select a batch</option>
-                              {batches.map((b) => (
-                                <option key={b.batch.id} value={b.batch.id}>
-                                  {b.batch.name}
+                          <>
+                            <div>
+                              <label className="form-label">Select Programme *</label>
+                              <select
+                                className="form-select"
+                                value={form.programmeId}
+                                onChange={(e) => setForm({
+                                  ...form,
+                                  programmeId: e.target.value,
+                                  courseId: "",
+                                  semesterId: "",
+                                })}
+                              >
+                                <option value="">Select a programme</option>
+                                {programmes.map((programme) => (
+                                  <option key={programme.id} value={programme.id}>
+                                    {programme.name}
+                                    {programme.code ? " (" + programme.code + ")" : ""}
+                                    {programme.programmeNo ? " #" + programme.programmeNo : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="form-label">Select Semester *</label>
+                              <select
+                                className="form-select"
+                                value={form.semesterId}
+                                onChange={(e) => setForm({
+                                  ...form,
+                                  semesterId: e.target.value,
+                                })}
+                                disabled={!form.programmeId}
+                              >
+                                <option value="">
+                                  {form.programmeId ? "Select a semester" : "Select programme first"}
                                 </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                      </div>
+                                {(programmes.find((p) => p.id === form.programmeId)?.semesters || []).map((semester: any) => (
+                                  <option key={semester.id} value={semester.id}>
+                                    {semester.name || "Semester " + semester.semesterNo}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </>
+                        )}                      </div>
                     </div>
                   </div>
                 </div>
