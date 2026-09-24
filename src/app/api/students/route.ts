@@ -271,7 +271,6 @@ export async function POST(request: Request) {
     const address = cleanText(body.address);
     const dob = cleanText(body.dob);
     const admissionDate = cleanText(body.admissionDate);
-    const selectedSemesterId = cleanText(body.semesterId);
     const selectedCourseId = cleanText(body.courseId);
     const selectedProgrammeId = cleanText(body.programmeId);
     const gender = validGender(body.gender);
@@ -323,9 +322,6 @@ export async function POST(request: Request) {
       return Response.json({ error: "Please select exactly one: Course or Programme." }, { status: 400 });
     }
 
-    if (selectedCourseId && selectedSemesterId) {
-      return Response.json({ error: "Semester is only required for Programme enrollment." }, { status: 400 });
-    }
 
     if (body.photoUrl && !photoUrl) {
       return Response.json(
@@ -552,7 +548,6 @@ export async function POST(request: Request) {
           student_id,
           course_id,
           programme_id,
-          semester_id,
           enrollment_date,
           status
         )
@@ -561,7 +556,6 @@ export async function POST(request: Request) {
           ${student.id},
           ${selectedCourseId || null},
           ${selectedProgrammeId || null},
-          ${selectedSemesterId || null},
           ${admissionDate},
           'ACTIVE'
         )
