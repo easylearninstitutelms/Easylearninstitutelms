@@ -497,8 +497,7 @@ export default function FeesPage() {
         ]);
 
         const [
-          feesData,          paymentsData,
-          studentsData,
+          feesData,          paymentsData,          studentsData,
           programmesData,
         ] = await Promise.all([
           feesRes.json(),
@@ -997,8 +996,7 @@ export default function FeesPage() {
         if (feeForm.academicType === "COURSE") {
           return String(
             item?.enrollment?.courseId ||              item?.course?.id ||
-              ""
-          ) === feeForm.courseId;
+              ""          ) === feeForm.courseId;
         }
 
         return String(
@@ -1016,19 +1014,21 @@ export default function FeesPage() {
       return;
     }
 
-    const selectedSemester =
-      availableFeeSemesters.find(
-        (semester) =>
-          semester.id ===
-          feeForm.semesterId
-      );
+    if (feeForm.academicType === "PROGRAMME") {
+      const selectedSemester =
+        availableFeeSemesters.find(
+          (semester) =>
+            semester.id ===
+            feeForm.semesterId
+        );
 
-    if (!selectedSemester) {
-      setError(
-        "The selected semester does not belong to this student's enrolled programme."
-      );
-      setSubmitting(false);
-      return;
+      if (!selectedSemester) {
+        setError(
+          "The selected semester does not belong to this student's enrolled programme."
+        );
+        setSubmitting(false);
+        return;
+      }
     }
 
     if (amount <= 0) {
@@ -1497,8 +1497,7 @@ export default function FeesPage() {
               month: "short",
               year: "numeric",
               hour: "2-digit",
-              minute: "2-digit",            }
-          )
+              minute: "2-digit",            }          )
         : new Date().toLocaleString(
             "en-GB",
             {
@@ -1997,8 +1996,7 @@ export default function FeesPage() {
       '<div class="amount">' +
       safeAmount +
       "</div>";
-    html +=
-      '<div class="method">' +
+    html +=      '<div class="method">' +
       safePaymentMethod +
       "</div>";
 
@@ -2497,8 +2495,7 @@ export default function FeesPage() {
                         {row.fee
                           .semesterId ? (                          <span className="badge badge-blue">
                             {getFeeSemesterLabel(
-                              row.fee
-                            )}
+                              row.fee                            )}
                           </span>
                         ) : (
                           <span className="text-slate-400">
@@ -2997,8 +2994,7 @@ export default function FeesPage() {
                           transactionReference:                            e
                               .target
                               .value,
-                        })
-                      )
+                        })                      )
                     }
                   />
                 </div>
@@ -3497,14 +3493,16 @@ export default function FeesPage() {
                   Cancel
                 </button>
 
-                <button
-                  type="submit"
+                <button                  type="submit"
                   disabled={
                     submitting ||
                     loadingStudentEnrollment ||
                     !feeForm.studentId ||
-!feeForm.programmeId ||
-                    (feeForm.academicType === "PROGRAMME" && (!feeForm.semesterId || availableFeeSemesters.length === 0))
+                    (feeForm.academicType === "COURSE"
+                      ? !feeForm.courseId
+                      : !feeForm.programmeId ||
+                        !feeForm.semesterId ||
+                        availableFeeSemesters.length === 0)
                   }
                   className="btn btn-primary"
                 >
