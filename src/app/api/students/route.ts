@@ -4,7 +4,6 @@ import { db } from "@/db";
 import {
   students,
   enrollments,
-  batches,
   staff,
   users,
 } from "@/db/schema";
@@ -133,7 +132,6 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "";
-    const batchId = cleanText(searchParams.get("batchId"));
     const page = Math.max(
       1,
       Number.parseInt(searchParams.get("page") || "1", 10) || 1,
@@ -169,59 +167,7 @@ export async function GET(request: Request) {
       );
     }
 
-    if (batchId) {
-      const [batch] = await db
-        .select({
-          id: batches.id,
-          teacherId: batches.teacherId,
-        })
-        .from(batches)
-        .where(
-          and(
-            eq(batches.id, batchId),
-            eq(batches.instituteId, instituteId),
-          ),
-        )
-        .limit(1);
-
-      if (!batch) {
-        return Response.json(
-          { error: "Invalid batch" },
-          { status: 400 },
-        );
-      }
-
-      if (session.role === "TEACHER") {
-        const [teacher] = await db
-          .select({ id: staff.id })
-          .from(staff)
-          .where(
-            and(
-              eq(staff.userId, session.userId),
-              eq(staff.instituteId, instituteId),
-            ),
-          )
-          .limit(1);
-
-        if (!teacher || batch.teacherId !== teacher.id) {
-          return Response.json(
-            { error: "Forbidden" },
-            { status: 403 },
-          );
-        }
-      }
-
-      conditions.push(sql`
-        EXISTS (
-          SELECT 1 FROM ${enrollments}
-          WHERE ${enrollments.studentId} = ${students.id}
-            AND ${enrollments.batchId} = ${batchId}
-            AND ${enrollments.status} = 'ACTIVE'
-        )
-      `);
-    }
-
-    if (session.role === "TEACHER" && !batchId) {
+    if (session.role === "TEACHER") {
       const teacherRows = await db.execute(sql`
         SELECT ta.course_id AS "courseId", ta.programme_id AS "programmeId"
         FROM teacher_assignments ta
@@ -325,7 +271,7 @@ export async function POST(request: Request) {
     const address = cleanText(body.address);
     const dob = cleanText(body.dob);
     const admissionDate = cleanText(body.admissionDate);
-    const batchId = cleanText(body.batchId);
+    const selectedSemesterId = cleanText(body.semesterId);
     const selectedCourseId = cleanText(body.courseId);
     const selectedProgrammeId = cleanText(body.programmeId);
     const gender = validGender(body.gender);
@@ -371,20 +317,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const enrollmentChoices = [
-      Boolean(selectedCourseId),
-      Boolean(selectedProgrammeId),
-      Boolean(batchId),
-    ].filter(Boolean).length;
+    const enrollmentChoices = [Boolean(selectedCourseId), Boolean(selectedProgrammeId)].filter(Boolean).length;
 
     if (enrollmentChoices !== 1) {
-      return Response.json(
-        {
-          error:
-            "Please select exactly one: Course or Programme. Batch is only for legacy enrollment.",
-        },
-        { status: 400 },
-      );
+      return Response.json({ error: "Please select exactly one: Course or Programme + Semester." }, { status: 400 });
+    }
+
+    if (selectedProgrammeId && !selectedSemesterId) {
+      return Response.json({ error: "Please select a semester for the selected programme." }, { status: 400 });
+    }
+
+    if (selectedCourseId && selectedSemesterId) {
+      return Response.json({ error: "Semester is only required for Programme enrollment." }, { status: 400 });
     }
 
     if (body.photoUrl && !photoUrl) {
@@ -515,53 +459,6 @@ export async function POST(request: Request) {
       }
 
       prefix = `${programmeCode}${programmeNo}`;
-    } else {
-      const batchRows = await db.execute(sql`
-        SELECT
-          b.id,
-          b.batch_no AS "batchNo",
-          p.code AS "programmeCode",
-          p.name AS "programmeName"
-        FROM batches b
-        LEFT JOIN programmes p
-          ON p.id = b.programme_id
-        WHERE b.id = ${batchId}
-          AND b.institute_id = ${instituteId}
-        LIMIT 1
-      `);
-
-      const batch = (batchRows as any).rows?.[0];
-
-      if (!batch) {
-        return Response.json(
-          { error: "Invalid batch." },
-          { status: 400 },
-        );
-      }
-
-      const programmeCode =
-        cleanText(batch.programmeCode) ||
-        suggestProgrammeCode(
-          cleanText(batch.programmeName),
-        );
-
-      const batchNo = Number(batch.batchNo);
-
-      if (
-        !programmeCode ||
-        !Number.isInteger(batchNo) ||
-        batchNo < 211
-      ) {
-        return Response.json(
-          {
-            error:
-              "This batch is missing a valid programme code or batch number. Please update the batch first.",
-          },
-          { status: 400 },
-        );
-      }
-
-      prefix = `${programmeCode}${batchNo}`;
     }
 
     const existingStudentIds = await db.execute(sql`
@@ -657,18 +554,18 @@ export async function POST(request: Request) {
         INSERT INTO enrollments (
           institute_id,
           student_id,
-          batch_id,
           course_id,
           programme_id,
+          semester_id,
           enrollment_date,
           status
         )
         VALUES (
           ${instituteId},
           ${student.id},
-          ${batchId || null},
           ${selectedCourseId || null},
           ${selectedProgrammeId || null},
+          ${selectedSemesterId || null},
           ${admissionDate},
           'ACTIVE'
         )
