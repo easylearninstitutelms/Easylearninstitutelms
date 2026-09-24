@@ -6,7 +6,7 @@ import { ensureHomeworkSchema } from "@/lib/academic";
 
 type Row = Record<string, any>;
 
-type TargetType = "course" | "programme" | "batch";
+type TargetType = "course" | "programme";
 
 function rowsOf(result: unknown): Row[] {
   if (
@@ -29,9 +29,7 @@ function getTargetType(value: unknown): TargetType | "" {
   const type = cleanText(value).toLowerCase();
 
   if (
-    type === "course" ||
-    type === "programme" ||
-    type === "batch"
+    type === "course" || type === "programme"
   ) {
     return type;
   }
@@ -66,13 +64,11 @@ export async function GET(request: Request) {
     const courseId = cleanText(searchParams.get("courseId"));
     const programmeId = cleanText(searchParams.get("programmeId"));
     const semesterId = cleanText(searchParams.get("semesterId"));
-    const batchId = cleanText(searchParams.get("batchId"));
 
     const result = await db.execute(sql`
       SELECT
         h.id,
         h.institute_id AS "instituteId",
-        h.batch_id AS "batchId",
         h.course_id AS "courseId",
         h.programme_id AS "programmeId",
         h.semester_id AS "semesterId",
@@ -84,8 +80,6 @@ export async function GET(request: Request) {
         h.deadline,
         h.attachment_url AS "attachmentUrl",
         h.created_at AS "createdAt",
-
-        COALESCE(b.name, '') AS "batchName",
 
         COALESCE(co.name, '') AS "courseName",
 
@@ -105,14 +99,10 @@ export async function GET(request: Request) {
         CASE
           WHEN h.course_id IS NOT NULL THEN 'COURSE'
           WHEN h.programme_id IS NOT NULL THEN 'PROGRAMME'
-          WHEN h.batch_id IS NOT NULL THEN 'BATCH'
           ELSE 'UNKNOWN'
         END AS "targetType"
 
       FROM homework h
-
-      LEFT JOIN batches b
-        ON b.id = h.batch_id
 
       LEFT JOIN courses co
         ON co.id = h.course_id
@@ -149,12 +139,6 @@ export async function GET(request: Request) {
         ${
           semesterId
             ? sql`AND h.semester_id = ${semesterId}`
-            : sql``
-        }
-
-        ${
-          batchId
-            ? sql`AND h.batch_id = ${batchId}`
             : sql``
         }
 
@@ -212,12 +196,8 @@ export async function POST(request: Request) {
       (cleanText(body.courseId)
         ? "course"
         : cleanText(body.programmeId)
-        ? "programme"
-        : cleanText(body.batchId)
-        ? "batch"
-        : "");
+        ? "programme" : "");
 
-    const batchId = cleanText(body.batchId);
     const courseId = cleanText(body.courseId);
     const programmeId = cleanText(body.programmeId);
     const semesterId = cleanText(body.semesterId);
@@ -280,7 +260,7 @@ export async function POST(request: Request) {
         programmeId ||
         semesterId ||
         programmeClassId ||
-        batchId
+
       ) {
         return NextResponse.json(
           {
@@ -391,7 +371,7 @@ export async function POST(request: Request) {
       if (
         courseId ||
         courseClassId ||
-        batchId
+
       ) {
         return NextResponse.json(
           {
@@ -498,67 +478,7 @@ export async function POST(request: Request) {
       }
     }
 
-    /*
-     * =========================================================
-     * LEGACY BATCH HOMEWORK
-     * =========================================================
-     *
-     * Existing batch functionality remains available.
-     */
-    if (targetType === "batch") {
-      if (!batchId) {
-        return NextResponse.json(
-          {
-            error: "Please select a batch.",
-          },
-          { status: 400 }
-        );
-      }
-
-      if (
-        courseId ||
-        programmeId ||
-        semesterId ||
-        courseClassId ||
-        programmeClassId
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Batch homework cannot contain course, programme, semester or syllabus class.",
-          },
-          { status: 400 }
-        );
-      }
-
-      const batchResult = await db.execute(sql`
-        SELECT
-          id,
-          name
-        FROM batches
-        WHERE id = ${batchId}
-          AND institute_id = ${session.instituteId}
-          AND status = 'ACTIVE'
-        LIMIT 1
-      `);
-
-      const batch =
-        rowsOf(batchResult)[0];
-
-      if (!batch) {
-        return NextResponse.json(
-          {
-            error:
-              "Selected batch was not found or is inactive.",
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    /*
-     * =========================================================
-     * TEACHER
+  * TEACHER
      * =========================================================
      */
     let finalTeacherId: string | null = null;
@@ -599,7 +519,6 @@ export async function POST(request: Request) {
       await db.execute(sql`
         INSERT INTO homework (
           institute_id,
-          batch_id,
           course_id,
           programme_id,
           semester_id,
@@ -613,7 +532,6 @@ export async function POST(request: Request) {
         )
         VALUES (
           ${session.instituteId},
-          ${batchId || null},
           ${courseId || null},
           ${programmeId || null},
           ${semesterId || null},
@@ -628,7 +546,6 @@ export async function POST(request: Request) {
         RETURNING
           id,
           institute_id AS "instituteId",
-          batch_id AS "batchId",
           course_id AS "courseId",
           programme_id AS "programmeId",
           semester_id AS "semesterId",
