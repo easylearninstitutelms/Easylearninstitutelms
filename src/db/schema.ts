@@ -634,7 +634,6 @@ export const expenses = pgTable(
       .notNull()
       .references(() => institutes.id, { onDelete: "cascade" }),
     category: expenseCategoryEnum("category").notNull(),
-    title: varchar("title", { length: 255 }),
     amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
     method: paymentMethodEnum("method").notNull().default("CASH"),
     description: text("description"),
