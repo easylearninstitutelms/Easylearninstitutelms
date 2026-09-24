@@ -693,13 +693,26 @@ export function ensureAcademicCoreSchema() {
         CREATE INDEX IF NOT EXISTS programme_syllabus_classes_semester_idx
           ON programme_syllabus_classes(semester_id);
 
+        ALTER TABLE attendance ALTER COLUMN batch_id DROP NOT NULL;
+        ALTER TABLE attendance ADD COLUMN IF NOT EXISTS course_id uuid;
+        ALTER TABLE attendance ADD COLUMN IF NOT EXISTS programme_id uuid;
+        ALTER TABLE attendance ADD COLUMN IF NOT EXISTS semester_id uuid;
         ALTER TABLE attendance ADD COLUMN IF NOT EXISTS class_id uuid;
         ALTER TABLE attendance ADD COLUMN IF NOT EXISTS class_type varchar(20);
         ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_student_batch_date;
-        CREATE UNIQUE INDEX IF NOT EXISTS attendance_student_batch_date_class_idx
-          ON attendance(student_id, batch_id, date, class_id);
+        DROP INDEX IF EXISTS attendance_student_batch_date_class_idx;
+        CREATE UNIQUE INDEX IF NOT EXISTS attendance_course_student_date_class_idx
+          ON attendance(student_id, course_id, date, class_id)
+          WHERE course_id IS NOT NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS attendance_programme_student_date_class_idx
+          ON attendance(student_id, programme_id, semester_id, date, class_id)
+          WHERE programme_id IS NOT NULL;
         CREATE INDEX IF NOT EXISTS attendance_class_idx
-          ON attendance(class_id);\
+          ON attendance(class_id);
+        CREATE INDEX IF NOT EXISTS attendance_course_idx
+          ON attendance(course_id);
+        CREATE INDEX IF NOT EXISTS attendance_programme_semester_idx
+          ON attendance(programme_id, semester_id);\
       `);
     })().then(() => undefined);
   }
