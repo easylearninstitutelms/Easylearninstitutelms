@@ -61,8 +61,6 @@ export async function GET(
         s.id AS "studentId",
         s.student_id AS "studentCode",
         s.name AS "studentName",
-        s.phone AS "studentPhone",
-        s.email AS "studentEmail",
 
         f.id AS "feeId",
         f.fee_type AS "feeType",
@@ -184,10 +182,6 @@ export async function GET(
           name: String(
             value(row, "studentName") ?? "",
           ),
-          phone:
-            value(row, "studentPhone") ?? null,
-          email:
-            value(row, "studentEmail") ?? null,
         },
 
         fee: {
@@ -244,13 +238,14 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error(
-      "Payment receipt GET error:",
-      error,
-    );
+    const errorMessage = error instanceof Error ? error.message : "Unknown database error";
+    console.error("Payment receipt GET error:", errorMessage, error);
 
     return Response.json(
-      { error: "Failed to load receipt details" },
+      { 
+        error: "Failed to load receipt details", 
+        details: errorMessage 
+      },
       { status: 500 },
     );
   }
