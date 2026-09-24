@@ -270,10 +270,8 @@ export default function NotificationsPage() {
                       })
                     }
                   >
-                    <option value="ALL">All Active Students</option>
                     <option value="COURSE">Course</option>
                     <option value="PROGRAMME">Programme</option>
-                    <option value="PROGRAMME_SEMESTER">Programme + Semester</option>
                   </select>
                 </div>
 
@@ -324,18 +322,17 @@ export default function NotificationsPage() {
                   </div>
                 )}
 
-                {form.targetType === "PROGRAMME_SEMESTER" && (
+                {form.targetType === "PROGRAMME" && form.programmeId && (
                   <div>
-                    <label className="form-label">Semester *</label>
+                    <label className="form-label">Semester <span className="font-normal text-slate-400">(optional)</span></label>
                     <select
                       className="form-select"
                       value={form.semesterId}
                       onChange={(e) => setForm({ ...form, semesterId: e.target.value })}
-                      required
-                      disabled={optionsLoading || !form.programmeId}
+                      disabled={optionsLoading}
                     >
                       <option value="">
-                        {!form.programmeId ? "Select Programme first" : optionsLoading ? "Loading semesters..." : "Select Semester"}
+                        {optionsLoading ? "Loading semesters..." : "All Semesters"}
                       </option>
                       {(programmes.find((p) => p.id === form.programmeId)?.semesters || []).map((semester) => (
                         <option key={semester.id} value={semester.id}>
