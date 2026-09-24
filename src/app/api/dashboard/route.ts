@@ -2,7 +2,6 @@ import { db } from "@/db";
 import {
   students,
   staff,
-  batches,
   attendance,
   payments,
   fees,
@@ -33,12 +32,6 @@ export async function GET() {
     .select({ count: count() })
     .from(staff)
     .where(and(eq(staff.instituteId, instituteId), eq(staff.status, "ACTIVE")));
-
-  // Batch count
-  const [batchCount] = await db
-    .select({ count: count() })
-    .from(batches)
-    .where(and(eq(batches.instituteId, instituteId), eq(batches.status, "ACTIVE")));
 
   // Today's attendance
   const [presentToday] = await db
@@ -157,7 +150,6 @@ export async function GET() {
   return Response.json({
     studentCount: studentCount?.count ?? 0,
     staffCount: staffCount?.count ?? 0,
-    batchCount: batchCount?.count ?? 0,
     attendance: {
       present: presentToday?.count ?? 0,
       absent: absentToday?.count ?? 0,
