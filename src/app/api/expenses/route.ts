@@ -200,18 +200,26 @@ export async function POST(request: Request) {
     }
   }
 
-  const [expense] = await db
-    .insert(expenses)
-    .values({
-      instituteId: session.instituteId,
-      category: typedCategory,
-      amount: String(parsedAmount),
-      method: typedMethod,
-      description: cleanDescription,
-      expenseDate,
-      addedBy: null,
-    })
-    .returning();
+  try {
+    const [expense] = await db
+      .insert(expenses)
+      .values({
+        instituteId: session.instituteId,
+        category: typedCategory,
+        amount: parsedAmount.toFixed(2),
+        method: typedMethod,
+        description: cleanDescription,
+        expenseDate,
+        addedBy: session.userId,
+      })
+      .returning();
 
-  return Response.json({ expense }, { status: 201 });
+    return Response.json({ expense }, { status: 201 });
+  } catch (error) {
+    console.error("POST /api/expenses failed:", error);
+    return Response.json(
+      { error: "Failed to add expense. Please try again." },
+      { status: 500 },
+    );
+  }
 }
