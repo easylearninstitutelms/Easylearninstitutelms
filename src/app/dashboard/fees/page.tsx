@@ -74,6 +74,13 @@ interface StudentEnrollment {
     status: string;
     batchId: string | null;
   };
+  batch: {
+    id: string;
+    name: string;
+    programmeId: string | null;
+    semesterId: string | null;
+    courseId: string | null;
+  } | null;
   course: {
     id: string;
     name: string;
@@ -436,6 +443,8 @@ export default function FeesPage() {
   const [feeForm, setFeeForm] =
     useState({
       studentId: "",
+      batchId: "",
+      programmeId: "",
       semesterId: "",
       feeType: "MONTHLY",
       amount: "",
@@ -830,6 +839,8 @@ export default function FeesPage() {
     setFeeForm((prev) => ({
       ...prev,
       studentId,
+      batchId: "",
+      programmeId: "",
       semesterId: "",
     }));
 
@@ -862,52 +873,93 @@ export default function FeesPage() {
         "ACTIVE"
     );
 
-  const selectedStudentProgrammeIds =
-    activeStudentEnrollments
-      .map(
-        (item) =>
-          item?.enrollment
-            ?.programmeId
-      )
-      .filter(
-        (
-          programmeId
-        ): programmeId is string =>
-          Boolean(programmeId)
-      );
+  const availableFeeBatches = Array.from(
+    new Map(
+      activeStudentEnrollments
+        .filter(
+          (item) =>
+            Boolean(
+              item?.enrollment?.batchId &&
+              item?.batch?.id
+            )
+        )
+        .map((item) => [
+          String(item.batch!.id),
+          item.batch!,
+        ])
+    ).values()
+  );
 
-  const uniqueStudentProgrammeIds =
-    Array.from(
-      new Set(
-        selectedStudentProgrammeIds
-      )
-    );
+  const selectedFeeBatch =
+    availableFeeBatches.find(
+      (batch) =>
+        batch.id === feeForm.batchId
+    ) || null;
+
+  const availableFeeProgrammes = Array.from(
+    new Map(
+      activeStudentEnrollments
+        .filter((item) => {
+          if (!feeForm.batchId) {
+            return true;
+          }
+
+          return (
+            String(
+              item?.enrollment?.batchId || ""
+            ) === feeForm.batchId
+          );
+        })
+        .map((item) => {
+          const programmeId =
+            item?.enrollment?.programmeId ||
+            item?.batch?.programmeId ||
+            "";
+
+          const programme =
+            item?.programme;
+
+          return programmeId && programme
+            ? [
+                String(programmeId),
+                {
+                  id: String(programme.id),
+                  name: String(programme.name),
+                  code: programme.code
+                    ? String(programme.code)
+                    : null,
+                },
+              ]
+            : null;
+        })
+        .filter(
+          (
+            item
+          ): item is [
+            string,
+            {
+              id: string;
+              name: string;
+              code: string | null;
+            }
+          ] => Boolean(item)
+        )
+    ).values()
+  );
 
   const availableFeeSemesters =
-    uniqueStudentProgrammeIds.length >
-    0
+    feeForm.programmeId
       ? semesters.filter(
           (semester) =>
-            semester.programmeId
-              ? uniqueStudentProgrammeIds.includes(
-                  semester.programmeId
-                )
-              : false
+            semester.programmeId ===
+            feeForm.programmeId
         )
       : [];
 
   const selectedStudentProgrammeNames =
-    activeStudentEnrollments
-      .map(
-        (item) =>
-          item?.programme?.name
-      )
-      .filter(
-        (
-          name
-        ): name is string =>
-          Boolean(name)
-      );
+    availableFeeProgrammes.map(
+      (programme) => programme.name
+    );
 
   const uniqueStudentProgrammeNames =
     Array.from(
@@ -939,9 +991,45 @@ export default function FeesPage() {
       return;
     }
 
+    if (!feeForm.batchId) {
+      setError(
+        "Please select a batch."
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    if (!feeForm.programmeId) {
+      setError(
+        "Please select a programme."
+      );
+      setSubmitting(false);
+      return;
+    }
+
     if (!feeForm.semesterId) {
       setError(
         "Please select a semester."
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    const selectedEnrollment = activeStudentEnrollments.find(
+      (item) =>
+        String(
+          item?.enrollment?.batchId || ""
+        ) === feeForm.batchId &&
+        String(
+          item?.enrollment?.programmeId ||
+            item?.batch?.programmeId ||
+            ""
+        ) === feeForm.programmeId
+    );
+
+    if (!selectedEnrollment) {
+      setError(
+        "The selected batch and programme are not part of this student's active enrollment."
       );
       setSubmitting(false);
       return;
@@ -1023,6 +1111,8 @@ export default function FeesPage() {
 
       setFeeForm({
         studentId: "",
+        batchId: "",
+        programmeId: "",
         semesterId: "",
         feeType: "MONTHLY",
         amount: "",
@@ -1308,6 +1398,8 @@ export default function FeesPage() {
 
     setFeeForm({
       studentId: "",
+      batchId: "",
+      programmeId: "",
       semesterId: "",
       feeType: "MONTHLY",
       amount: "",
@@ -3029,57 +3121,136 @@ export default function FeesPage() {
 
                 <div>
                   <label className="form-label">
-                    Semester *
+                    Batch *
                   </label>
 
                   <select
                     className="form-select"
-                    value={
-                      feeForm.semesterId
-                    }
+                    value={feeForm.batchId}
                     onChange={(e) =>
-                      setFeeForm(
-                        (prev) => ({
-                          ...prev,
-                          semesterId:
-                            e.target
-                              .value,
-                        })
-                      )
+                      setFeeForm((prev) => ({
+                        ...prev,
+                        batchId: e.target.value,
+                        programmeId: "",
+                        semesterId: "",
+                      }))
                     }
                     disabled={
-                      loadingSemesters ||
                       loadingStudentEnrollment ||
                       !feeForm.studentId
                     }
                     required
                   >
                     <option value="">
+                      {loadingStudentEnrollment
+                        ? "Loading student's batches..."
+                        : !feeForm.studentId
+                          ? "Select student first"
+                          : availableFeeBatches.length === 0
+                            ? "No active batches"
+                            : "Select batch"}
+                    </option>
+
+                    {availableFeeBatches.map(
+                      (batch) => (
+                        <option
+                          key={batch.id}
+                          value={batch.id}
+                        >
+                          {batch.name}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="form-label">
+                    Programme *
+                  </label>
+
+                  <select
+                    className="form-select"
+                    value={feeForm.programmeId}
+                    onChange={(e) =>
+                      setFeeForm((prev) => ({
+                        ...prev,
+                        programmeId: e.target.value,
+                        semesterId: "",
+                      }))
+                    }
+                    disabled={
+                      loadingStudentEnrollment ||
+                      !feeForm.batchId
+                    }
+                    required
+                  >
+                    <option value="">
+                      {!feeForm.batchId
+                        ? "Select batch first"
+                        : availableFeeProgrammes.length === 0
+                          ? "No programme for this batch"
+                          : "Select programme"}
+                    </option>
+
+                    {availableFeeProgrammes.map(
+                      (programme) => (
+                        <option
+                          key={programme.id}
+                          value={programme.id}
+                        >
+                          {programme.name}
+                          {programme.code
+                            ? " (" + programme.code + ")"
+                            : ""}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="form-label">
+                    Semester *
+                  </label>
+
+                  <select
+                    className="form-select"
+                    value={feeForm.semesterId}
+                    onChange={(e) =>
+                      setFeeForm((prev) => ({
+                        ...prev,
+                        semesterId: e.target.value,
+                      }))
+                    }
+                    disabled={
+                      loadingSemesters ||
+                      loadingStudentEnrollment ||
+                      !feeForm.programmeId
+                    }
+                    required
+                  >
+                    <option value="">
                       {loadingSemesters
                         ? "Loading semesters..."
-                        : loadingStudentEnrollment
-                          ? "Loading student's programme..."
-                          : !feeForm.studentId
-                            ? "Select student first"
-                            : availableFeeSemesters.length ===
-                                0
-                              ? "No applicable semesters"
-                              : "Select semester"}
+                        : !feeForm.studentId
+                          ? "Select student first"
+                          : !feeForm.batchId
+                            ? "Select batch first"
+                            : !feeForm.programmeId
+                              ? "Select programme first"
+                              : availableFeeSemesters.length === 0
+                                ? "No semesters for this programme"
+                                : "Select semester"}
                     </option>
 
                     {availableFeeSemesters.map(
                       (semester) => (
                         <option
-                          key={
-                            semester.id
-                          }
-                          value={
-                            semester.id
-                          }
+                          key={semester.id}
+                          value={semester.id}
                         >
-                          {getSemesterLabel(
-                            semester
-                          )}
+                          {getSemesterLabel(semester)}
                         </option>
                       )
                     )}
@@ -3087,41 +3258,24 @@ export default function FeesPage() {
 
                   {feeForm.studentId &&
                     !loadingStudentEnrollment &&
-                    uniqueStudentProgrammeNames.length >
-                      0 && (
-                      <p className="mt-1 text-xs text-slate-500">
-                        Enrolled Programme:{" "}
-                        <span className="font-semibold text-blue-600">
-                          {
-                            uniqueStudentProgrammeNames.join(
-                              ", "
-                            )
-                          }
-                        </span>
-                      </p>
-                    )}
-
-                  {feeForm.studentId &&
-                    !loadingStudentEnrollment &&
-                    availableFeeSemesters.length ===
-                      0 && (
+                    availableFeeBatches.length === 0 && (
                       <p className="mt-1 text-xs text-red-500">
-                        This student has no active
-                        Programme enrollment with
-                        available semesters. If the
-                        student is enrolled in a
-                        Course only, Programme
-                        semesters are not applicable.
+                        This student has no active batch enrollment.
                       </p>
                     )}
 
-                  {!feeForm.studentId &&
-                    !loadingSemesters && (
-                      <p className="mt-1 text-xs text-slate-400">
-                        Select a student first. Only
-                        that student&apos;s enrolled
-                        Programme semesters will be
-                        shown.
+                  {feeForm.batchId &&
+                    !loadingStudentEnrollment &&
+                    availableFeeProgrammes.length === 0 && (
+                      <p className="mt-1 text-xs text-red-500">
+                        This batch has no active Programme enrollment for this student.
+                      </p>
+                    )}
+
+                  {feeForm.programmeId &&
+                    availableFeeSemesters.length === 0 && (
+                      <p className="mt-1 text-xs text-red-500">
+                        This Programme has no available semesters.
                       </p>
                     )}
                 </div>
@@ -3262,6 +3416,29 @@ export default function FeesPage() {
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
                         <span className="text-slate-500">
+                          Batch
+                        </span>
+
+                        <span className="text-right font-semibold text-blue-700">
+                          {selectedFeeBatch?.name || "-"}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">
+                          Programme
+                        </span>
+
+                        <span className="text-right font-semibold text-blue-700">
+                          {availableFeeProgrammes.find(
+                            (programme) =>
+                              programme.id === feeForm.programmeId
+                          )?.name || "-"}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">
                           Semester
                         </span>
 
@@ -3346,9 +3523,10 @@ export default function FeesPage() {
                     submitting ||
                     loadingStudentEnrollment ||
                     !feeForm.studentId ||
+                    !feeForm.batchId ||
+                    !feeForm.programmeId ||
                     !feeForm.semesterId ||
-                    availableFeeSemesters.length ===
-                      0
+                    availableFeeSemesters.length === 0
                   }
                   className="btn btn-primary"
                 >
