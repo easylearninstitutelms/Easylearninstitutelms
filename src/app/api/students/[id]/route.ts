@@ -402,7 +402,22 @@ export async function GET(
 
     const studentPayments =
       await db
-        .select()
+        .select({
+          id: payments.id,
+          instituteId: payments.instituteId,
+          studentId: payments.studentId,
+          feeId: payments.feeId,
+          amount: payments.amount,
+          method: payments.method,
+          transactionReference:
+            payments.transactionReference,
+          receiptNumber:
+            payments.receiptNumber,
+          collectedBy:
+            payments.collectedBy,
+          paidAt: payments.paidAt,
+          createdAt: payments.createdAt,
+        })
         .from(payments)
         .where(
           and(
