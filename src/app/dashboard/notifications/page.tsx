@@ -3,12 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { formatDateTime } from "@/lib/utils";
 
-interface SemesterOption {
-  id: string;
-  semesterNo: number;
-  name: string;
-}
-
 interface CourseOption {
   id: string;
   name: string;
@@ -20,7 +14,6 @@ interface ProgrammeOption {
   name: string;
   code?: string | null;
   programmeNo?: number | null;
-  semesters: SemesterOption[];
 }
 
 interface Notification {
@@ -63,7 +56,6 @@ export default function NotificationsPage() {
     targetType: "ALL",
     courseId: "",
     programmeId: "",
-    semesterId: "",
   });
 
   const fetchNotifications = useCallback(async () => {
@@ -99,8 +91,6 @@ export default function NotificationsPage() {
     fetchNotifications();
     fetchOptions();
   }, [fetchNotifications, fetchOptions]);
-
-  const selectedProgramme = programmes.find((item) => item.id === form.programmeId);
 
   function closeModal() {
     setShowModal(false);
@@ -268,13 +258,12 @@ export default function NotificationsPage() {
                         targetType: e.target.value,
                         courseId: "",
                         programmeId: "",
-                        semesterId: "",
                       })
                     }
                   >
                     <option value="ALL">All Active Students</option>
                     <option value="COURSE">Course</option>
-                    <option value="PROGRAMME_SEMESTER">Programme + Semester</option>
+                    <option value="PROGRAMME">Programme</option>
                   </select>
                 </div>
 
@@ -298,52 +287,31 @@ export default function NotificationsPage() {
                   </div>
                 )}
 
-                {form.targetType === "PROGRAMME_SEMESTER" && (
-                  <>
-                    <div>
-                      <label className="form-label">Programme *</label>
-                      <select
-                        className="form-select"
-                        value={form.programmeId}
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            programmeId: e.target.value,
-                            semesterId: "",
-                          })
-                        }
-                        required
-                        disabled={optionsLoading}
-                      >
-                        <option value="">{optionsLoading ? "Loading programmes..." : "Select Programme"}</option>
-                        {programmes.map((programme) => (
-                          <option key={programme.id} value={programme.id}>
-                            {programme.programmeNo ? `Programme ${programme.programmeNo} — ` : ""}{programme.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="form-label">Semester *</label>
-                      <select
-                        className="form-select"
-                        value={form.semesterId}
-                        onChange={(e) => setForm({ ...form, semesterId: e.target.value })}
-                        required
-                        disabled={!form.programmeId || optionsLoading}
-                      >
-                        <option value="">
-                          {!form.programmeId ? "Select Programme first" : "Select Semester"}
+                {form.targetType === "PROGRAMME" && (
+                  <div>
+                    <label className="form-label">Programme *</label>
+                    <select
+                      className="form-select"
+                      value={form.programmeId}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          programmeId: e.target.value,
+                        })
+                      }
+                      required
+                      disabled={optionsLoading}
+                    >
+                      <option value="">
+                        {optionsLoading ? "Loading programmes..." : "Select Programme"}
+                      </option>
+                      {programmes.map((programme) => (
+                        <option key={programme.id} value={programme.id}>
+                          {programme.programmeNo ? `Programme ${programme.programmeNo} — ` : ""}{programme.name}
                         </option>
-                        {(selectedProgramme?.semesters || []).map((semester) => (
-                          <option key={semester.id} value={semester.id}>
-                            Semester {semester.semesterNo} — {semester.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
+                      ))}
+                    </select>
+                  </div>
                 )}
 
                 <div>
