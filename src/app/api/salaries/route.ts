@@ -130,10 +130,20 @@ export async function GET(
 
     const rows = await db
       .select({
-        salary: salaries,
+        salary: {
+          id: salaries.id,
+          month: salaries.month,
+          basic: salaries.basic,
+          bonus: salaries.bonus,
+          deduction: salaries.deduction,
+          payable: salaries.payable,
+          paid: salaries.paid,
+          due: salaries.due,
+          paymentDate: salaries.paymentDate,
+          method: salaries.method,
+        },
         staffName: staff.name,
-        designation:
-          staff.designation,
+        designation: staff.designation,
       })
       .from(salaries)
       .leftJoin(
@@ -435,7 +445,18 @@ export async function POST(
           method:
             method || null,
         })
-        .returning();
+        .returning({
+          id: salaries.id,
+          month: salaries.month,
+          basic: salaries.basic,
+          bonus: salaries.bonus,
+          deduction: salaries.deduction,
+          payable: salaries.payable,
+          paid: salaries.paid,
+          due: salaries.due,
+          paymentDate: salaries.paymentDate,
+          method: salaries.method,
+        });
 
     return Response.json(
       {
