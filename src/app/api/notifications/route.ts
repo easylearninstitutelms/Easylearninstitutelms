@@ -220,6 +220,7 @@ export async function POST(request: Request) {
           SELECT 1 FROM batches b
           WHERE b.id = e.batch_id
             AND b.semester_id = ${semesterId}
+        )
       `;
     }
 
