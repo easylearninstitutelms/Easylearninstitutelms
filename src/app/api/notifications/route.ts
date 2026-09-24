@@ -192,20 +192,28 @@ export async function POST(request: Request) {
       u.institute_id = ${session.instituteId}
       AND u.role = 'STUDENT'
       AND u.status = 'ACTIVE'
+      AND s.institute_id = ${session.instituteId}
       AND s.status = 'ACTIVE'
+      AND EXISTS (
+        SELECT 1
+        FROM enrollments e
+        WHERE e.student_id = s.id
+          AND e.institute_id = ${session.instituteId}
+          AND e.status = 'ACTIVE'
     `;
 
     if (targetType === "COURSE") {
       recipientFilter = sql`
         ${recipientFilter}
-        AND (
-          e.course_id = ${courseId}
-          OR EXISTS (
-            SELECT 1
-            FROM batches b
-            WHERE b.id = e.batch_id
-              AND b.institute_id = ${session.instituteId}
-              AND b.course_id = ${courseId}
+          AND (
+            e.course_id = ${courseId}
+            OR EXISTS (
+              SELECT 1
+              FROM batches b
+              WHERE b.id = e.batch_id
+                AND b.institute_id = ${session.instituteId}
+                AND b.course_id = ${courseId}
+            )
           )
         )
       `;
@@ -214,14 +222,15 @@ export async function POST(request: Request) {
     if (targetType === "PROGRAMME") {
       recipientFilter = sql`
         ${recipientFilter}
-        AND (
-          e.programme_id = ${programmeId}
-          OR EXISTS (
-            SELECT 1
-            FROM batches b
-            WHERE b.id = e.batch_id
-              AND b.institute_id = ${session.instituteId}
-              AND b.programme_id = ${programmeId}
+          AND (
+            e.programme_id = ${programmeId}
+            OR EXISTS (
+              SELECT 1
+              FROM batches b
+              WHERE b.id = e.batch_id
+                AND b.institute_id = ${session.instituteId}
+                AND b.programme_id = ${programmeId}
+            )
           )
         )
       `;
@@ -230,10 +239,13 @@ export async function POST(request: Request) {
     if (targetType === "PROGRAMME" && semesterId) {
       recipientFilter = sql`
         ${recipientFilter}
-        AND EXISTS (
-          SELECT 1 FROM batches b
-          WHERE b.id = e.batch_id
-            AND b.semester_id = ${semesterId}
+          AND EXISTS (
+            SELECT 1
+            FROM batches b
+            WHERE b.id = e.batch_id
+              AND b.institute_id = ${session.instituteId}
+              AND b.semester_id = ${semesterId}
+          )
         )
       `;
     }
@@ -275,10 +287,6 @@ export async function POST(request: Request) {
       INNER JOIN students s
         ON s.user_id = u.id
        AND s.institute_id = ${session.instituteId}
-      LEFT JOIN enrollments e
-        ON e.student_id = s.id
-       AND e.institute_id = ${session.instituteId}
-       AND e.status = 'ACTIVE'
       WHERE ${recipientFilter}
     `));
 
