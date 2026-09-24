@@ -50,23 +50,18 @@ async function getHomeworkForStudent(
       AND EXISTS (
         SELECT 1
         FROM enrollments e
-        LEFT JOIN batches eb
-          ON eb.id = e.batch_id
         WHERE e.student_id = ${studentId}
           AND e.status = 'ACTIVE'
           AND (
-            (
-              h.batch_id IS NOT NULL
-              AND e.batch_id = h.batch_id
-            )
-            OR (
+(
               h.course_id IS NOT NULL
-              AND eb.course_id = h.course_id
+              AND e.course_id = h.course_id
             )
             OR (
               h.programme_id IS NOT NULL
-              AND eb.programme_id = h.programme_id
+              AND e.programme_id = h.programme_id
             )
+            AND h.semester_id = e.semester_id
           )
       )
     LIMIT 1
