@@ -133,6 +133,9 @@ export function ensureAcademicSchema() {
         ALTER TABLE enrollments
           ADD COLUMN IF NOT EXISTS programme_id uuid;
 
+        ALTER TABLE enrollments
+          ADD COLUMN IF NOT EXISTS semester_id uuid;
+
         CREATE INDEX IF NOT EXISTS enrollments_course_idx
           ON enrollments(course_id);
 
