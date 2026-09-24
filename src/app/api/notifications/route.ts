@@ -213,6 +213,16 @@ export async function POST(request: Request) {
       `;
     }
 
+    if (targetType === "PROGRAMME_SEMESTER") {
+      recipientFilter = sql`
+        ${recipientFilter}
+        AND EXISTS (
+          SELECT 1 FROM batches b
+          WHERE b.id = e.batch_id
+            AND b.semester_id = ${semesterId}
+      `;
+    }
+
     const result = await db.execute(sql`
       INSERT INTO notifications (
         institute_id,
