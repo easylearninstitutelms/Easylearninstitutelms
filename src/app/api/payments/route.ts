@@ -16,7 +16,6 @@ type FeeStatus =
   | "DUE"
   | "WAIVED";
 
-
 type Row = Record<string, unknown>;
 
 function rowsOf(result: unknown): Row[] {
@@ -333,6 +332,8 @@ export async function POST(request: Request) {
       .select({
         id: fees.id,
         studentId: fees.studentId,
+        amount: fees.amount,
+        discount: fees.discount,
         dueAmount: fees.dueAmount,
       })
       .from(fees)
@@ -358,13 +359,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const currentDue = Number(
-      fee.dueAmount ?? "0",
-    );
+    // Safely calculate current due (handling nulls)
+    let currentDue: number;
+    if (fee.dueAmount !== null && fee.dueAmount !== undefined) {
+      currentDue = Number(fee.dueAmount);
+    } else {
+      const originalAmount = Number(fee.amount ?? "0");
+      const discountAmount = Number(fee.discount ?? "0");
+      currentDue = Math.max(0, originalAmount - discountAmount);
+    }
 
     if (
       Number.isFinite(currentDue) &&
-      paymentAmount > currentDue
+      Math.round(paymentAmount * 100) > Math.round(currentDue * 100)
     ) {
       return errorResponse(
         "Payment cannot be greater than the due amount",
@@ -376,125 +383,63 @@ export async function POST(request: Request) {
   // Insert payment
   // ─────────────────────────────────────────────
 
-  const paymentResult = await db.execute(sql`
-    INSERT INTO payments (
-      institute_id,
-      student_id,
-      fee_id,
-      amount,
-      method,
-      transaction_reference,
-      receipt_number,
-      collected_by
-    )
-    VALUES (
-      ${instituteId},
-      ${student.id},
-      ${cleanFeeId},
-      ${paymentAmount.toFixed(2)},
-      ${cleanMethod},
-      ${cleanTransactionReference},
-      ${cleanReceiptNumber},
-      ${null}
-    )
-    RETURNING
-      id,
-      student_id AS "studentId",
-      fee_id AS "feeId",
-      amount,
-      method,
-      transaction_reference AS "transactionReference",
-      receipt_number AS "receiptNumber",
-      collected_by AS "collectedBy",
-      paid_at AS "paidAt",
-      created_at AS "createdAt"
-  `);
-
-  const payment = rowsOf(paymentResult)[0];
-
-  if (!payment) {
-    return errorResponse(
-      "Failed to create payment",
-      500,
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // Update linked fee
-  // ─────────────────────────────────────────────
-
-  if (cleanFeeId) {
-    const [fee] = await db
-      .select({
-        id: fees.id,
-        amount: fees.amount,
-        discount: fees.discount,
-        dueAmount: fees.dueAmount,
-      })
-      .from(fees)
-      .where(
-        and(
-          eq(fees.id, cleanFeeId),
-          eq(
-            fees.instituteId,
-            instituteId,
-          ),
-          eq(
-            fees.studentId,
-            student.id,
-          ),
-        ),
+  try {
+    const paymentResult = await db.execute(sql`
+      INSERT INTO payments (
+        institute_id,
+        student_id,
+        fee_id,
+        amount,
+        method,
+        transaction_reference,
+        receipt_number,
+        collected_by
       )
-      .limit(1);
+      VALUES (
+        ${instituteId},
+        ${student.id},
+        ${cleanFeeId},
+        ${paymentAmount.toFixed(2)},
+        ${cleanMethod},
+        ${cleanTransactionReference},
+        ${cleanReceiptNumber},
+        ${null}
+      )
+      RETURNING
+        id,
+        student_id AS "studentId",
+        fee_id AS "feeId",
+        amount,
+        method,
+        transaction_reference AS "transactionReference",
+        receipt_number AS "receiptNumber",
+        collected_by AS "collectedBy",
+        paid_at AS "paidAt",
+        created_at AS "createdAt"
+    `);
 
-    if (fee) {
-      const currentDue = Number(
-        fee.dueAmount ?? "0",
+    const payment = rowsOf(paymentResult)[0];
+
+    if (!payment) {
+      return errorResponse(
+        "Failed to create payment",
+        500,
       );
+    }
 
-      const newDue =
-        Math.max(
-          0,
-          Math.round(
-            (currentDue - paymentAmount) *
-              100,
-          ) / 100,
-        );
+    // ─────────────────────────────────────────────
+    // Update linked fee
+    // ─────────────────────────────────────────────
 
-      let newStatus: FeeStatus;
-
-      if (newDue <= 0) {
-        newStatus = "PAID";
-      } else {
-        const originalAmount =
-          Number(fee.amount ?? "0");
-
-        const discountAmount =
-          Number(fee.discount ?? "0");
-
-        const netAmount =
-          Math.max(
-            0,
-            originalAmount -
-              discountAmount,
-          );
-
-        if (
-          paymentAmount >= netAmount
-        ) {
-          newStatus = "PAID";
-        } else {
-          newStatus = "PARTIAL";
-        }
-      }
-
-      await db
-        .update(fees)
-        .set({
-          dueAmount: newDue.toFixed(2),
-          status: newStatus,
-          updatedAt: new Date(),
+    if (cleanFeeId) {
+      const [fee] = await db
+        .select({
+          id: fees.id,
+          amount: fees.amount,
+          discount: fees.discount,
+          dueAmount: fees.dueAmount,
         })
+        .from(fees)
         .where(
           and(
             eq(fees.id, cleanFeeId),
@@ -502,15 +447,85 @@ export async function POST(request: Request) {
               fees.instituteId,
               instituteId,
             ),
+            eq(
+              fees.studentId,
+              student.id,
+            ),
           ),
-        );
+        )
+        .limit(1);
+
+      if (fee) {
+        let currentDue: number;
+        if (fee.dueAmount !== null && fee.dueAmount !== undefined) {
+          currentDue = Number(fee.dueAmount);
+        } else {
+          const originalAmount = Number(fee.amount ?? "0");
+          const discountAmount = Number(fee.discount ?? "0");
+          currentDue = Math.max(0, originalAmount - discountAmount);
+        }
+
+        const newDue =
+          Math.max(
+            0,
+            Math.round(
+              (currentDue - paymentAmount) *
+                100,
+            ) / 100,
+          );
+
+        let newStatus: FeeStatus;
+
+        if (newDue <= 0) {
+          newStatus = "PAID";
+        } else {
+          const originalAmount =
+            Number(fee.amount ?? "0");
+
+          const discountAmount =
+            Number(fee.discount ?? "0");
+
+          const netAmount =
+            Math.max(
+              0,
+              originalAmount -
+                discountAmount,
+            );
+
+          if (
+            paymentAmount >= netAmount
+          ) {
+            newStatus = "PAID";
+          } else {
+            newStatus = "PARTIAL";
+          }
+        }
+
+        await db
+          .update(fees)
+          .set({
+            dueAmount: newDue.toFixed(2),
+            status: newStatus,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(fees.id, cleanFeeId),
+              eq(
+                fees.instituteId,
+                instituteId,
+              ),
+            ),
+          );
+      }
     }
+
+    return Response.json(
+      { payment },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error("Payment insert error:", error);
+    return errorResponse("Internal server error during payment processing", 500);
   }
-
-  return Response.json(
-    { payment },
-    { status: 201 },
-  );
 }
-
-
