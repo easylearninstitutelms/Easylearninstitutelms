@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 let vapidConfigured = false;
 
 export async function ensurePushSubscriptionsTable() {
-  await db.execute(sql\`
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS push_subscriptions (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -16,11 +16,11 @@ export async function ensurePushSubscriptionsTable() {
       created_at timestamp NOT NULL DEFAULT now(),
       updated_at timestamp NOT NULL DEFAULT now()
     )
-  \`);
-  await db.execute(sql\`
+  `);
+  await db.execute(sql`
     CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx
     ON push_subscriptions(user_id)
-  \`);
+  `);
 }
 
 function configureVapid() {
@@ -53,11 +53,11 @@ export async function sendPushToUsers(
   await ensurePushSubscriptionsTable();
 
   const uniqueUserIds = [...new Set(userIds)];
-  const subscriptions = await db.execute(sql\`
+  const subscriptions = await db.execute(sql`
     SELECT id, endpoint, p256dh, auth
     FROM push_subscriptions
-    WHERE user_id = ANY(\${uniqueUserIds}::uuid[])
-  \`);
+    WHERE user_id = ANY(${uniqueUserIds}::uuid[])
+  `);
 
   let sent = 0;
 
@@ -83,10 +83,10 @@ export async function sendPushToUsers(
     } catch (error: any) {
       const statusCode = error?.statusCode;
       if (statusCode === 404 || statusCode === 410) {
-        await db.execute(sql\`
+        await db.execute(sql`
           DELETE FROM push_subscriptions
-          WHERE id = \${subscription.id}
-        \`);
+          WHERE id = ${subscription.id}
+        `);
       } else {
         console.error("Web push delivery failed:", error);
       }
