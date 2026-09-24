@@ -21,8 +21,7 @@ export default function PushNotificationSetup() {
       if (
         !("serviceWorker" in navigator) ||
         !("PushManager" in window) ||
-        !("Notification" in window) ||
-        Notification.permission === "denied"
+        !("Notification" in window)
       ) return;
 
       try {
