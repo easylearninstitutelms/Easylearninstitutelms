@@ -252,34 +252,36 @@ export async function POST(request: Request) {
             WHERE e.student_id = s.id
               AND (e.status IS NULL OR e.status <> 'ARCHIVED')
               AND (
-                e.programme_id = ${programmeId}
-                OR EXISTS (
-                  SELECT 1
-                  FROM batches b
-                  WHERE b.id = e.batch_id
-                    AND b.institute_id = ${session.instituteId}
-                    AND b.programme_id = ${programmeId}
-                )
-              )
-              ${semesterId ? sql`AND EXISTS (
-                SELECT 1
-                FROM programme_semesters ps
-                WHERE ps.id = ${semesterId}
-                  AND ps.institute_id = ${session.instituteId}
-                  AND ps.programme_id = ${programmeId}
-                  AND (
-                    e.semester_id = ps.id
-                    OR EXISTS (
-                      SELECT 1
-                      FROM batches bs
-                      WHERE bs.id = e.batch_id
-                        AND bs.institute_id = ${session.instituteId}
-                        AND bs.programme_id = ps.programme_id
-                        AND bs.semester_id = ps.id
-                    )
+                ${semesterId ? sql`
+                  EXISTS (
+                    SELECT 1
+                    FROM programme_semesters ps
+                    WHERE ps.id = ${semesterId}
+                      AND ps.institute_id = ${session.instituteId}
+                      AND ps.programme_id = ${programmeId}
+                      AND (
+                        e.semester_id = ps.id
+                        OR EXISTS (
+                          SELECT 1
+                          FROM batches bs
+                          WHERE bs.id = e.batch_id
+                            AND bs.institute_id = ${session.instituteId}
+                            AND bs.semester_id = ps.id
+                        )
+                      )
                   )
-              )` : sql``}
-          )
+                ` : sql`
+                  e.programme_id = ${programmeId}
+                  OR EXISTS (
+                    SELECT 1
+                    FROM batches b
+                    WHERE b.id = e.batch_id
+                      AND b.institute_id = ${session.instituteId}
+                      AND b.programme_id = ${programmeId}
+                  )
+                `}
+              )
+                    )
           OR (
             ${!semesterId}
             AND (
