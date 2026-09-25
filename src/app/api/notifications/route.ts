@@ -235,6 +235,10 @@ export async function POST(request: Request) {
       const programmeNumber = Number(programme?.programmeNo || 0);
       const programmeCodePrefix = `${String(programme?.code || "")}${programmeNumber}%`;
       const programmeNamePrefix = `${suggestProgrammeCode(String(programme?.name || ""))}${programmeNumber}%`;
+      const programmeNumberPattern =
+        Number.isInteger(programmeNumber) && programmeNumber > 0
+          ? `^[A-Za-z0-9]+${programmeNumber}[0-9]{4}$`
+          : "";
       recipientFilter = sql`
         u.institute_id = ${session.instituteId}
         AND u.role = 'STUDENT'
@@ -271,13 +275,13 @@ export async function POST(request: Request) {
           OR (
             ${!semesterId}
             AND (
-              s.student_id LIKE ${programmeCodePrefix}
-              OR s.student_id LIKE ${programmeNamePrefix}
+              s.student_id ILIKE ${programmeCodePrefix}
+              OR s.student_id ILIKE ${programmeNamePrefix}
+              OR (${programmeNumberPattern} <> '' AND s.student_id ~* ${programmeNumberPattern})
             )
           )
         )
-      `;
-    }
+      `;    }
 
     const result = await db.execute(sql`
       INSERT INTO notifications (
