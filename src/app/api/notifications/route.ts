@@ -232,41 +232,45 @@ export async function POST(request: Request) {
         )
       `;
     } else {
+      const programmeStudentPrefix = `${String(programme?.code || suggestProgrammeCode(String(programme?.name || "")))}${Number(programme?.programmeNo || 0)}%`;
+
       recipientFilter = sql`
         u.institute_id = ${session.instituteId}
         AND u.role = 'STUDENT'
         AND u.status = 'ACTIVE'
         AND s.institute_id = ${session.instituteId}
         AND s.status = 'ACTIVE'
-        AND EXISTS (
-          SELECT 1
-          FROM enrollments e
-          WHERE e.student_id = s.id
-            AND e.status = 'ACTIVE'
-            AND (
-              e.programme_id = ${programmeId}
-              OR EXISTS (
-                SELECT 1
-                FROM batches b
-                WHERE b.id = e.batch_id
-                  AND b.institute_id = ${session.instituteId}
-                  AND b.programme_id = ${programmeId}
+        AND (
+          EXISTS (
+            SELECT 1
+            FROM enrollments e
+            WHERE e.student_id = s.id
+              AND e.status = 'ACTIVE'
+              AND (
+                e.programme_id = ${programmeId}
+                OR EXISTS (
+                  SELECT 1
+                  FROM batches b
+                  WHERE b.id = e.batch_id
+                    AND b.institute_id = ${session.instituteId}
+                    AND b.programme_id = ${programmeId}
+                )
               )
-              OR (
-                ${!semesterId}
-                AND s.student_id LIKE ${`${String(programme?.code || suggestProgrammeCode(String(programme?.name || "")))}${Number(programme?.programmeNo || 0)}%`}
-              )
-            )
-            ${semesterId ? sql`AND (
-              e.semester_id = ${semesterId}
-              OR EXISTS (
-                SELECT 1
-                FROM batches bs
-                WHERE bs.id = e.batch_id
-                  AND bs.institute_id = ${session.instituteId}
-                  AND bs.semester_id = ${semesterId}
-              )
-            )` : sql``}
+              ${semesterId ? sql`AND (
+                e.semester_id = ${semesterId}
+                OR EXISTS (
+                  SELECT 1
+                  FROM batches bs
+                  WHERE bs.id = e.batch_id
+                    AND bs.institute_id = ${session.instituteId}
+                    AND bs.semester_id = ${semesterId}
+                )
+              )` : sql``}
+          )
+          OR (
+            ${!semesterId}
+            AND s.student_id LIKE ${programmeStudentPrefix}
+          )
         )
       `;
     }
