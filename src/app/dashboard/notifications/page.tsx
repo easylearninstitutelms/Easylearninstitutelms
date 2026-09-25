@@ -143,6 +143,51 @@ export default function NotificationsPage() {
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
+  async function handleDeleteNotification(id: string) {
+    if (!window.confirm("Delete this notification history item?")) return;
+    setError("");
+    try {
+      const res = await fetch("/api/notifications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to delete notification.");
+      await fetchNotifications();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete notification.");
+    }
+  }
+
+  async function handleEditNotification(notification: Notification) {
+    const title = window.prompt("Edit notification title", notification.title);
+    if (title === null) return;
+    const body = window.prompt("Edit notification message", notification.body || "");
+    if (body === null) return;
+    if (!title.trim()) {
+      setError("Title is required.");
+      return;
+    }
+    setError("");
+    try {
+      const res = await fetch("/api/notifications", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          notificationId: notification.id,
+          title: title.trim(),
+          body: body.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to edit notification.");
+      await fetchNotifications();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to edit notification.");
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div className="page-header">
@@ -202,6 +247,8 @@ export default function NotificationsPage() {
                     <span className="badge badge-blue">{n.type.replace("_", " ")}</span>
                     <span className="text-xs font-medium text-emerald-600">Saved in notification history</span>
                     <span className="text-xs text-slate-400">{formatDateTime(n.createdAt)}</span>
+                    <button type="button" onClick={() => handleEditNotification(n)} className="text-xs font-semibold text-blue-600 hover:underline">Edit</button>
+                    <button type="button" onClick={() => handleDeleteNotification(n.id)} className="text-xs font-semibold text-red-600 hover:underline">Delete</button>
                   </div>
                 </div>
               </div>
