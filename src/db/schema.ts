@@ -18,6 +18,19 @@ import { relations } from "drizzle-orm";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
+export const questionTypeEnum = pgEnum("question_type", [
+  "MCQ",
+  "TRUE_FALSE",
+  "SHORT_ANSWER",
+  "DESCRIPTIVE",
+]);
+
+export const questionDifficultyEnum = pgEnum("question_difficulty", [
+  "EASY",
+  "MEDIUM",
+  "HARD",
+]);
+
 export const instituteStatusEnum = pgEnum("institute_status", [
   "TRIAL",
   "ACTIVE",
@@ -895,7 +908,61 @@ export const auditLogs = pgTable(
   ]
 );
 
+export const questionBank = pgTable(
+  "question_bank",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    instituteId: uuid("institute_id")
+      .notNull()
+      .references(() => institutes.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id").references(() => courses.id, { onDelete: "cascade" }),
+    programmeId: uuid("programme_id").references(() => programmes.id, { onDelete: "cascade" }),
+    semesterId: uuid("semester_id").references(() => programmeSemesters.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    question: text("question").notNull(),
+    type: questionTypeEnum("type").notNull(),
+    optionsJson: jsonb("options_json"),
+    correctAnswer: text("correct_answer"),
+    explanation: text("explanation"),
+    difficulty: questionDifficultyEnum("difficulty").notNull().default("MEDIUM"),
+    topic: varchar("topic", { length: 255 }),
+    marks: numeric("marks", { precision: 6, scale: 2 }).notNull().default("1"),
+    source: varchar("source", { length: 30 }).notNull().default("AI"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("question_bank_institute_idx").on(t.instituteId),
+    index("question_bank_course_idx").on(t.courseId),
+    index("question_bank_programme_semester_idx").on(t.programmeId, t.semesterId),
+    index("question_bank_type_idx").on(t.type),
+  ]
+);
+
 // ─── Relations ────────────────────────────────────────────────────────────────
+
+export const questionBankRelations = relations(questionBank, ({ one }) => ({
+  institute: one(institutes, {
+    fields: [questionBank.instituteId],
+    references: [institutes.id],
+  }),
+  course: one(courses, {
+    fields: [questionBank.courseId],
+    references: [courses.id],
+  }),
+  programme: one(programmes, {
+    fields: [questionBank.programmeId],
+    references: [programmes.id],
+  }),
+  semester: one(programmeSemesters, {
+    fields: [questionBank.semesterId],
+    references: [programmeSemesters.id],
+  }),
+  createdByUser: one(users, {
+    fields: [questionBank.createdBy],
+    references: [users.id],
+  }),
+});
 
 export const institutesRelations = relations(institutes, ({ many }) => ({
   users: many(users),
