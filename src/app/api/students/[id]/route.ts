@@ -231,6 +231,7 @@ export async function GET(
       await db
         .select({
           enrollment: enrollments,
+          batch: batches,
           directCourse: courses,
           batchCourse: batchCourses,
           programme: programmes,
@@ -743,6 +744,33 @@ export async function PATCH(
             {
               error:
                 "Invalid programme",
+            },
+            { status: 400 },
+          );
+        }
+
+        const semesterResult =
+          await db.execute(sql`
+            SELECT id
+            FROM programme_semesters
+            WHERE id = ${semesterId}
+              AND programme_id = ${programmeId}
+              AND institute_id = ${instituteId}
+            LIMIT 1
+          `);
+
+        const semesterRows: any[] =
+          Array.isArray(
+            (semesterResult as any)?.rows,
+          )
+            ? (semesterResult as any).rows
+            : [];
+
+        if (!semesterRows[0]) {
+          return Response.json(
+            {
+              error:
+                "Invalid semester for the selected programme",
             },
             { status: 400 },
           );
