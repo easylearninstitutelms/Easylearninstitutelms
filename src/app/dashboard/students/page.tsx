@@ -37,7 +37,14 @@ interface StudentDetails {
       id: string;
       enrollmentDate: string;
       status: string;
+      semesterId?: string | null;
     };
+
+    batch?: {
+      id: string;
+      name?: string | null;
+      batchNo?: number | null;
+    } | null;
 
     course: {
       id: string;
