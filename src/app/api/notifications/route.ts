@@ -171,8 +171,11 @@ export async function POST(request: Request) {
       return Response.json({ error: "Please select a course." }, { status: 400 });
     }
 
+    let course: Record<string, any> | undefined;
+    let programme: Record<string, any> | undefined;
+
     if (targetType === "COURSE") {
-      const course = rowsOf(await db.execute(sql`
+      course = rowsOf(await db.execute(sql`
         SELECT id, name, course_no AS "courseNo"
         FROM courses
         WHERE id = ${courseId}
@@ -187,7 +190,7 @@ export async function POST(request: Request) {
     }
 
     if (targetType === "PROGRAMME") {
-      const programme = rowsOf(await db.execute(sql`
+      programme = rowsOf(await db.execute(sql`
         SELECT id, name, code, programme_no AS "programmeNo"
         FROM programmes
         WHERE id = ${programmeId}
