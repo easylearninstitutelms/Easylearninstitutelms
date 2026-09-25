@@ -8,6 +8,7 @@ import {
   fees,
   payments,
   staff,
+  batches,
 } from "@/db/schema";
 import {
   eq,
@@ -240,6 +241,13 @@ export async function GET(
           eq(
             enrollments.courseId,
             courses.id,
+          ),
+        )
+        .leftJoin(
+          batches,
+          eq(
+            enrollments.batchId,
+            batches.id,
           ),
         )
         .leftJoin(
