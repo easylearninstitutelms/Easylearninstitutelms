@@ -17,6 +17,17 @@ const SEND_ROLES = [
   "DIGITAL_MARKETER",
 ];
 
+function suggestProgrammeCode(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const raw = words.map((word) => {
+    const normalized = word.replace(/[^a-zA-Z0-9]/g, "");
+    if (!normalized) return "";
+    if (/^[A-Z0-9]{2,3}$/.test(normalized)) return normalized.toUpperCase();
+    return normalized[0].toUpperCase();
+  }).join("");
+  return raw.replace(/[^A-Z0-9]/g, "").slice(0, 12) || "PRG";
+}
+
 function rowsOf(result: unknown): Record<string, any>[] {
   if (
     result &&
@@ -162,7 +173,7 @@ export async function POST(request: Request) {
 
     if (targetType === "COURSE") {
       const course = rowsOf(await db.execute(sql`
-        SELECT id
+        SELECT id, name, course_no AS "courseNo"
         FROM courses
         WHERE id = ${courseId}
           AND institute_id = ${session.instituteId}
@@ -177,7 +188,7 @@ export async function POST(request: Request) {
 
     if (targetType === "PROGRAMME") {
       const programme = rowsOf(await db.execute(sql`
-        SELECT id
+        SELECT id, name, code, programme_no AS "programmeNo"
         FROM programmes
         WHERE id = ${programmeId}
           AND institute_id = ${session.instituteId}
@@ -213,6 +224,7 @@ export async function POST(request: Request) {
                   AND b.institute_id = ${session.instituteId}
                   AND b.course_id = ${courseId}
               )
+              OR s.student_id LIKE ${`C${suggestProgrammeCode(String(course?.name || ""))}${Number(course?.courseNo || 0)}%`}
             )
         )
       `;
@@ -236,6 +248,10 @@ export async function POST(request: Request) {
                 WHERE b.id = e.batch_id
                   AND b.institute_id = ${session.instituteId}
                   AND b.programme_id = ${programmeId}
+              )
+              OR (
+                ${!semesterId}
+                AND s.student_id LIKE ${`${String(programme?.code || suggestProgrammeCode(String(programme?.name || "")))}${Number(programme?.programmeNo || 0)}%`}
               )
             )
             ${semesterId ? sql`AND (
