@@ -360,6 +360,85 @@ export async function POST(request: Request) {
   }
 }
 
+
+export async function PUT(request: Request) {
+  const session = await getSession();
+  if (!session || !session.instituteId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!SEND_ROLES.includes(session.role)) {
+    return Response.json({ error: "You do not have permission to edit notifications." }, { status: 403 });
+  }
+
+  try {
+    const body = await request.json();
+    const notificationId = typeof body.notificationId === "string" ? body.notificationId.trim() : "";
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    const notifBody = typeof body.body === "string" ? body.body.trim() : "";
+
+    if (!notificationId || !title) {
+      return Response.json({ error: "Notification ID and title are required." }, { status: 400 });
+    }
+
+    const updated = await db.execute(sql`
+      UPDATE notifications
+      SET title = ${title},
+          body = ${notifBody || null}
+      WHERE id = ${notificationId}
+        AND institute_id = ${session.instituteId}
+        AND recipient_user_id IS NULL
+      RETURNING id, title, body
+    `);
+
+    if (rowsOf(updated).length === 0) {
+      return Response.json({ error: "Notification history item not found." }, { status: 404 });
+    }
+
+    return Response.json({ success: true, notification: rowsOf(updated)[0] });
+  } catch (error) {
+    console.error("PUT /api/notifications error:", error);
+    return Response.json({ error: "Failed to edit notification" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const session = await getSession();
+  if (!session || !session.instituteId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!SEND_ROLES.includes(session.role)) {
+    return Response.json({ error: "You do not have permission to delete notifications." }, { status: 403 });
+  }
+
+  try {
+    const body = await request.json();
+    const notificationId = typeof body.notificationId === "string" ? body.notificationId.trim() : "";
+
+    if (!notificationId) {
+      return Response.json({ error: "Notification ID is required." }, { status: 400 });
+    }
+
+    const deleted = await db.execute(sql`
+      DELETE FROM notifications
+      WHERE id = ${notificationId}
+        AND institute_id = ${session.instituteId}
+        AND recipient_user_id IS NULL
+      RETURNING id
+    `);
+
+    if (rowsOf(deleted).length === 0) {
+      return Response.json({ error: "Notification history item not found." }, { status: 404 });
+    }
+
+    return Response.json({ success: true });
+  } catch (error) {
+    console.error("DELETE /api/notifications error:", error);
+    return Response.json({ error: "Failed to delete notification" }, { status: 500 });
+  }
+}
+
 export async function PATCH(request: Request) {
   const session = await getSession();
   if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 });
