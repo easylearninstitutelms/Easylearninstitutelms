@@ -245,17 +245,39 @@ export async function POST(request: Request) {
 
       const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-      const targetRows = rowsOf(await db.execute(sql`
-        SELECT
-          ${courseId ? sql`c.name` : sql`p.name`} AS "targetName",
-          ${semesterId ? sql`ps.name` : sql`NULL`} AS "semesterName"
-        FROM ${courseId ? sql`courses c` : sql`programmes p`}
-        ${courseId
-          ? sql`WHERE c.id = ${courseId} AND c.institute_id = ${session.instituteId}`
-          : sql`WHERE p.id = ${programmeId} AND p.institute_id = ${session.instituteId}`}
-        LIMIT 1
-      `));
-
+      const targetRows = rowsOf(
+        await db.execute(
+          courseId
+            ? sql`
+                SELECT
+                  c.name AS "targetName",
+                  NULL AS "semesterName"
+                FROM courses c
+                WHERE c.id = ${courseId}
+                  AND c.institute_id = ${session.instituteId}
+                LIMIT 1
+              `
+            : sql`
+                SELECT
+                  p.name AS "targetName",
+                  ${semesterId ? sql`ps.name` : sql`NULL`} AS "semesterName"
+                FROM programmes p
+                ${
+                  semesterId
+                    ? sql`
+                        LEFT JOIN programme_semesters ps
+                          ON ps.id = ${semesterId}
+                         AND ps.programme_id = p.id
+                         AND ps.institute_id = p.institute_id
+                      `
+                    : sql``
+                }
+                WHERE p.id = ${programmeId}
+                  AND p.institute_id = ${session.instituteId}
+                LIMIT 1
+              `,
+        ),
+      );
       const targetName = String(targetRows[0]?.targetName || "the selected subject");
       const semesterName = String(targetRows[0]?.semesterName || "");
 
