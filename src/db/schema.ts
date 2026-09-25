@@ -962,7 +962,7 @@ export const questionBankRelations = relations(questionBank, ({ one }) => ({
     fields: [questionBank.createdBy],
     references: [users.id],
   }),
-});
+}));
 
 export const institutesRelations = relations(institutes, ({ many }) => ({
   users: many(users),
