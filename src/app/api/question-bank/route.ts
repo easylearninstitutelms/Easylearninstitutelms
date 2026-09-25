@@ -323,10 +323,73 @@ Rules:
       if (!aiResponse.ok) {
         const detail = await aiResponse.text();
         console.error("OpenAI question generation failed:", detail);
-        return NextResponse.json(
-          { error: "AI question generation failed." },
-          { status: 502 },
+
+        const fallbackQuestions = Array.from(
+          { length: count },
+          (_, index) => {
+            if (type === "TRUE_FALSE") {
+              return {
+                question: `${topic}: Is this statement true or false?`,
+                options: ["True", "False"],
+                correctAnswer: "True",
+                explanation:
+                  "This is a locally generated fallback question. Review it before using it in an exam.",
+                type,
+                difficulty,
+                marks: 1,
+              };
+            }
+
+            if (type === "SHORT_ANSWER") {
+              return {
+                question: `Write a short answer about ${topic}.`,
+                options: [],
+                correctAnswer: "",
+                explanation:
+                  "This is a locally generated fallback question. Add or review the expected answer before using it.",
+                type,
+                difficulty,
+                marks: 1,
+              };
+            }
+
+            if (type === "DESCRIPTIVE") {
+              return {
+                question: `Explain ${topic} in detail.`,
+                options: [],
+                correctAnswer: "",
+                explanation:
+                  "This is a locally generated fallback question. Review the expected answer before using it.",
+                type,
+                difficulty,
+                marks: 5,
+              };
+            }
+
+            return {
+              question: `Which statement is most appropriate about ${topic}?`,
+              options: [
+                `It is related to ${topic}.`,
+                "It has no relation to the topic.",
+                "It is unrelated to the subject.",
+                "None of the above.",
+              ],
+              correctAnswer: `It is related to ${topic}.`,
+              explanation:
+                "This is a locally generated fallback question. Review it before using it in an exam.",
+              type: "MCQ",
+              difficulty,
+              marks: 1,
+            };
+          },
         );
+
+        return NextResponse.json({
+          questions: fallbackQuestions,
+          fallback: true,
+          message:
+            "OpenAI is currently unavailable, so local fallback questions were generated. Please review them before use.",
+        });
       }
 
       const aiJson = await aiResponse.json();
