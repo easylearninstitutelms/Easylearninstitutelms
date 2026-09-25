@@ -17,6 +17,35 @@ export default function PushNotificationSetup() {
   useEffect(() => {
     let cancelled = false;
 
+    async function syncExistingSubscription(registration: ServiceWorkerRegistration) {
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (!subscription) {
+        if (!cancelled && Notification.permission !== "denied") {
+          setVisible(true);
+        }
+        return;
+      }
+
+      // Keep the server in sync even if the browser already has a subscription
+      // but the database was cleared, migrated, or the subscription changed.
+      const response = await fetch("/api/notifications/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscription: subscription.toJSON() }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.error || "Failed to sync push subscription.");
+      }
+
+      if (!cancelled) {
+        setEnabled(true);
+        setVisible(false);
+      }
+    }
+
     async function check() {
       if (
         !("serviceWorker" in navigator) ||
@@ -26,23 +55,22 @@ export default function PushNotificationSetup() {
 
       try {
         const registration = await navigator.serviceWorker.register("/sw.js");
-        const subscription = await registration.pushManager.getSubscription();
-        if (subscription) {
-          setEnabled(true);
-        } else if (!cancelled) {
-          setVisible(true);
-        }
+        await navigator.serviceWorker.ready;
+        await syncExistingSubscription(registration);
       } catch (error) {
         console.error("Push setup check failed:", error);
       }
     }
 
     check();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function enablePush() {
     setBusy(true);
+
     try {
       const permission =
         Notification.permission === "granted"
@@ -54,14 +82,20 @@ export default function PushNotificationSetup() {
         return;
       }
 
-      const keyResponse = await fetch("/api/notifications/subscribe", { cache: "no-store" });
+      const keyResponse = await fetch("/api/notifications/subscribe", {
+        cache: "no-store",
+      });
       const keyData = await keyResponse.json();
+
       if (!keyResponse.ok || !keyData.publicKey) {
-        throw new Error(keyData?.error || "Push notifications are not configured.");
+        throw new Error(
+          keyData?.error || "Push notifications are not configured."
+        );
       }
 
       const registration = await navigator.serviceWorker.register("/sw.js");
       await navigator.serviceWorker.ready;
+
       const subscription =
         (await registration.pushManager.getSubscription()) ||
         (await registration.pushManager.subscribe({
@@ -74,17 +108,24 @@ export default function PushNotificationSetup() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subscription: subscription.toJSON() }),
       });
+
       const saveData = await saveResponse.json();
 
       if (!saveResponse.ok) {
-        throw new Error(saveData?.error || "Failed to enable notifications.");
+        throw new Error(
+          saveData?.error || "Failed to enable notifications."
+        );
       }
 
       setEnabled(true);
       setVisible(false);
     } catch (error) {
       console.error("Push notification setup failed:", error);
-      window.alert(error instanceof Error ? error.message : "Failed to enable notifications.");
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to enable notifications."
+      );
     } finally {
       setBusy(false);
     }
@@ -95,24 +136,38 @@ export default function PushNotificationSetup() {
   return (
     <>
       {!visible && enabled && (
-        <button type="button" className="fixed bottom-5 left-5 z-[65] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 shadow-lg">
+        <div className="fixed bottom-5 left-5 z-[65] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 shadow-lg">
           🔔 Notifications On
-        </button>
+        </div>
       )}
-    {visible && (
-    <div className="fixed bottom-5 right-5 z-[70] w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-blue-100 bg-white p-4 shadow-2xl">
-      <p className="font-bold text-slate-800">🔔 Turn on notifications</p>
-      <p className="mt-1 text-sm text-slate-500">
-        Get Easylearn notices on your device even when the student portal is not open.
-      </p>
-      <div className="mt-3 flex justify-end gap-2">
-        <button type="button" onClick={() => setVisible(false)} className="btn btn-outline btn-sm">Later</button>
-        <button type="button" onClick={enablePush} disabled={busy} className="btn btn-primary btn-sm">
-          {busy ? "Enabling..." : "Enable Notifications"}
-        </button>
-      </div>
-    </div>
-    )}
+
+      {visible && (
+        <div className="fixed bottom-5 right-5 z-[70] w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-blue-100 bg-white p-4 shadow-2xl">
+          <p className="font-bold text-slate-800">🔔 Turn on notifications</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Get Easylearn notices on your device even when the student portal is not open.
+          </p>
+
+          <div className="mt-3 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setVisible(false)}
+              className="btn btn-outline btn-sm"
+            >
+              Later
+            </button>
+
+            <button
+              type="button"
+              onClick={enablePush}
+              disabled={busy}
+              className="btn btn-primary btn-sm"
+            >
+              {busy ? "Enabling..." : "Enable Notifications"}
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
