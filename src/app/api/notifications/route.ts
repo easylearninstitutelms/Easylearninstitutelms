@@ -268,6 +268,16 @@ export async function POST(request: Request) {
                             AND bs.institute_id = ${session.instituteId}
                             AND bs.semester_id = ps.id
                         )
+                        OR (
+                          e.semester_id IS NULL
+                          AND e.programme_id = ps.programme_id
+                          AND (
+                            SELECT COUNT(*)
+                            FROM programme_semesters ps_all
+                            WHERE ps_all.institute_id = ps.institute_id
+                              AND ps_all.programme_id = ps.programme_id
+                          ) = 1
+                        )
                       )
                   )
                 ` : sql`
