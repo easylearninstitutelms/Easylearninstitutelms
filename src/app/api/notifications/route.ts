@@ -250,7 +250,7 @@ export async function POST(request: Request) {
             SELECT 1
             FROM enrollments e
             WHERE e.student_id = s.id
-              AND e.status <> 'ARCHIVED'
+              AND (e.status IS NULL OR e.status <> 'ARCHIVED')
               AND (
                 e.programme_id = ${programmeId}
                 OR EXISTS (
