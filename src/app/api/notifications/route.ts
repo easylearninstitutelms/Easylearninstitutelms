@@ -232,8 +232,9 @@ export async function POST(request: Request) {
         )
       `;
     } else {
-      const programmeStudentPrefix = `${String(programme?.code || suggestProgrammeCode(String(programme?.name || "")))}${Number(programme?.programmeNo || 0)}%`;
-
+      const programmeNumber = Number(programme?.programmeNo || 0);
+      const programmeCodePrefix = `${String(programme?.code || "")}${programmeNumber}%`;
+      const programmeNamePrefix = `${suggestProgrammeCode(String(programme?.name || ""))}${programmeNumber}%`;
       recipientFilter = sql`
         u.institute_id = ${session.instituteId}
         AND u.role = 'STUDENT'
@@ -269,7 +270,10 @@ export async function POST(request: Request) {
           )
           OR (
             ${!semesterId}
-            AND s.student_id LIKE ${programmeStudentPrefix}
+            AND (
+              s.student_id LIKE ${programmeCodePrefix}
+              OR s.student_id LIKE ${programmeNamePrefix}
+            )
           )
         )
       `;
