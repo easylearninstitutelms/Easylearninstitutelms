@@ -291,9 +291,35 @@ export async function DELETE(
           );
       }
 
-      // Clean up every live foreign-key reference to these semester rows.
-      // Production may contain composite foreign keys that are not represented
-      // in the current Drizzle schema, so handle both single and composite FKs.
+      // Explicitly clear the live non-cascading semester references before
+      // deleting programme_semesters. This is required by the production FK
+      // constraints on batches.semester_id and exams.semester_id.
+      if (semesterIds.length > 0) {
+        await tx.execute(sql`
+          UPDATE public.batches
+          SET semester_id = NULL,
+              updated_at = NOW()
+          WHERE institute_id = ${instituteId}
+            AND semester_id IN (${sql.join(
+              semesterIds.map((semesterId) => sql`${semesterId}`),
+              sql`, `,
+            )})
+        `);
+
+        await tx.execute(sql`
+          UPDATE public.exams
+          SET semester_id = NULL
+          WHERE institute_id = ${instituteId}
+            AND semester_id IN (${sql.join(
+              semesterIds.map((semesterId) => sql`${semesterId}`),
+              sql`, `,
+            )})
+        `);
+      }
+
+      // Clean up every other live foreign-key reference to these semester rows.
+      // Production may contain additional constraints not represented in the
+      // current Drizzle schema, so handle both single and composite FKs.
       if (semesterIds.length > 0) {
         const fkResult = await tx.execute(sql`
           SELECT
