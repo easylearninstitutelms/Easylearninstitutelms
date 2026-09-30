@@ -13,6 +13,7 @@ import {
   like,
   or,
   desc,
+  inArray,
   sql,
 } from "drizzle-orm";
 import {
@@ -622,6 +623,74 @@ export async function POST(request: Request) {
             ? error.message
             : "Failed to create student and login account.",
       },
+      { status: 500 },
+    );
+  }
+}
+
+  
+export async function DELETE(request: Request) {
+  const session = await getSession();
+
+  if (!session?.instituteId) {
+    return Response.json(
+      { error: "Unauthorized" },
+      { status: 401 },
+    );
+  }
+
+  const permissionError = requireRoles(
+    session,
+    STUDENT_MANAGE_ROLES,
+  );
+
+  if (permissionError) {
+    return permissionError;
+  }
+
+  try {
+    const body = await request.json().catch(() => ({}));
+    const rawIds = Array.isArray(body?.ids) ? body.ids : [];
+
+    const ids = Array.from(
+      new Set(
+        rawIds.filter(
+          (id: unknown): id is string =>
+            typeof id === "string" && id.trim().length > 0,
+        ),
+      ),
+    );
+
+    if (!ids.length) {
+      return Response.json(
+        { error: "No students selected." },
+        { status: 400 },
+      );
+    }
+
+    const result = await db
+      .update(students)
+      .set({
+        status: "ARCHIVED",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(students.instituteId, session.instituteId),
+          inArray(students.id, ids),
+        ),
+      )
+      .returning({ id: students.id });
+
+    return Response.json({
+      success: true,
+      archivedCount: result.length,
+    });
+  } catch (error) {
+    console.error("DELETE /api/students bulk error:", error);
+
+    return Response.json(
+      { error: "Failed to archive selected students." },
       { status: 500 },
     );
   }
