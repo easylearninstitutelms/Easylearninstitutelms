@@ -432,7 +432,7 @@ export async function POST(request: Request) {
         );
       }
 
-      prefix = `C${suggestProgrammeCode(
+      prefix = `${suggestProgrammeCode(
         String(course.name),
       )}${courseNo}`;
     } else if (selectedProgrammeId) {
