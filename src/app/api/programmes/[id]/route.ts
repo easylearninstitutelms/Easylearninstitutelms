@@ -4,6 +4,7 @@ import {
   attendance,
   batches,
   enrollments,
+  fees,
   examSubjects,
   exams,
   homework,
@@ -164,6 +165,33 @@ export async function DELETE(
           .delete(exams)
           .where(
             inArray(exams.id, examIds),
+          );
+      }
+
+      const semesterRows = await tx
+        .select({ id: programmeSemesters.id })
+        .from(programmeSemesters)
+        .where(
+          and(
+            eq(programmeSemesters.programmeId, id),
+            eq(programmeSemesters.instituteId, instituteId),
+          ),
+        );
+
+      const semesterIds = semesterRows.map((row) => row.id);
+
+      if (semesterIds.length > 0) {
+        await tx
+          .update(fees)
+          .set({
+            semesterId: null,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(fees.instituteId, instituteId),
+              inArray(fees.semesterId, semesterIds),
+            ),
           );
       }
 
