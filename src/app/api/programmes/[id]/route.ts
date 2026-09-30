@@ -292,30 +292,37 @@ export async function DELETE(
       }
 
       // Clean up every live foreign-key reference to these semester rows.
-      // We query PostgreSQL's catalog directly because the production database
-      // may differ from the Drizzle schema.
+      // Production may contain composite foreign keys that are not represented
+      // in the current Drizzle schema, so handle both single and composite FKs.
       if (semesterIds.length > 0) {
         const fkResult = await tx.execute(sql`
           SELECT
             n.nspname AS child_schema,
             c.relname AS child_table,
-            a.attname AS child_column,
-            a.attnotnull AS child_not_null,
             con.confdeltype AS delete_action,
-            array_length(con.conkey, 1) AS child_columns,
-            array_length(con.confkey, 1) AS parent_columns
+            ARRAY(
+              SELECT ca.attname
+              FROM unnest(con.conkey) WITH ORDINALITY AS ck(attnum, ord)
+              JOIN pg_attribute ca
+                ON ca.attrelid = con.conrelid
+               AND ca.attnum = ck.attnum
+              ORDER BY ck.ord
+            ) AS child_columns,
+            ARRAY(
+              SELECT pa.attname
+              FROM unnest(con.confkey) WITH ORDINALITY AS pk(attnum, ord)
+              JOIN pg_attribute pa
+                ON pa.attrelid = con.confrelid
+               AND pa.attnum = pk.attnum
+              ORDER BY pk.ord
+            ) AS parent_columns
           FROM pg_constraint con
           JOIN pg_class c ON c.oid = con.conrelid
           JOIN pg_namespace n ON n.oid = c.relnamespace
-          JOIN pg_attribute a
-            ON a.attrelid = con.conrelid
-           AND a.attnum = con.conkey[1]
           WHERE con.contype = 'f'
             AND con.confrelid = 'public.programme_semesters'::regclass
             AND n.nspname = 'public'
             AND con.confdeltype NOT IN ('c', 'n')
-            AND array_length(con.conkey, 1) = 1
-            AND array_length(con.confkey, 1) = 1
         `);
 
         const foreignKeys = Array.isArray(fkResult)
@@ -327,24 +334,37 @@ export async function DELETE(
         for (const fk of foreignKeys as Array<{
           child_schema: string;
           child_table: string;
-          child_column: string;
-          child_not_null: boolean;
+          child_columns: string[];
+          parent_columns: string[];
         }>) {
-          const qualifiedTable = `"${fk.child_schema.replace(/"/g, '""')}"."${fk.child_table.replace(/"/g, '""')}"`;
-          const quotedColumn = `"${fk.child_column.replace(/"/g, '""')}"`;
-
-          if (fk.child_not_null) {
-            await tx.execute(sql.raw(`
-              DELETE FROM ${qualifiedTable}
-              WHERE ${quotedColumn} IN (${semesterIds.map((semesterId) => `'${semesterId.replace(/'/g, "''")}'`).join(", ")})
-            `));
-          } else {
-            await tx.execute(sql.raw(`
-              UPDATE ${qualifiedTable}
-              SET ${quotedColumn} = NULL
-              WHERE ${quotedColumn} IN (${semesterIds.map((semesterId) => `'${semesterId.replace(/'/g, "''")}'`).join(", ")})
-            `));
+          if (
+            !Array.isArray(fk.child_columns) ||
+            !Array.isArray(fk.parent_columns) ||
+            fk.child_columns.length === 0 ||
+            fk.child_columns.length !== fk.parent_columns.length
+          ) {
+            continue;
           }
+
+          const childTable = `"${fk.child_schema.replace(/"/g, '""')}"."${fk.child_table.replace(/"/g, '""')}"`;
+          const joinConditions = fk.child_columns
+            .map(
+              (childColumn, index) =>
+                `child."${childColumn.replace(/"/g, '""')}" = parent."${fk.parent_columns[index].replace(/"/g, '""')}"`,
+            )
+            .join(" AND ");
+          const semesterList = semesterIds
+            .map((semesterId) => `'${semesterId.replace(/'/g, "''")}'`)
+            .join(", ");
+
+          await tx.execute(
+            sql.raw(`
+              DELETE FROM ${childTable} AS child
+              USING public.programme_semesters AS parent
+              WHERE ${joinConditions}
+                AND parent.id IN (${semesterList})
+            `),
+          );
         }
       }
 
