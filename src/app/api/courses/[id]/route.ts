@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { courses } from "@/db/schema";
+import { batches, courses } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import {
   getSession,
@@ -127,32 +127,51 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const [updated] = await db
-      .update(courses)
-      .set({
-        status: "INACTIVE",
-        updatedAt: new Date(),
-      })
+    const [existing] = await db
+      .select({ id: courses.id })
+      .from(courses)
       .where(
         and(
           eq(courses.id, id),
-          eq(
-            courses.instituteId,
-            session.instituteId,
-          ),
+          eq(courses.instituteId, session.instituteId),
         ),
       )
-      .returning();
+      .limit(1);
 
-    if (!updated) {
+    if (!existing) {
       return Response.json(
         { error: "Course not found" },
         { status: 404 },
       );
     }
 
+    await db.transaction(async (tx) => {
+      await tx
+        .update(batches)
+        .set({
+          courseId: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(batches.courseId, id),
+            eq(batches.instituteId, session.instituteId),
+          ),
+        );
+
+      await tx
+        .delete(courses)
+        .where(
+          and(
+            eq(courses.id, id),
+            eq(courses.instituteId, session.instituteId),
+          ),
+        );
+    });
+
     return Response.json({
-      course: updated,
+      success: true,
+      deletedCourseId: id,
     });
   } catch (error) {
     console.error(
