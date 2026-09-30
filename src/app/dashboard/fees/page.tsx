@@ -1282,6 +1282,216 @@ export default function FeesPage() {
     }
   }
 
+
+  async function handleEditFee(row: FeeRow) {
+    const amountInput = window.prompt(
+      "Fee Amount",
+      String(row.fee.amount ?? "0"),
+    );
+    if (amountInput === null) return;
+
+    const discountInput = window.prompt(
+      "Discount",
+      String(row.fee.discount ?? "0"),
+    );
+    if (discountInput === null) return;
+
+    const dueDateInput = window.prompt(
+      "Due Date (YYYY-MM-DD). Leave blank to clear.",
+      row.fee.dueDate ?? "",
+    );
+    if (dueDateInput === null) return;
+
+    const feeTypeInput = window.prompt(
+      "Fee Type: MONTHLY, ADMISSION, COURSE, EXAM, OTHER",
+      row.fee.feeType,
+    );
+    if (feeTypeInput === null) return;
+
+    const amount = toNumber(amountInput);
+    const discount = toNumber(discountInput);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Fee amount must be greater than 0.");
+      return;
+    }
+
+    if (!Number.isFinite(discount) || discount < 0 || discount > amount) {
+      setError("Invalid discount.");
+      return;
+    }
+
+    const feeType = feeTypeInput.trim().toUpperCase();
+    if (!FEE_TYPES.some((item) => item.value === feeType)) {
+      setError("Invalid fee type.");
+      return;
+    }
+
+    if (
+      dueDateInput.trim() !== "" &&
+      !/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDateInput.trim())
+    ) {
+      setError("Invalid due date. Use YYYY-MM-DD.");
+      return;
+    }
+
+    if (!window.confirm("Update this fee record?")) return;
+
+    try {
+      setError("");
+      setSuccess("");
+      setSubmitting(true);
+
+      const res = await fetch(
+        "/api/fees/" + encodeURIComponent(row.fee.id),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: String(amount),
+            discount: String(discount),
+            dueDate: dueDateInput.trim() || null,
+            feeType,
+          }),
+        },
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update fee.");
+
+      setSuccess("Fee record updated successfully.");
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update fee.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDeleteFee(row: FeeRow) {
+    const confirmed = window.confirm(
+      "Delete this fee record? Any payments linked to this fee will also be deleted. This cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    try {
+      setError("");
+      setSuccess("");
+      setSubmitting(true);
+
+      const res = await fetch(
+        "/api/fees/" + encodeURIComponent(row.fee.id),
+        { method: "DELETE" },
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete fee.");
+      }
+
+      setSuccess("Fee record deleted successfully.");
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete fee.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleEditPayment(row: PaymentRow) {
+    const amountInput = window.prompt(
+      "Payment Amount",
+      String(row.payment.amount ?? "0"),
+    );
+    if (amountInput === null) return;
+
+    const methodInput = window.prompt(
+      "Payment Method: CASH, BKASH, NAGAD, ROCKET, BANK",
+      row.payment.method,
+    );
+    if (methodInput === null) return;
+
+    const referenceInput = window.prompt(
+      "Transaction Reference. Leave blank to clear.",
+      row.payment.transactionReference ?? "",
+    );
+    if (referenceInput === null) return;
+
+    const amount = toNumber(amountInput);
+    const method = methodInput.trim().toUpperCase();
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Payment amount must be greater than 0.");
+      return;
+    }
+
+    if (!PAYMENT_METHODS.some((item) => item.value === method)) {
+      setError("Invalid payment method.");
+      return;
+    }
+
+    if (!window.confirm("Update this payment?")) return;
+
+    try {
+      setError("");
+      setSuccess("");
+      setSubmitting(true);
+
+      const res = await fetch(
+        "/api/payments/" + encodeURIComponent(row.payment.id),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: String(amount),
+            method,
+            transactionReference: referenceInput.trim() || null,
+          }),
+        },
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update payment.");
+
+      setSuccess("Payment updated successfully.");
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update payment.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDeletePayment(row: PaymentRow) {
+    const confirmed = window.confirm(
+      "Delete this payment? The linked fee balance will be recalculated. This cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    try {
+      setError("");
+      setSuccess("");
+      setSubmitting(true);
+
+      const res = await fetch(
+        "/api/payments/" + encodeURIComponent(row.payment.id),
+        { method: "DELETE" },
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete payment.");
+      }
+
+      setSuccess("Payment deleted successfully.");
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete payment.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   const totalBilled =
     useMemo(() => {
       return fees.reduce(
@@ -2458,6 +2668,7 @@ export default function FeesPage() {
                     <th>Due</th>
                     <th>Due Date</th>
                     <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
 
@@ -2566,6 +2777,27 @@ export default function FeesPage() {
                           }
                         </span>
                       </td>
+
+                      <td>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            onClick={() => void handleEditFee(row)}
+                            disabled={submitting}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm bg-red-600 text-white hover:bg-red-700"
+                            onClick={() => void handleDeleteFee(row)}
+                            disabled={submitting}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -2599,6 +2831,7 @@ export default function FeesPage() {
                     <th>Method</th>
                     <th>Reference</th>
                     <th>Date</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
 
@@ -2663,6 +2896,27 @@ export default function FeesPage() {
                             row.payment
                               .paidAt
                           )}
+                        </td>
+
+                        <td>
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              className="btn btn-outline btn-sm"
+                              onClick={() => void handleEditPayment(row)}
+                              disabled={submitting}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm bg-red-600 text-white hover:bg-red-700"
+                              onClick={() => void handleDeletePayment(row)}
+                              disabled={submitting}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
