@@ -291,53 +291,62 @@ export async function DELETE(
           );
       }
 
-      // Clean up any production foreign keys that still use RESTRICT/NO ACTION
-      // before removing programme semesters.
-      await tx.execute(sql`
-        DO $$
-        DECLARE
-          fk RECORD;
-          semester_ids uuid[];
-          target_sql text;
-        BEGIN
-          SELECT array_agg(id) INTO semester_ids
-          FROM public.programme_semesters
-          WHERE programme_id = ${id}::uuid
-            AND institute_id = ${instituteId}::uuid;
+      // Clean up every live foreign-key reference to these semester rows.
+      // We query PostgreSQL's catalog directly because the production database
+      // may differ from the Drizzle schema.
+      if (semesterIds.length > 0) {
+        const fkResult = await tx.execute(sql`
+          SELECT
+            n.nspname AS child_schema,
+            c.relname AS child_table,
+            a.attname AS child_column,
+            a.attnotnull AS child_not_null,
+            con.confdeltype AS delete_action,
+            array_length(con.conkey, 1) AS child_columns,
+            array_length(con.confkey, 1) AS parent_columns
+          FROM pg_constraint con
+          JOIN pg_class c ON c.oid = con.conrelid
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          JOIN pg_attribute a
+            ON a.attrelid = con.conrelid
+           AND a.attnum = con.conkey[1]
+          WHERE con.contype = 'f'
+            AND con.confrelid = 'public.programme_semesters'::regclass
+            AND n.nspname = 'public'
+            AND con.confdeltype NOT IN ('c', 'n')
+            AND array_length(con.conkey, 1) = 1
+            AND array_length(con.confkey, 1) = 1
+        `);
 
-          IF semester_ids IS NULL THEN
-            semester_ids := ARRAY[]::uuid[];
-          END IF;
+        const foreignKeys = Array.isArray(fkResult)
+          ? fkResult
+          : Array.isArray((fkResult as { rows?: unknown[] }).rows)
+            ? (fkResult as { rows: unknown[] }).rows
+            : [];
 
-          FOR fk IN
-            SELECT
-              n.nspname AS child_schema,
-              c.relname AS child_table,
-              a.attname AS child_column,
-              con.confdeltype AS delete_action
-            FROM pg_constraint con
-            JOIN pg_class c ON c.oid = con.conrelid
-            JOIN pg_namespace n ON n.oid = c.relnamespace
-            JOIN pg_attribute a
-              ON a.attrelid = con.conrelid
-             AND a.attnum = con.conkey[1]
-            WHERE con.contype = 'f'
-              AND con.confrelid = 'public.programme_semesters'::regclass
-              AND array_length(con.conkey, 1) = 1
-              AND array_length(con.confkey, 1) = 1
-              AND n.nspname = 'public'
-              AND con.confdeltype NOT IN ('c', 'n')
-          LOOP
-            target_sql := format(
-              'DELETE FROM %I.%I WHERE %I = ANY($1)',
-              fk.child_schema,
-              fk.child_table,
-              fk.child_column
-            );
-            EXECUTE target_sql USING semester_ids;
-          END LOOP;
-        END $$;
-      `);
+        for (const fk of foreignKeys as Array<{
+          child_schema: string;
+          child_table: string;
+          child_column: string;
+          child_not_null: boolean;
+        }>) {
+          const qualifiedTable = `"${fk.child_schema.replace(/"/g, '""')}"."${fk.child_table.replace(/"/g, '""')}"`;
+          const quotedColumn = `"${fk.child_column.replace(/"/g, '""')}"`;
+
+          if (fk.child_not_null) {
+            await tx.execute(sql.raw(`
+              DELETE FROM ${qualifiedTable}
+              WHERE ${quotedColumn} IN (${semesterIds.map((semesterId) => `'${semesterId.replace(/'/g, "''")}'`).join(", ")})
+            `));
+          } else {
+            await tx.execute(sql.raw(`
+              UPDATE ${qualifiedTable}
+              SET ${quotedColumn} = NULL
+              WHERE ${quotedColumn} IN (${semesterIds.map((semesterId) => `'${semesterId.replace(/'/g, "''")}'`).join(", ")})
+            `));
+          }
+        }
+      }
 
       await tx
         .delete(programmeSemesters)
