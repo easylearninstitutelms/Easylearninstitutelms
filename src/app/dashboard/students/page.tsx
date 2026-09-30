@@ -140,6 +140,12 @@ export default function StudentsPage() {
   const [total, setTotal] =
     useState(0);
 
+  const [selectedStudentIds, setSelectedStudentIds] =
+    useState<Set<string>>(new Set());
+
+  const [bulkDeleting, setBulkDeleting] =
+    useState(false);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -261,13 +267,25 @@ export default function StudentsPage() {
           );
         }
 
-        setStudents(
-          data.students || []
-        );
+        const nextStudents = data.students || [];
+
+        setStudents(nextStudents);
 
         setTotal(
           data.total || 0
         );
+
+        setSelectedStudentIds((current) => {
+          const availableIds = new Set(
+            nextStudents.map((student: Student) => student.id)
+          );
+
+          return new Set(
+            Array.from(current).filter((id) =>
+              availableIds.has(id)
+            )
+          );
+        });
       } catch (err) {
         console.error(err);
 
@@ -768,6 +786,83 @@ export default function StudentsPage() {
     }
   }
 
+  function toggleStudentSelection(id: string) {
+    setSelectedStudentIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      return next;
+    });
+  }
+
+  function toggleSelectAllStudents() {
+    const selectableIds = students
+      .filter((student) => student.status !== "ARCHIVED")
+      .map((student) => student.id);
+
+    setSelectedStudentIds((current) => {
+      const allSelected =
+        selectableIds.length > 0 &&
+        selectableIds.every((id) => current.has(id));
+
+      return allSelected
+        ? new Set()
+        : new Set(selectableIds);
+    });
+  }
+
+  async function handleBulkArchive() {
+    const ids = Array.from(selectedStudentIds);
+
+    if (!ids.length) return;
+
+    if (
+      !confirm(
+        "Archive " +
+          ids.length +
+          " selected student" +
+          (ids.length === 1 ? "" : "s") +
+          "?"
+      )
+    ) {
+      return;
+    }
+
+    setBulkDeleting(true);
+
+    try {
+      const res = await fetch("/api/students", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ids }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        alert(
+          data?.error ||
+            "Failed to archive selected students."
+        );
+        return;
+      }
+
+      setSelectedStudentIds(new Set());
+      await fetchStudents();
+    } catch {
+      alert("Failed to archive selected students.");
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   async function handleArchive(
     id: string
   ) {
@@ -1008,6 +1103,33 @@ export default function StudentsPage() {
           </select>
         </div>
 
+        {/* Bulk Student Actions */}
+        {selectedStudentIds.size > 0 && (
+          <div className="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-red-100 bg-red-50">
+            <div>
+              <p className="font-semibold text-red-700">
+                {selectedStudentIds.size} student{selectedStudentIds.size === 1 ? "" : "s"} selected
+              </p>
+              <p className="text-xs text-red-500 mt-1">
+                Selected students will be archived.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleBulkArchive}
+              disabled={bulkDeleting}
+              className="btn btn-sm bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {bulkDeleting
+                ? "Archiving..."
+                : "Delete Selected (" +
+                  selectedStudentIds.size +
+                  ")"}
+            </button>
+          </div>
+        )}
+
         {/* Student Table */}
         <div className="card p-0">
           {loading ? (
@@ -1047,6 +1169,26 @@ export default function StudentsPage() {
               <table>
                 <thead>
                   <tr>
+                    <th className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={
+                          students.filter(
+                            (student) => student.status !== "ARCHIVED"
+                          ).length > 0 &&
+                          students
+                            .filter(
+                              (student) => student.status !== "ARCHIVED"
+                            )
+                            .every((student) =>
+                              selectedStudentIds.has(student.id)
+                            )
+                        }
+                        onChange={toggleSelectAllStudents}
+                        aria-label="Select all students"
+                        className="w-4 h-4 rounded border-slate-300"
+                      />
+                    </th>
                     <th>Student</th>
                     <th>ID</th>
                     <th>Phone</th>
@@ -1061,6 +1203,19 @@ export default function StudentsPage() {
                   {students.map(
                     (s) => (
                       <tr key={s.id}>
+                        <td className="w-12">
+                          <input
+                            type="checkbox"
+                            checked={selectedStudentIds.has(s.id)}
+                            disabled={s.status === "ARCHIVED"}
+                            onChange={() =>
+                              toggleStudentSelection(s.id)
+                            }
+                            aria-label="Select student"
+                            className="w-4 h-4 rounded border-slate-300 disabled:opacity-40"
+                          />
+                        </td>
+
                         <td>
                           <button
                             onClick={() =>
