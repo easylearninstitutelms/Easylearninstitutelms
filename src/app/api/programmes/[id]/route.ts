@@ -291,89 +291,60 @@ export async function DELETE(
           );
       }
 
-      // Clean up every live foreign-key reference to programme_semesters.
-      // The production database can differ from the current Drizzle schema, so
-      // inspect the actual PostgreSQL constraints before removing semesters.
-      const semesterForeignKeys = await tx.execute(sql`
-        SELECT
-          child_ns.nspname AS child_schema,
-          child_tbl.relname AS child_table,
-          child_col.attname AS child_column,
-          child_col.attnotnull AS child_not_null,
-          fk.confdeltype AS delete_action,
-          array_length(fk.conkey, 1) AS column_count
-        FROM pg_constraint fk
-        JOIN pg_class child_tbl
-          ON child_tbl.oid = fk.conrelid
-        JOIN pg_namespace child_ns
-          ON child_ns.oid = child_tbl.relnamespace
-        JOIN pg_attribute child_col
-          ON child_col.attrelid = fk.conrelid
-         AND child_col.attnum = fk.conkey[1]
-        WHERE fk.contype = 'f'
-          AND fk.confrelid = 'public.programme_semesters'::regclass
-          AND array_length(fk.conkey, 1) = 1
-          AND array_length(fk.confkey, 1) = 1
-          AND child_ns.nspname = 'public'
+      // Clean up any production foreign keys that still use RESTRICT/NO ACTION
+      // before removing programme semesters.
+      await tx.execute(sql`
+        DO $$
+        DECLARE
+          fk RECORD;
+          semester_ids uuid[];
+          target_sql text;
+        BEGIN
+          SELECT array_agg(id) INTO semester_ids
+          FROM public.programme_semesters
+          WHERE programme_id = ${id}::uuid
+            AND institute_id = ${instituteId}::uuid;
+
+          IF semester_ids IS NULL THEN
+            semester_ids := ARRAY[]::uuid[];
+          END IF;
+
+          FOR fk IN
+            SELECT
+              n.nspname AS child_schema,
+              c.relname AS child_table,
+              a.attname AS child_column,
+              con.confdeltype AS delete_action
+            FROM pg_constraint con
+            JOIN pg_class c ON c.oid = con.conrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            JOIN pg_attribute a
+              ON a.attrelid = con.conrelid
+             AND a.attnum = con.conkey[1]
+            WHERE con.contype = 'f'
+              AND con.confrelid = 'public.programme_semesters'::regclass
+              AND array_length(con.conkey, 1) = 1
+              AND array_length(con.confkey, 1) = 1
+              AND n.nspname = 'public'
+              AND con.confdeltype NOT IN ('c', 'n')
+          LOOP
+            target_sql := format(
+              'DELETE FROM %I.%I WHERE %I = ANY($1)',
+              fk.child_schema,
+              fk.child_table,
+              fk.child_column
+            );
+            EXECUTE target_sql USING semester_ids;
+          END LOOP;
+        END $$;
       `);
-
-      for (const foreignKey of semesterForeignKeys.rows as Array<{
-        child_schema: string;
-        child_table: string;
-        child_column: string;
-        child_not_null: boolean;
-        delete_action: string;
-        column_count: number;
-      }>) {
-        // PostgreSQL handles CASCADE / SET NULL itself.
-        if (
-          foreignKey.delete_action === "c" ||
-          foreignKey.delete_action === "n"
-        ) {
-          continue;
-        }
-
-        const qualifiedTable =
-          `"${foreignKey.child_schema.replace(/"/g, '""')}"."${foreignKey.child_table.replace(/"/g, '""')}"`;
-        const quotedColumn =
-          `"${foreignKey.child_column.replace(/"/g, '""')}"`;
-
-        if (foreignKey.child_not_null) {
-          await tx.execute(sql.raw(`
-            DELETE FROM ${qualifiedTable}
-            WHERE ${quotedColumn} IN (
-              SELECT id
-              FROM public.programme_semesters
-              WHERE programme_id = '${id.replace(/'/g, "''")}'
-                AND institute_id = '${instituteId.replace(/'/g, "''")}'
-            )
-          `));
-        } else {
-          await tx.execute(sql.raw(`
-            UPDATE ${qualifiedTable}
-            SET ${quotedColumn} = NULL
-            WHERE ${quotedColumn} IN (
-              SELECT id
-              FROM public.programme_semesters
-              WHERE programme_id = '${id.replace(/'/g, "''")}'
-                AND institute_id = '${instituteId.replace(/'/g, "''")}'
-            )
-          `));
-        }
-      }
 
       await tx
         .delete(programmeSemesters)
         .where(
           and(
-            eq(
-              programmeSemesters.programmeId,
-              id,
-            ),
-            eq(
-              programmeSemesters.instituteId,
-              instituteId,
-            ),
+            eq(programmeSemesters.programmeId, id),
+            eq(programmeSemesters.instituteId, instituteId),
           ),
         );
 
