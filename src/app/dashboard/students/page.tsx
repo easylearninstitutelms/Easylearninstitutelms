@@ -1140,7 +1140,7 @@ export default function StudentsPage() {
             0 ? (
             <div className="text-center py-12">
               <div className="text-4xl mb-3">
-                Ã°Å¸â€˜Â¨Ã¢â‚¬ÂÃ°Å¸Å½â€œ
+                👨‍🎓
               </div>
 
               <p className="text-slate-500 font-medium">
@@ -1249,7 +1249,7 @@ export default function StudentsPage() {
 
                               <p className="text-xs text-slate-400">
                                 {s.gender ||
-                                  "Ã¢â‚¬â€"}
+                                  "—"}
                               </p>
                             </div>
                           </button>
@@ -1263,14 +1263,14 @@ export default function StudentsPage() {
 
                         <td className="text-slate-500">
                           {s.phone ||
-                            "Ã¢â‚¬â€"}
+                            "—"}
                         </td>
 
                         <td>
                           <div>
                             <p className="text-sm text-slate-600">
                               {s.guardianName ||
-                                "Ã¢â‚¬â€"}
+                                "—"}
                             </p>
 
                             <p className="text-xs text-slate-400">
@@ -1468,7 +1468,7 @@ export default function StudentsPage() {
                       }
                       className="btn btn-ghost btn-sm"
                     >
-                      Ã¢Å“â€¢
+                      ✕
                     </button>
                   </div>
 
@@ -1581,7 +1581,7 @@ export default function StudentsPage() {
                                     .student
                                     .dob
                                 )
-                              : "Ã¢â‚¬â€"
+                              : "—"
                           }
                         />
 
@@ -1659,7 +1659,7 @@ export default function StudentsPage() {
                                     ? "Programme"
                                     : "Course"}
                                   {item.programme && item.enrollment.semesterId
-                                    ? " Â· Semester"
+                                    ? " · Semester"
                                     : ""}
                                 </p>
 
@@ -1724,7 +1724,7 @@ export default function StudentsPage() {
 
                                     <td className="text-slate-500">
                                       {a.note ||
-                                        "Ã¢â‚¬â€"}
+                                        "—"}
                                     </td>
                                   </tr>
                                 )
@@ -1773,14 +1773,14 @@ export default function StudentsPage() {
                                     </td>
 
                                     <td>
-                                      Ã Â§Â³{" "}
+                                      ৳{" "}
                                       {
                                         fee.amount
                                       }
                                     </td>
 
                                     <td>
-                                      Ã Â§Â³{" "}
+                                      ৳{" "}
                                       {
                                         fee.dueAmount
                                       }
@@ -1840,7 +1840,7 @@ export default function StudentsPage() {
                                     </td>
 
                                     <td>
-                                      Ã Â§Â³{" "}
+                                      ৳{" "}
                                       {
                                         payment.amount
                                       }
@@ -1918,7 +1918,7 @@ export default function StudentsPage() {
                             .student
                             .name
                         }{" "}
-                        Ã‚Â·{" "}
+                        ·{" "}
                         {
                           idCardStudent
                             .student
@@ -1933,7 +1933,7 @@ export default function StudentsPage() {
                       }
                       className="btn btn-ghost btn-sm"
                     >
-                      Ã¢Å“â€¢
+                      ✕
                     </button>
                   </div>
 
@@ -1951,7 +1951,7 @@ export default function StudentsPage() {
                         }
                         className="btn btn-primary"
                       >
-                        Ã°Å¸â€“Â¨ Print Student ID
+                        🖨 Print Student ID
                         Card
                       </button>
 
@@ -2102,7 +2102,7 @@ export default function StudentsPage() {
                                                 enrollment
                                                   ?.batch
                                                   ?.name ||
-                                                "Ã¢â‚¬â€"
+                                                "—"
                                               }
                                             </p>
                                           </div>
@@ -2117,7 +2117,7 @@ export default function StudentsPage() {
                                                 enrollment
                                                   ?.course
                                                   ?.name ||
-                                                "Ã¢â‚¬â€"
+                                                "—"
                                               }
                                             </p>
                                           </div>
@@ -2134,7 +2134,7 @@ export default function StudentsPage() {
                                         <strong>
                                           {
                                             student.phone ||
-                                            "Ã¢â‚¬â€"
+                                            "—"
                                           }
                                         </strong>
                                       </div>
@@ -2220,7 +2220,7 @@ export default function StudentsPage() {
                                         <p className="id-card-value">
                                           {
                                             student.guardianName ||
-                                            "Ã¢â‚¬â€"
+                                            "—"
                                           }
                                         </p>
                                       </div>
@@ -2233,7 +2233,7 @@ export default function StudentsPage() {
                                         <p className="id-card-value">
                                           {
                                             student.guardianPhone ||
-                                            "Ã¢â‚¬â€"
+                                            "—"
                                           }
                                         </p>
                                       </div>
@@ -2247,7 +2247,7 @@ export default function StudentsPage() {
                                       <p>
                                         {
                                           student.address ||
-                                          "Ã¢â‚¬â€"
+                                          "—"
                                         }
                                       </p>
                                     </div>
@@ -2274,7 +2274,7 @@ export default function StudentsPage() {
                                         <p className="id-card-value">
                                           {
                                             student.gender ||
-                                            "Ã¢â‚¬â€"
+                                            "—"
                                           }
                                         </p>
                                       </div>
@@ -2390,7 +2390,7 @@ export default function StudentsPage() {
                   disabled={submitting}
                   className="btn btn-ghost btn-sm"
                 >
-                  Ã¢Å“â€¢
+                  ✕
                 </button>
               </div>
 
@@ -2421,7 +2421,7 @@ export default function StudentsPage() {
                               ? getInitials(
                                   form.name
                                 )
-                              : "Ã°Å¸â€˜Â¤"}
+                              : "👤"}
                           </span>
                         )}
                       </div>
@@ -2432,7 +2432,7 @@ export default function StudentsPage() {
                         </label>
 
                         <p className="text-xs text-slate-400 mb-3">
-                          JPG, PNG or WEBP Ã¢â‚¬Â¢
+                          JPG, PNG or WEBP •
                           Maximum 2 MB
                         </p>
 
@@ -2862,7 +2862,7 @@ export default function StudentsPage() {
                   }}
                   className="btn btn-ghost btn-sm"
                 >
-                  Ã¢Å“â€¢
+                  ✕
                 </button>
               </div>
 
@@ -2939,7 +2939,7 @@ export default function StudentsPage() {
                     "copied" && (
                     <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
                       <p className="text-xs font-semibold text-emerald-700">
-                        Ã¢Å“â€œ Credentials copied successfully.
+                        ✓ Credentials copied successfully.
                       </p>
                     </div>
                   )}
@@ -2963,7 +2963,7 @@ export default function StudentsPage() {
                   className="btn btn-outline"
                 >
                   {copyStatus === "copied"
-                    ? "Ã¢Å“â€œ Copied"
+                    ? "✓ Copied"
                     : copyStatus === "error"
                       ? "Copy Failed"
                       : "Copy Credentials"}
@@ -3485,7 +3485,7 @@ function InfoItem({
       </p>
 
       <p className="text-sm font-medium text-slate-700">
-        {value || "Ã¢â‚¬â€"}
+        {value || "—"}
       </p>
     </div>
   );
