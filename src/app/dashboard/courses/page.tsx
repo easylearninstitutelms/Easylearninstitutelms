@@ -37,11 +37,43 @@ export default function CoursesPage(){
  return <div className="space-y-5">
   <div className="page-header"><div><h1 className="page-title">Courses</h1><p className="text-sm text-slate-500">{courses.length} courses</p></div><button onClick={openAdd} className="btn btn-primary">＋ Add Course</button></div>
   {loading?<div className="flex justify-center py-12"><div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"/></div>:<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-   {courses.length===0?<div className="col-span-full text-center py-12"><div className="text-4xl mb-3">📚</div><p className="text-slate-500">No courses yet</p></div>:courses.map(c=><div key={c.id} className="card hover:shadow-md transition-shadow">
-    <div className="flex items-start justify-between mb-3"><div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-xl">📚</div><span className={`badge ${getStatusColor(c.status)}`}>{c.status}</span></div>
-    <h3 className="font-bold text-slate-800 mb-1">{c.name}</h3>{c.description&&<p className="text-sm text-slate-500 mb-3 line-clamp-2">{c.description}</p>}
-    <div className="flex items-center justify-between text-sm"><span className="text-slate-500">Duration: <span className="font-medium text-slate-700">{c.duration||"—"}</span></span><span className="font-bold text-blue-600">{c.fee?formatCurrency(c.fee):"Free"}</span></div>
-    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3"><div className="flex items-center gap-3"><span className="text-xs font-semibold text-teal-700">{c.classCount||0} Classes</span><span className="text-xs font-semibold text-blue-700">{c.studentCount||0} Students</span></div><div className="flex gap-2"><button onClick={()=>openEdit(c)} className="btn btn-outline btn-sm">Edit</button><button onClick={()=>openEdit(c)} className="btn btn-primary btn-sm">📋 Manage Syllabus</button><button onClick={()=>toggleStatus(c)} className={`btn btn-sm btn-outline ${c.status==="ACTIVE"?"text-red-500":"text-green-600"}`}>{c.status==="ACTIVE"?"Deactivate":"Activate"}</button><button onClick={()=>deleteCourse(c)} className="btn btn-sm btn-outline text-red-600">Delete</button></div></div>
+   {courses.length===0?<div className="col-span-full text-center py-12"><div className="text-4xl mb-3">📚</div><p className="text-slate-500">No courses yet</p></div>:courses.map(c=><div key={c.id} className="card group hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+    <div className="flex items-start justify-between gap-3">
+      <div className="w-11 h-11 shrink-0 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-xl">📚</div>
+      <span className={`badge ${getStatusColor(c.status)}`}>{c.status}</span>
+    </div>
+    <div className="mt-4 min-h-[68px]">
+      <h3 className="font-bold text-slate-800 text-base leading-6">{c.name}</h3>
+      {c.description&&<p className="mt-1 text-sm text-slate-500 line-clamp-2 leading-5">{c.description}</p>}
+    </div>
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+        <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Duration</p>
+        <p className="mt-0.5 text-sm font-semibold text-slate-700 truncate">{c.duration||"—"}</p>
+      </div>
+      <div className="rounded-xl bg-blue-50/60 border border-blue-100 px-3 py-2.5 text-right">
+        <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Course Fee</p>
+        <p className="mt-0.5 text-sm font-bold text-blue-600 truncate">{c.fee?formatCurrency(c.fee):"Free"}</p>
+      </div>
+    </div>
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="flex items-center gap-2 rounded-xl border border-teal-100 bg-teal-50/50 px-3 py-2">
+        <span className="text-base">📚</span><div><p className="text-xs text-slate-400">Classes</p><p className="text-sm font-bold text-teal-700">{c.classCount||0}</p></div>
+      </div>
+      <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50/50 px-3 py-2">
+        <span className="text-base">👥</span><div><p className="text-xs text-slate-400">Students</p><p className="text-sm font-bold text-blue-700">{c.studentCount||0}</p></div>
+      </div>
+    </div>
+    <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={()=>openEdit(c)} className="btn btn-outline btn-sm w-full">Edit</button>
+        <button onClick={()=>openEdit(c)} className="btn btn-primary btn-sm w-full">📋 Syllabus</button>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={()=>toggleStatus(c)} className={`btn btn-sm btn-outline w-full ${c.status==="ACTIVE"?"text-red-500":"text-green-600"}`}>{c.status==="ACTIVE"?"Deactivate":"Activate"}</button>
+        <button onClick={()=>deleteCourse(c)} className="btn btn-sm btn-outline w-full text-red-600 border-red-200 hover:bg-red-50">Delete</button>
+      </div>
+    </div>
    </div>)}
   </div>}
 
