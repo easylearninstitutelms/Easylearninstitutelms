@@ -4,7 +4,6 @@ import {
   attendance,
   batches,
   enrollments,
-  fees,
   examSubjects,
   exams,
   homework,
@@ -15,7 +14,6 @@ import {
 } from "@/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { getSession } from "@/lib/session";
-import { ensureAcademicSchema } from "@/lib/academic";
 
 const PROGRAMME_DELETE_ROLES = [
   "SUPER_ADMIN",
@@ -54,7 +52,6 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    await ensureAcademicSchema();
 
     const [programme] = await db
       .select({ id: programmes.id })
@@ -168,34 +165,21 @@ export async function DELETE(
           );
       }
 
-      const semesterRows = await tx
-        .select({ id: programmeSemesters.id })
-        .from(programmeSemesters)
-        .where(
-          and(
-            eq(programmeSemesters.programmeId, id),
-            eq(programmeSemesters.instituteId, instituteId),
-          ),
-        );
-
-      const semesterIds = semesterRows.map((row) => row.id);
-
-      if (semesterIds.length > 0) {
+      if (batchIds.length > 0) {
         await tx
-          .update(fees)
+          .update(batches)
           .set({
+            programmeId: null,
             semesterId: null,
             updatedAt: new Date(),
           })
           .where(
             and(
-              eq(fees.instituteId, instituteId),
-              inArray(fees.semesterId, semesterIds),
+              eq(batches.instituteId, instituteId),
+              inArray(batches.id, batchIds),
             ),
           );
-      }
 
-      if (batchIds.length > 0) {
         await tx
           .delete(homework)
           .where(
