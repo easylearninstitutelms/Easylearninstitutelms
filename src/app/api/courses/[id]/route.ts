@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { batches, courses } from "@/db/schema";
+import { batches, courses, exams, enquiries } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import {
   getSession,
@@ -156,6 +156,31 @@ export async function DELETE(
           and(
             eq(batches.courseId, id),
             eq(batches.instituteId, session.instituteId),
+          ),
+        );
+
+      await tx
+        .update(exams)
+        .set({
+          courseId: null,
+        })
+        .where(
+          and(
+            eq(exams.courseId, id),
+            eq(exams.instituteId, session.instituteId),
+          ),
+        );
+
+      await tx
+        .update(enquiries)
+        .set({
+          courseId: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(enquiries.courseId, id),
+            eq(enquiries.instituteId, session.instituteId),
           ),
         );
 
