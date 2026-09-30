@@ -291,32 +291,63 @@ export async function DELETE(
           );
       }
 
-      // Explicitly clear the live non-cascading semester references before
-      // deleting programme_semesters. This is required by the production FK
-      // constraints on batches.semester_id and exams.semester_id.
+      // Remove all semester-owned child rows explicitly before deleting
+      // programme_semesters. The production database has live FK constraints,
+      // so relying only on ORM cascade metadata is not sufficient.
       if (semesterIds.length > 0) {
+        const semesterList = sql.join(
+          semesterIds.map((semesterId) => sql`${semesterId}`),
+          sql`, `,
+        );
+
+        await tx.execute(sql`
+          DELETE FROM public.homework
+          WHERE semester_id IN (${semesterList})
+        `);
+
+        await tx.execute(sql`
+          DELETE FROM public.programme_syllabus_classes
+          WHERE semester_id IN (${semesterList})
+        `);
+
+        await tx.execute(sql`
+          DELETE FROM public.fees
+          WHERE semester_id IN (${semesterList})
+        `);
+
+        await tx.execute(sql`
+          DELETE FROM public.question_bank
+          WHERE semester_id IN (${semesterList})
+        `);
+
+        await tx.execute(sql`
+          DELETE FROM public.attendance
+          WHERE semester_id IN (${semesterList})
+        `);
+
+        await tx.execute(sql`
+          DELETE FROM public.enrollments
+          WHERE semester_id IN (${semesterList})
+        `);
+
         await tx.execute(sql`
           UPDATE public.batches
           SET semester_id = NULL,
               updated_at = NOW()
           WHERE institute_id = ${instituteId}
-            AND semester_id IN (${sql.join(
-              semesterIds.map((semesterId) => sql`${semesterId}`),
-              sql`, `,
-            )})
+            AND semester_id IN (${semesterList})
         `);
 
         await tx.execute(sql`
           UPDATE public.exams
           SET semester_id = NULL
           WHERE institute_id = ${instituteId}
-            AND semester_id IN (${sql.join(
-              semesterIds.map((semesterId) => sql`${semesterId}`),
-              sql`, `,
-            )})
+            AND semester_id IN (${semesterList})
         `);
       }
 
+      // The remaining FK cleanup below handles any additional production
+      // constraints that are not represented in the current schema.
       // Clean up every other live foreign-key reference to these semester rows.
       // Production may contain additional constraints not represented in the
       // current Drizzle schema, so handle both single and composite FKs.
