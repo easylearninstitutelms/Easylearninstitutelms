@@ -12,7 +12,7 @@ import {
   results,
   routines,
 } from "@/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 
 const PROGRAMME_DELETE_ROLES = [
@@ -94,6 +94,32 @@ export async function DELETE(
       const batchIds = batchRows.map(
         (row) => row.id,
       );
+
+      const semesterRows = await tx
+        .select({ id: programmeSemesters.id })
+        .from(programmeSemesters)
+        .where(
+          and(
+            eq(programmeSemesters.programmeId, id),
+            eq(programmeSemesters.instituteId, instituteId),
+          ),
+        );
+
+      const semesterIds = semesterRows.map((row) => row.id);
+
+      if (semesterIds.length > 0) {
+        await tx.execute(sql`
+          DELETE FROM homework
+          WHERE institute_id = ${instituteId}
+            AND (
+              programme_id = ${id}
+              OR semester_id IN (${sql.join(
+                semesterIds.map((semesterId) => sql`${semesterId}`),
+                sql`, `,
+              )})
+            )
+        `);
+      }
 
       const examRows = await tx
         .select({ id: exams.id })
@@ -180,20 +206,14 @@ export async function DELETE(
             ),
           );
 
-        await tx
-          .delete(homework)
-          .where(
-            and(
-              eq(
-                homework.instituteId,
-                instituteId,
-              ),
-              inArray(
-                homework.batchId,
-                batchIds,
-              ),
-            ),
-          );
+        await tx.execute(sql`
+          DELETE FROM homework
+          WHERE institute_id = ${instituteId}
+            AND batch_id IN (${sql.join(
+              batchIds.map((batchId) => sql`${batchId}`),
+              sql`, `,
+            )})
+        `);
 
         await tx
           .delete(assignments)
