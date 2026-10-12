@@ -591,25 +591,69 @@ export function ensureExamSchema() {
     examSchemaReady = (async () => {
       await ensureAcademicCoreSchema();
       await ensureCourseSchema();
-      await db.execute(sql`
-        ALTER TABLE exams ADD COLUMN IF NOT EXISTS batch_id uuid;
-        ALTER TABLE exams ALTER COLUMN batch_id DROP NOT NULL;
-        ALTER TABLE exams ADD COLUMN IF NOT EXISTS programme_id uuid;
-        ALTER TABLE exams ADD COLUMN IF NOT EXISTS semester_id uuid;
-        ALTER TABLE exams ADD COLUMN IF NOT EXISTS course_id uuid;
-        ALTER TABLE exams ADD COLUMN IF NOT EXISTS course_class_id uuid;
-        ALTER TABLE exams ADD COLUMN IF NOT EXISTS programme_class_id uuid;
-        ALTER TABLE exams ADD COLUMN IF NOT EXISTS name varchar(255);
-        ALTER TABLE exams ADD COLUMN IF NOT EXISTS exam_date date;
-        ALTER TABLE exams ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now();
 
-        ALTER TABLE exam_subjects ADD COLUMN IF NOT EXISTS institute_id uuid;
-        ALTER TABLE exam_subjects ADD COLUMN IF NOT EXISTS exam_id uuid;
-        ALTER TABLE exam_subjects ADD COLUMN IF NOT EXISTS subject_name varchar(255);
-        ALTER TABLE exam_subjects ADD COLUMN IF NOT EXISTS total_marks integer;
+      await db.execute(sql`
+        ALTER TABLE exams
+          ADD COLUMN IF NOT EXISTS batch_id uuid;
+
+        ALTER TABLE exams
+          ALTER COLUMN batch_id DROP NOT NULL;
+
+        ALTER TABLE exams
+          ADD COLUMN IF NOT EXISTS programme_id uuid;
+
+        ALTER TABLE exams
+          ADD COLUMN IF NOT EXISTS semester_id uuid;
+
+        ALTER TABLE exams
+          ADD COLUMN IF NOT EXISTS course_id uuid;
+
+        ALTER TABLE exams
+          ADD COLUMN IF NOT EXISTS course_class_id uuid;
+
+        ALTER TABLE exams
+          ADD COLUMN IF NOT EXISTS programme_class_id uuid;
+
+        ALTER TABLE exams
+          ADD COLUMN IF NOT EXISTS name varchar(255);
+
+        ALTER TABLE exams
+          ADD COLUMN IF NOT EXISTS exam_date date;
+
+        ALTER TABLE exams
+          ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now();
+
+        ALTER TABLE exam_subjects
+          ADD COLUMN IF NOT EXISTS institute_id uuid;
+
+        ALTER TABLE exam_subjects
+          ADD COLUMN IF NOT EXISTS exam_id uuid;
+
+        ALTER TABLE exam_subjects
+          ADD COLUMN IF NOT EXISTS subject_name varchar(255);
+
+        ALTER TABLE exam_subjects
+          ADD COLUMN IF NOT EXISTS total_marks integer;
+
+        ALTER TABLE exam_subjects
+          ALTER COLUMN total_marks TYPE numeric
+          USING total_marks::numeric;
+
+        ALTER TABLE exam_subjects
+          ALTER COLUMN total_marks SET DEFAULT 100;
+
+        ALTER TABLE exam_subjects
+          ADD COLUMN IF NOT EXISTS pass_marks numeric DEFAULT 40;
+
+        ALTER TABLE exam_subjects
+          ALTER COLUMN pass_marks SET DEFAULT 40;
+
+        ALTER TABLE exam_subjects
+          ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now();
       `);
     })().then(() => undefined);
   }
+
   return examSchemaReady;
 }
 
