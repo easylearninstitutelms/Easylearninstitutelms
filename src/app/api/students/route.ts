@@ -1,5 +1,5 @@
 ﻿import { db } from "@/db";
-import { students, enrollments } from "@/db/schema";
+import { students, institutes } from "@/db/schema";
 import { eq, and, like, or, desc, sql } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { generateStudentId } from "@/lib/utils";
@@ -38,7 +38,13 @@ export async function GET(request: Request) {
     .from(students)
     .where(and(...conditions));
 
-  // ডাটাবেজের current_semester কলামটি নিশ্চিতভাবে রিড করা
+  const [inst] = await db
+    .select()
+    .from(institutes)
+    .where(eq(institutes.id, session.instituteId))
+    .limit(1);
+
+  // শিক্ষার্থীদের কোর্স/প্রোগ্রাম ও সেমিস্টার তথ্য রিড করা
   const rows = await db
     .select({
       id: students.id,
@@ -51,6 +57,11 @@ export async function GET(request: Request) {
       admissionDate: students.admissionDate,
       status: students.status,
       currentSemester: sql<number>`COALESCE(public.students.current_semester, 1)`,
+      enrolledTrack: sql<string>`COALESCE(
+        (SELECT c.name FROM enrollments e JOIN batches b ON e.batch_id = b.id JOIN courses c ON b.course_id = c.id WHERE e.student_id = students.id LIMIT 1),
+        'Web Design With AI'
+      )`,
+      trackType: sql<string>`CASE WHEN public.students.programme_id IS NOT NULL THEN 'PROGRAMME' ELSE 'COURSE' END`,
     })
     .from(students)
     .where(and(...conditions))
@@ -58,7 +69,15 @@ export async function GET(request: Request) {
     .limit(limit)
     .offset(offset);
 
-  return Response.json({ students: rows, total, page, limit });
+  return Response.json({
+    students: rows,
+    total,
+    institute: {
+      name: inst?.name || "Easylearn Institute",
+      address: inst?.address || "Gazipur / Dhaka, Bangladesh",
+      phone: inst?.phone || "01345064696",
+    },
+  });
 }
 
 export async function POST(request: Request) {
@@ -68,17 +87,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const {
-    name,
-    phone,
-    guardianName,
-    guardianPhone,
-    address,
-    dob,
-    gender,
-    admissionDate,
-    batchId,
-  } = body;
+  const { name, phone, guardianName, guardianPhone, address, dob, gender, admissionDate } = body;
 
   if (!name || !admissionDate) {
     return Response.json({ error: "Name and admission date required" }, { status: 400 });
@@ -101,16 +110,6 @@ export async function POST(request: Request) {
       status: "ACTIVE",
     })
     .returning();
-
-  if (batchId) {
-    await db.insert(enrollments).values({
-      instituteId: session.instituteId,
-      studentId: student.id,
-      batchId,
-      enrollmentDate: admissionDate,
-      status: "ACTIVE",
-    });
-  }
 
   return Response.json({ student });
 }
